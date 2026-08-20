@@ -4,6 +4,7 @@ import { join, relative, resolve } from 'pathe'
 import { tryUseNuxt } from './context.ts'
 import { getLayerDirectories } from './layers.ts'
 import type { Nuxt } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 
 export function createIsIgnored (nuxt: Nuxt | null | undefined = tryUseNuxt()): (pathname: string, stats?: unknown) => boolean {
   return (pathname, stats) => isIgnored(pathname, stats, nuxt)
@@ -18,6 +19,8 @@ const layerRootsCache = new WeakMap<Nuxt, string[]>()
 export function isIgnored (pathname: string, _stats?: unknown, nuxt: Nuxt | null | undefined = tryUseNuxt()): boolean {
   // Happens with CLI reloads
   if (!nuxt) {
+	logger.debug(`>>> Entering isIgnored(pathname=${pathname},_stats=${_stats},nuxt=${nuxt})`);
+	logger.debug(`<<< Exiting isIgnored(pathname=${pathname},_stats=${_stats},nuxt=${nuxt})`);
     return false
   }
 
@@ -46,6 +49,7 @@ export function isIgnored (pathname: string, _stats?: unknown, nuxt: Nuxt | null
   if (relativePath[0] === '.' && relativePath[1] === '.') {
     return false
   }
+logger.debug(`isIgnored(pathname=${pathname},_stats=${_stats},nuxt=${nuxt}): relativePath → ${relativePath}`);
   return !!(relativePath && nuxt._ignore.ignores(relativePath))
 }
 
@@ -54,17 +58,25 @@ const NEGATION_RE = /^(!?)(.*)$/
 export function resolveIgnorePatterns (relativePath?: string): string[] {
   const nuxt = tryUseNuxt()
 
+logger.debug(`resolveIgnorePatterns(relativePath=${relativePath}): nuxt → ${nuxt}`);
   // Happens with CLI reloads
   if (!nuxt) {
+	logger.debug(`>>> Entering resolveIgnorePatterns(relativePath=${relativePath})`);
+	logger.debug(`<<< Exiting resolveIgnorePatterns(relativePath=${relativePath})`);
     return []
   }
 
   const ignorePatterns = nuxt.options.ignore.flatMap(s => resolveGroupSyntax(s))
 
+logger.debug(`resolveIgnorePatterns(relativePath=${relativePath}): ignorePatterns → ${ignorePatterns}`);
   const nuxtignoreFile = join(nuxt.options.rootDir, '.nuxtignore')
   if (existsSync(nuxtignoreFile)) {
+logger.debug(`resolveIgnorePatterns(relativePath=${relativePath}): nuxtignoreFile → ${nuxtignoreFile}`);
     const contents = readFileSync(nuxtignoreFile, 'utf-8')
     ignorePatterns.push(...contents.trim().split(/\r?\n/))
+	logger.debug(`resolveIgnorePatterns(relativePath=${relativePath}): contents → ${contents}`);
+	logger.debug(`>>> Entering resolveGroupSyntax(group=${group})`);
+	logger.debug(`<<< Exiting resolveGroupSyntax(group=${group})`);
   }
 
   if (relativePath) {

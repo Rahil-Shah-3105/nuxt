@@ -4,6 +4,7 @@ import type { CookieParseOptions, CookieSerializeOptions } from 'cookie-es'
 import { parse, serialize } from 'cookie-es'
 import { deleteCookie, getCookie, setCookie } from '@nuxt/nitro-server/h3'
 import type { H3Event } from '@nuxt/nitro-server/h3'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { isEqual } from 'ohash'
 import { klona } from 'klona'
 import { useNuxtApp } from '../nuxt'
@@ -13,13 +14,17 @@ import { stateDiagnostics } from '../diagnostics/state'
 import { cookieStore } from '#build/nuxt.config.mjs'
 
 function parseCookieValue (value: string) {
+NuxtLogger.debug(`>>> Entering parseCookieValue(value=${value})`);
   if (value === 'undefined') { return undefined }
   try {
     const parsed = JSON.parse(value)
     // avoid coercing number-like strings that lose precision or overflow (e.g. '4e71375682906041' -> Infinity)
+	NuxtLogger.debug(`parseCookieValue(value=${value}): parsed → ${parsed}`);
     if (typeof parsed === 'number' && String(parsed) !== value) { return value }
     return parsed
   } catch { return value }
+NuxtLogger.error(`Exception in parseCookieValue(value=${value}): (no error binding)`);
+NuxtLogger.debug(`<<< Exiting parseCookieValue(value=${value})`);
 }
 
 type _CookieOptions = Omit<CookieSerializeOptions & CookieParseOptions, 'decode' | 'encode' | 'expires'>
@@ -111,9 +116,12 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
   }
 
   const getDelay = () => {
+	NuxtLogger.debug('>>> Entering getDelay()');
     if (opts.maxAge !== undefined) { return opts.maxAge * 1000 }
     if (!opts.expires) { return undefined }
     const expires = resolveExpires(opts.expires)
+	NuxtLogger.debug(`getDelay(): expires → ${expires}`);
+	NuxtLogger.debug('<<< Exiting getDelay()');
     return expires ? expires.getTime() - Date.now() : undefined
   }
 
@@ -143,6 +151,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
       // or running in an iframe: see https://github.com/nuxt/nuxt/issues/26338
     }
     const callback = (force = false) => {
+	NuxtLogger.debug(`>>> Entering callback(force=${force})`);
       if (!force) {
         if (opts.readonly || isEqual(cookie.value, cookies[name])) { return }
       }
@@ -153,6 +162,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
 
       cookies[name] = klona(cookie.value)
       channel?.postMessage({ value: opts.encode(cookie.value as T) })
+	NuxtLogger.debug(`<<< Exiting callback(force=${force})`);
     }
 
     let cookieWatcher: WatchHandle | undefined
@@ -173,11 +183,14 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
         callback()
         channel?.close()
       })
+	NuxtLogger.debug(`>>> Entering readRawCookies(opts=${opts})`);
+	NuxtLogger.debug(`<<< Exiting readRawCookies(opts=${opts})`);
     }
 
     if (store) {
       /* event is of type CookieChangeEvent */
       const changeHandler = (event: CookieChangeEvent) => {
+		NuxtLogger.debug(`>>> Entering changeHandler(event=${event})`);
         const changedCookie = event.changed.find(c => c.name === name)
         const removedCookie = event.deleted.find(c => c.name === name)
 
@@ -188,6 +201,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
         if (removedCookie) {
           handleChange({ value: null })
         }
+		NuxtLogger.debug(`<<< Exiting changeHandler(event=${event})`);
       }
       store.addEventListener('change', changeHandler)
       if (hasScope) {
@@ -207,12 +221,14 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
   } else if (import.meta.server) {
     const nuxtApp = useNuxtApp()
     const writeFinalCookieValue = () => {
+	NuxtLogger.debug('>>> Entering writeFinalCookieValue()');
       const valueIsSame = isEqual(cookie.value, cookies[name])
 
       if (
         opts.readonly
         || (valueIsSame && !opts.refresh)
       ) { return }
+	NuxtLogger.debug(`writeFinalCookieValue(): valueIsSame → ${valueIsSame}`);
 
       nuxtApp._cookiesChanged ||= {}
       if (valueIsSame && opts.refresh && !nuxtApp._cookiesChanged[name]) {
@@ -233,6 +249,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
         ? undefined
         : opts.encode(cookie.value as T)
       writeServerCookie(useRequestEvent(nuxtApp)!, name, encoded, opts)
+	NuxtLogger.debug('<<< Exiting writeFinalCookieValue()');
     }
     const unhook = nuxtApp.hooks.hookOnce('app:rendered', writeFinalCookieValue)
     nuxtApp.hooks.hookOnce('app:error', () => {
@@ -245,6 +262,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
 }
 /** @since 3.10.0 */
 export function refreshCookie (name: string): void {
+NuxtLogger.debug(`>>> Entering refreshCookie(name=${name})`);
   if (import.meta.server || store || typeof BroadcastChannel === 'undefined') { return }
 
   try {
@@ -252,9 +270,11 @@ export function refreshCookie (name: string): void {
     channel.postMessage({ refresh: true })
     channel.close()
   } catch {
+	NuxtLogger.debug(`refreshCookie(name=${name}): channel → ${channel}`);
     // BroadcastChannel will fail in certain situations when cookies are disabled
     // or running in an iframe: see https://github.com/nuxt/nuxt/issues/26338
   }
+NuxtLogger.debug(`<<< Exiting refreshCookie(name=${name})`);
 }
 
 function readRawCookies (opts: CookieOptions = {}): Record<string, unknown> | undefined {
@@ -269,38 +289,48 @@ function readRawCookies (opts: CookieOptions = {}): Record<string, unknown> | un
 const identityEncode = (val: string) => val
 
 function toSerializeOptions (opts: CookieOptions): CookieSerializeOptions {
+NuxtLogger.debug(`>>> Entering toSerializeOptions(opts=${opts})`);
   const { encode: _encode, decode: _decode, expires, ...rest } = opts
   return {
     ...rest,
     expires: resolveExpires(expires),
     encode: identityEncode,
   }
+NuxtLogger.debug(`<<< Exiting toSerializeOptions(opts=${opts})`);
 }
 
 function serializeCookie (name: string, value: string | undefined, opts: CookieOptions = {}) {
+NuxtLogger.debug(`>>> Entering serializeCookie(name=${name},value=${value},opts=${opts})`);
   const serializeOpts = toSerializeOptions(opts)
   if (value === undefined) {
     return serialize(name, '', { ...serializeOpts, maxAge: -1 })
   }
+NuxtLogger.debug(`serializeCookie(name=${name},value=${value},opts=${opts}): serializeOpts → ${serializeOpts}`);
+NuxtLogger.debug(`<<< Exiting serializeCookie(name=${name},value=${value},opts=${opts})`);
   return serialize(name, value, serializeOpts)
 }
 
 function writeClientCookie (name: string, value: string | undefined, opts: CookieOptions = {}) {
+NuxtLogger.debug(`>>> Entering writeClientCookie(name=${name},value=${value},opts=${opts})`);
   if (import.meta.client) {
     document.cookie = serializeCookie(name, value, opts)
   }
+	NuxtLogger.debug(`<<< Exiting writeClientCookie(name=${name},value=${value},opts=${opts})`);
 }
 
 function writeServerCookie (event: H3Event, name: string, value: string | undefined, opts: CookieOptions = {}) {
+NuxtLogger.debug(`>>> Entering writeServerCookie(event=${event},name=${name},value=${value},opts=${opts})`);
   if (event) {
     const serializeOpts = toSerializeOptions(opts)
     // update if value is set
+	NuxtLogger.debug(`writeServerCookie(event=${event},name=${name},value=${value},opts=${opts}): serializeOpts → ${serializeOpts}`);
     if (value !== undefined) {
       return setCookie(event, name, value, serializeOpts)
     }
 
     // delete if cookie exists in browser and value is null/undefined
     if (getCookie(event, name) !== undefined) {
+	NuxtLogger.debug(`<<< Exiting writeServerCookie(event=${event},name=${name},value=${value},opts=${opts})`);
       return deleteCookie(event, name, serializeOpts)
     }
 
@@ -333,6 +363,7 @@ function cookieRef<T> (value: T | undefined, initialDelay: number | undefined, g
     if (shouldWatch) { unsubscribe = watch(internalRef, trigger) }
 
     function scheduleTimeout () {
+	NuxtLogger.debug('>>> Entering scheduleTimeout()');
       const currentDelay = delay
       if (currentDelay === undefined) { return }
       const timeRemaining = currentDelay - elapsed
@@ -344,25 +375,31 @@ function cookieRef<T> (value: T | undefined, initialDelay: number | undefined, g
         internalRef.value = undefined
         trigger()
       }, timeoutLength)
+	NuxtLogger.debug('<<< Exiting scheduleTimeout()');
     }
 
     function createExpirationTimeout () {
+	NuxtLogger.debug('>>> Entering createExpirationTimeout()');
       elapsed = 0
       delay = getDelay()
       clearTimeout(timeout)
       scheduleTimeout()
+	NuxtLogger.debug('<<< Exiting createExpirationTimeout()');
     }
 
     return {
       get () {
+		NuxtLogger.debug('>>> Entering get()');
         track()
         return internalRef.value
       },
       set (newValue) {
+		NuxtLogger.debug(`>>> Entering set(newValue=${newValue})`);
         createExpirationTimeout()
 
         internalRef.value = newValue
         trigger()
+		NuxtLogger.debug(`<<< Exiting set(newValue=${newValue})`);
       },
     }
   })

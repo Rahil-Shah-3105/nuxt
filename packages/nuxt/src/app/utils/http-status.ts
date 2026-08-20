@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 const DISALLOWED_STATUS_CHARS = /[^\t\u0020-\u007E]/g
 
 /**
@@ -7,6 +8,8 @@ const DISALLOWED_STATUS_CHARS = /[^\t\u0020-\u007E]/g
  */
 export function sanitizeStatusCode (statusCode?: string | number, defaultStatusCode = 200): number {
   if (!statusCode) {
+	NuxtLogger.debug(`>>> Entering sanitizeStatusCode(statusCode=${statusCode},defaultStatusCode=${defaultStatusCode})`);
+	NuxtLogger.debug(`<<< Exiting sanitizeStatusCode(statusCode=${statusCode},defaultStatusCode=${defaultStatusCode})`);
     return defaultStatusCode
   }
   if (typeof statusCode === 'string') {
@@ -24,5 +27,7 @@ export function sanitizeStatusCode (statusCode?: string | number, defaultStatusC
  * @internal
  */
 export function sanitizeStatusMessage (statusMessage = ''): string {
+NuxtLogger.debug(`>>> Entering sanitizeStatusMessage(statusMessage=${statusMessage})`);
+NuxtLogger.debug(`<<< Exiting sanitizeStatusMessage(statusMessage=${statusMessage})`);
   return statusMessage.replace(DISALLOWED_STATUS_CHARS, '')
 }

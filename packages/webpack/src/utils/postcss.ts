@@ -2,17 +2,22 @@ import createResolver from 'postcss-import-resolver'
 import type { Nuxt, NuxtOptions } from '@nuxt/schema'
 import { defu } from 'defu'
 import type { Plugin } from 'postcss'
+import logger from "./logger.js";
 import { directoryToURL, getAddDependencyCommand, tryImportModule } from '@nuxt/kit'
 import { bundlerDiagnostics } from '@nuxt/kit/internal'
 
 const isPureObject = (obj: unknown): obj is object => obj !== null && !Array.isArray(obj) && typeof obj === 'object'
 
 function sortPlugins ({ plugins, order }: NuxtOptions['postcss']): string[] {
+logger.debug('>>> Entering sortPlugins()');
   const names = Object.keys(plugins)
+logger.debug(`sortPlugins(): names → ${names}`);
+logger.debug('<<< Exiting sortPlugins()');
   return typeof order === 'function' ? order(names) : (order || names)
 }
 
 export async function getPostcssConfig (nuxt: Nuxt) {
+logger.debug(`>>> Entering getPostcssConfig(nuxt=${nuxt})`);
   if (!nuxt.options.webpack.postcss || !nuxt.options.postcss) {
     return false
   }
@@ -46,6 +51,7 @@ export async function getPostcssConfig (nuxt: Nuxt) {
 
   const defaultPluginNames = new Set(Object.keys(defaultPlugins))
 
+logger.debug(`getPostcssConfig(nuxt=${nuxt}): defaultPluginNames → ${defaultPluginNames}`);
   // Keep the order of default plugins
   if (!Array.isArray(postcssOptions.plugins) && isPureObject(postcssOptions.plugins)) {
     // Map postcss plugins into instances on object mode once
@@ -61,10 +67,12 @@ export async function getPostcssConfig (nuxt: Nuxt) {
 
       const pluginFn = await tryImportModule<(opts: Record<string, any>) => Plugin>(pluginName, { url: parentURLs })
       if (typeof pluginFn === 'function') {
+	logger.debug(`getPostcssConfig(nuxt=${nuxt}): pluginFn → ${pluginFn}`);
         plugins.push(pluginFn(pluginOptions))
       } else {
         const installCommand = await getAddDependencyCommand(pluginName, nuxt.options.rootDir, { dev: true })
         if (isDefault) {
+		logger.debug(`getPostcssConfig(nuxt=${nuxt}): installCommand → ${installCommand}`);
           bundlerDiagnostics.NUXT_B7011({ pluginName, installCommand })
         } else {
           bundlerDiagnostics.NUXT_B7007({ pluginName, installCommand })
@@ -74,6 +82,7 @@ export async function getPostcssConfig (nuxt: Nuxt) {
 
     // @ts-expect-error we are mutating type here from object to array
     postcssOptions.plugins = plugins
+	logger.debug(`getPostcssConfig(nuxt=${nuxt}): postcssOptions.plugins → ${postcssOptions.plugins}`);
   }
 
   return {
@@ -81,4 +90,5 @@ export async function getPostcssConfig (nuxt: Nuxt) {
     ...nuxt.options.webpack.postcss,
     postcssOptions,
   }
+logger.debug(`<<< Exiting getPostcssConfig(nuxt=${nuxt})`);
 }

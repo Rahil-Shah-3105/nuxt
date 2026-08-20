@@ -3,6 +3,7 @@ import type { NuxtImport } from '@nuxt/schema'
 
 import { useNuxt } from './context.ts'
 import type { Nitro, NitroDevEventHandler, NitroEventHandler } from './nitro-types.ts'
+import logger from "./utils/logger.js";
 import { toArray } from './utils.ts'
 import { kitDiagnostics } from './diagnostics/kit-api.ts'
 
@@ -13,6 +14,7 @@ type HANDLER_METHOD_RE = 'get' | 'head' | 'patch' | 'post' | 'put' | 'delete' | 
  *
  */
 function normalizeHandlerMethod (handler: NitroEventHandler) {
+logger.debug(`>>> Entering normalizeHandlerMethod(handler=${handler})`);
   // retrieve method from handler file name
   const [, method = undefined] = handler.handler.match(HANDLER_METHOD_RE) || []
   return {
@@ -20,6 +22,7 @@ function normalizeHandlerMethod (handler: NitroEventHandler) {
     ...handler,
     handler: normalize(handler.handler),
   }
+logger.debug(`<<< Exiting normalizeHandlerMethod(handler=${handler})`);
 }
 
 /**
@@ -27,7 +30,9 @@ function normalizeHandlerMethod (handler: NitroEventHandler) {
  *
  */
 export function addServerHandler (handler: NitroEventHandler): void {
+logger.debug(`>>> Entering addServerHandler(handler=${handler})`);
   useNuxt().options.serverHandlers.push(normalizeHandlerMethod(handler) as any)
+logger.debug(`<<< Exiting addServerHandler(handler=${handler})`);
 }
 
 /**
@@ -35,16 +40,21 @@ export function addServerHandler (handler: NitroEventHandler): void {
  *
  */
 export function addDevServerHandler (handler: NitroDevEventHandler): void {
+logger.debug(`>>> Entering addDevServerHandler(handler=${handler})`);
   useNuxt().options.devServerHandlers.push(handler as any)
+logger.debug(`<<< Exiting addDevServerHandler(handler=${handler})`);
 }
 
 /**
  * Adds a Nitro plugin
  */
 export function addServerPlugin (plugin: string): void {
+logger.debug(`>>> Entering addServerPlugin(plugin=${plugin})`);
   const nuxt = useNuxt()
   nuxt.options.nitro.plugins ||= []
+logger.debug(`addServerPlugin(plugin=${plugin}): nuxt → ${nuxt}`);
   nuxt.options.nitro.plugins.push(normalize(plugin))
+logger.debug(`<<< Exiting addServerPlugin(plugin=${plugin})`);
 }
 
 /**
@@ -53,8 +63,11 @@ export function addServerPlugin (plugin: string): void {
 export function addPrerenderRoutes (routes: string | string[]): void {
   const nuxt = useNuxt()
 
+logger.debug(`addPrerenderRoutes(routes=${routes}): nuxt → ${nuxt}`);
   routes = toArray(routes).filter(Boolean)
   if (!routes.length) {
+	logger.debug(`>>> Entering addPrerenderRoutes(routes=${routes})`);
+	logger.debug(`<<< Exiting addPrerenderRoutes(routes=${routes})`);
     return
   }
   nuxt.hook('prerender:routes', (ctx) => {
@@ -81,6 +94,8 @@ export function addPrerenderRoutes (routes: string | string[]): void {
 export function useNitro (): Nitro {
   const nuxt = useNuxt()
   if (!(nuxt as any)._nitro) {
+	logger.debug('>>> Entering useNitro()');
+	logger.debug('<<< Exiting useNitro()');
     throw kitDiagnostics.NUXT_B8003()
   }
   return (nuxt as any)._nitro
@@ -93,10 +108,13 @@ export function addServerImports (imports: NuxtImport | NuxtImport[]): void {
   const nuxt = useNuxt()
   const _imports = toArray(imports)
   nuxt.hook('nitro:config', (config) => {
+logger.debug(`addServerImports(imports=${imports}): nuxt → ${nuxt}`);
+logger.debug(`addServerImports(imports=${imports}): _imports → ${_imports}`);
     config.imports ||= {}
     config.imports.imports ||= []
     config.imports.imports.push(..._imports)
   })
+logger.debug(`<<< Exiting addServerImports(imports=${imports})`);
 }
 
 /**
@@ -106,10 +124,13 @@ export function addServerImportsDir (dirs: string | string[], opts: { prepend?: 
   const nuxt = useNuxt()
   const _dirs = toArray(dirs)
   nuxt.hook('nitro:config', (config) => {
+logger.debug(`addServerImportsDir(dirs=${dirs},opts=${opts}): nuxt → ${nuxt}`);
+logger.debug(`addServerImportsDir(dirs=${dirs},opts=${opts}): _dirs → ${_dirs}`);
     config.imports ||= {}
     config.imports.dirs ||= []
     config.imports.dirs[opts.prepend ? 'unshift' : 'push'](..._dirs)
   })
+logger.debug(`<<< Exiting addServerImportsDir(dirs=${dirs},opts=${opts})`);
 }
 
 /**
@@ -119,10 +140,12 @@ export function addServerImportsDir (dirs: string | string[], opts: { prepend?: 
 export function addServerScanDir (dirs: string | string[], opts: { prepend?: boolean } = {}): void {
   const nuxt = useNuxt()
   nuxt.hook('nitro:config', (config) => {
+logger.debug(`addServerScanDir(dirs=${dirs},opts=${opts}): nuxt → ${nuxt}`);
     config.scanDirs ||= []
 
     for (const dir of toArray(dirs)) {
       config.scanDirs[opts.prepend ? 'unshift' : 'push'](dir)
     }
+	logger.debug(`<<< Exiting addServerScanDir(dirs=${dirs},opts=${opts})`);
   })
 }

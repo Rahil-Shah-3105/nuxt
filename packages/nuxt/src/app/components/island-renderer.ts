@@ -1,4 +1,5 @@
 import type { Component, DefineSetupFnComponent, defineAsyncComponent } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { createVNode, defineComponent, onErrorCaptured } from 'vue'
 
 import { createError } from '../composables/error'
@@ -23,11 +24,14 @@ const IslandRenderer = defineComponent({
     },
   },
   async setup (props) {
+	NuxtLogger.debug(`>>> Entering setup(props=${props})`);
     const name = props.context.name
     const component = Object.hasOwn(islandComponents, name)
       ? islandComponents[name] as ReturnType<typeof defineAsyncComponent>
       : undefined
 
+	NuxtLogger.debug(`setup(props=${props}): name → ${name}`);
+	NuxtLogger.debug(`setup(props=${props}): component → ${component}`);
     if (!component) {
       throw createError({
         status: 404,
@@ -52,6 +56,7 @@ const IslandRenderer = defineComponent({
     const loader = (component as { __asyncLoader?: () => Promise<Component> }).__asyncLoader
     const reservedKey = findReservedRootIslandPropKey(props.context.props, loader ? await loader() : component)
     if (reservedKey) {
+	NuxtLogger.debug(`setup(props=${props}): reservedKey → ${reservedKey}`);
       // The detail goes to the server console; the response carries a fixed reason so it
       // cannot be used to probe which islands declare which props.
       if (import.meta.dev) {
@@ -63,6 +68,7 @@ const IslandRenderer = defineComponent({
       })
     }
 
+	NuxtLogger.debug(`<<< Exiting setup(props=${props})`);
     return () => createVNode(component || 'span', { ...props.context.props, 'data-island-uid': '' })
   },
 }) as unknown as DefineSetupFnComponent<IslandRendererProps>

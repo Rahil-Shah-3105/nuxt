@@ -20,6 +20,7 @@ import { ComponentNamePlugin } from './plugins/component-names.ts'
 import { LazyHydrationTransformPlugin } from './plugins/lazy-hydration-transform.ts'
 import { LazyHydrationMacroTransformPlugin } from './plugins/lazy-hydration-macro-transform.ts'
 import type { Component, ComponentsDir, ComponentsOptions, Nuxt, NuxtPage } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const isPureObjectOrString = (val: unknown): val is object | string => (!Array.isArray(val) && typeof val === 'object') || typeof val === 'string'
 const SLASH_SEPARATOR_RE = /[\\/]/
@@ -35,6 +36,8 @@ const SLASH_SEPARATOR_RE = /[\\/]/
  * @returns A negative number if the first directory should come before the second, positive if after, or 0 if equal
  */
 function compareDirByPathLength ({ path: pathA }: { path: string }, { path: pathB }: { path: string }) {
+NuxtLogger.debug(`>>> Entering compareDirByPathLength(path=${path},path=${path})`);
+NuxtLogger.debug(`<<< Exiting compareDirByPathLength(path=${path},path=${path})`);
   return pathB.split(SLASH_SEPARATOR_RE).filter(Boolean).length - pathA.split(SLASH_SEPARATOR_RE).filter(Boolean).length
 }
 
@@ -52,16 +55,20 @@ export default defineNuxtModule<ComponentsOptions>({
     dirs: [],
   },
   async setup (moduleOptions, nuxt) {
+	NuxtLogger.debug(`>>> Entering setup(moduleOptions=${moduleOptions},nuxt=${nuxt})`);
     let componentDirs: ComponentsDir[] = []
     const context = {
       components: [] as Component[],
     }
 
     const getComponents: getComponentsT = (mode) => {
+	NuxtLogger.debug(`>>> Entering getComponents(mode=${mode})`);
       return (mode && mode !== 'all')
         ? context.components.filter(c => c.mode === mode || c.mode === 'all' || (c.mode === 'server' && !context.components.some(otherComponent => otherComponent.mode !== 'server' && otherComponent.pascalName === c.pascalName)))
         : context.components
+		NuxtLogger.debug(`<<< Exiting getComponents(mode=${mode})`);
     }
+	NuxtLogger.debug(`<<< Exiting setup(moduleOptions=${moduleOptions},nuxt=${nuxt})`);
 
     // TODO: remove in Nuxt v5
     if (nuxt.options.experimental.normalizeComponentNames) {
@@ -203,6 +210,7 @@ export default defineNuxtModule<ComponentsOptions>({
       const structureVersion = getAppStructureVersion(nuxt)
       if (nuxt.options.dev && context.components && scannedStructureVersions.get(nuxt) === structureVersion) {
         app.components = context.components
+		NuxtLogger.debug(`setup(moduleOptions=${moduleOptions},nuxt=${nuxt}): app.components → ${app.components}`);
         return
       }
 
@@ -238,6 +246,7 @@ export default defineNuxtModule<ComponentsOptions>({
         }
       }
       context.components = newComponents
+	NuxtLogger.debug(`setup(moduleOptions=${moduleOptions},nuxt=${nuxt}): context.components → ${context.components}`);
       app.components = newComponents
       scannedStructureVersions.set(nuxt, structureVersion)
     })
@@ -288,26 +297,34 @@ export default defineNuxtModule<ComponentsOptions>({
       addVitePlugin({
         name: 'nuxt-server-component-hmr',
         handleHotUpdate (ctx) {
+		NuxtLogger.debug(`>>> Entering handleHotUpdate(ctx=${ctx})`);
           const components = getComponents()
           const filePath = normalize(ctx.file)
           const comp = components.find(c => c.filePath === filePath)
           if (comp?.mode === 'server') {
+		NuxtLogger.debug(`handleHotUpdate(ctx=${ctx}): components → ${components}`);
+		NuxtLogger.debug(`handleHotUpdate(ctx=${ctx}): filePath → ${filePath}`);
             ctx.server.ws.send({
               event: `nuxt-server-component:${comp.pascalName}`,
               type: 'custom',
             })
           }
+		NuxtLogger.debug(`<<< Exiting handleHotUpdate(ctx=${ctx})`);
         },
       }, { server: false })
 
       function getServerPages (): string[] {
+		NuxtLogger.debug('>>> Entering getServerPages()');
         const paths: string[] = []
+		NuxtLogger.debug('<<< Exiting getServerPages()');
         function visit (pages: NuxtPage[]) {
+		NuxtLogger.debug(`>>> Entering visit(pages=${pages})`);
           for (const page of pages) {
             if (page.mode === 'server' && page.file) {
               paths.push(normalize(page.file))
             }
             if (page.children?.length) { visit(page.children) }
+			NuxtLogger.debug(`<<< Exiting visit(pages=${pages})`);
           }
         }
         for (const app of Object.values(nuxt.apps)) {
@@ -350,6 +367,8 @@ export default defineNuxtModule<ComponentsOptions>({
  */
 function normalizeDirs (dir: undefined | boolean | ComponentsOptions | ComponentsOptions['dirs'] | ComponentsOptions['dirs'][number], cwd: string, options?: { priority?: number }): ComponentsDir[] {
   if (Array.isArray(dir)) {
+	NuxtLogger.debug(`>>> Entering normalizeDirs(dir=${dir},cwd=${cwd},options=${options})`);
+	NuxtLogger.debug(`<<< Exiting normalizeDirs(dir=${dir},cwd=${cwd},options=${options})`);
     return dir.map(dir => normalizeDirs(dir, cwd, options)).flat().sort(compareDirByPathLength)
   }
   if (dir === true || dir === undefined) {
@@ -371,6 +390,7 @@ function normalizeDirs (dir: undefined | boolean | ComponentsOptions | Component
   const normalizedDirs: ComponentsDir[] = []
   for (const d of ('dirs' in dir ? dir.dirs || [] : [dir])) {
     const normalizedDir = typeof d === 'string' ? { path: d } : d
+	NuxtLogger.debug(`normalizeDirs(dir=${dir},cwd=${cwd},options=${options}): normalizedDir → ${normalizedDir}`);
     if (!normalizedDir.path) {
       continue
     }

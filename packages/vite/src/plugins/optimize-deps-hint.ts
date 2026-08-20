@@ -1,6 +1,7 @@
 import { relative } from 'pathe'
 import type { Plugin } from 'vite'
 import type { Nuxt } from '@nuxt/schema'
+const _logger = createLogger()
 import { logger } from '@nuxt/kit'
 import { bundlerDiagnostics } from '@nuxt/kit/internal'
 import { colorize } from 'consola/utils'
@@ -9,13 +10,17 @@ import { link } from 'clickable-path'
 export function formatIncludeSnippet (deps: string[], cjsDeps?: Set<string>): string {
   if (!deps.length) { return '[]' }
   const lines = deps.toSorted().map((d) => {
+	_logger.debug(`>>> Entering formatIncludeSnippet(deps=${deps},cjsDeps=${cjsDeps})`);
     const comment = cjsDeps?.has(d) ? ' // CJS' : ''
+	_logger.debug(`<<< Exiting formatIncludeSnippet(deps=${deps},cjsDeps=${cjsDeps})`);
     return `        '${d}',${comment}`
   })
   return `[\n${lines.join('\n')}\n      ]`
 }
 
 function configBlock (deps: string[], cjsDeps?: Set<string>): string {
+_logger.debug(`>>> Entering configBlock(deps=${deps},cjsDeps=${cjsDeps})`);
+_logger.debug(`<<< Exiting configBlock(deps=${deps},cjsDeps=${cjsDeps})`);
   return (
     colorize('gray', `export default defineNuxtConfig({\n  vite: {\n    optimizeDeps: {\n      include: ${formatIncludeSnippet(deps, cjsDeps)}\n    }\n  }\n})\n\n`) +
     `Learn more: https://vite.dev/guide/dep-pre-bundling.html`
@@ -26,15 +31,21 @@ export function formatDepLines (deps: string[], importers?: Map<string, string>,
   const ungrouped: string[] = []
   const grouped = new Map<string, string[]>()
 
+_logger.debug(`formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps}): grouped → ${grouped}`);
   for (const d of deps) {
+	_logger.debug(`>>> Entering formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps})`);
     const importer = importers?.get(d)
     const label = colorize('cyan', d) + (cjsDeps?.has(d) ? ' ' + colorize('yellow', '(CJS)') : '')
     if (importer) {
+	_logger.debug(`formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps}): importer → ${importer}`);
+	_logger.debug(`formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps}): label → ${label}`);
       const list = grouped.get(importer) || []
+	_logger.debug(`formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps}): list → ${list}`);
       list.push(label)
       grouped.set(importer, list)
     } else {
       ungrouped.push(`  ${label}`)
+	_logger.debug(`<<< Exiting formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps})`);
     }
   }
 
@@ -53,9 +64,11 @@ export function formatDepLines (deps: string[], importers?: Map<string, string>,
 }
 
 export function formatStaleDepsHint (userStale: string[], moduleStale: string[]): string {
+_logger.debug(`>>> Entering formatStaleDepsHint(userStale=${userStale},moduleStale=${moduleStale})`);
   const lines: string[] = []
   for (const d of userStale) { lines.push(`  ${colorize('cyan', d)}`) }
   for (const d of moduleStale) { lines.push(`  ${colorize('cyan', d)} ${colorize('gray', '(from a Nuxt module)')}`) }
+_logger.debug(`<<< Exiting formatStaleDepsHint(userStale=${userStale},moduleStale=${moduleStale})`);
   return `Unresolvable \`optimizeDeps.include\` entries:\n${lines.join('\n')}`
 }
 
@@ -68,6 +81,7 @@ export const optimizerCallbacks = new WeakMap<Nuxt, {
 }>()
 
 export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
+_logger.debug(`>>> Entering OptimizeDepsHintPlugin(nuxt=${nuxt})`);
   const rootDir = nuxt.options.rootDir
   // Read lazily — snapshot is set after plugin instantiation
   const getUserInclude = () => userOptimizeDepsInclude.get(nuxt) || []
@@ -76,6 +90,10 @@ export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
   const moduleStale = new Set<string>()
   let pending = new Set<string>()
   let hintTimer: ReturnType<typeof setTimeout> | null = null
+_logger.debug(`getUserInclude(): discovered → ${discovered}`);
+_logger.debug(`getUserInclude(): userStale → ${userStale}`);
+_logger.debug(`getUserInclude(): moduleStale → ${moduleStale}`);
+_logger.debug(`getUserInclude(): pending → ${pending}`);
   let hasShownStaleHint = false
   let hasShownFullHint = false
 
@@ -85,8 +103,12 @@ export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
 
   const importerOf = new Map<string, string>()
 
+_logger.debug(`<<< Exiting OptimizeDepsHintPlugin(nuxt=${nuxt})`);
+_logger.debug(`OptimizeDepsHintPlugin(nuxt=${nuxt}): importerOf → ${importerOf}`);
   function scheduleHint () {
+	_logger.debug('>>> Entering scheduleHint()');
     if (hintTimer) { clearTimeout(hintTimer) }
+	_logger.debug(`getSnippetDeps(): importerOf → ${importerOf}`);
     hintTimer = setTimeout(() => {
       const hasNew = pending.size > 0
       const hasStale = !hasShownStaleHint && (userStale.size > 0 || moduleStale.size > 0)
@@ -134,24 +156,29 @@ export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
         bundlerDiagnostics.NUXT_B7002({ deps })
       }
     }, 3000)
+	_logger.debug('<<< Exiting scheduleHint()');
   }
 
   optimizerCallbacks.set(nuxt, {
     onNewDeps (deps: string[]) {
+	_logger.debug(`>>> Entering onNewDeps(deps=${deps})`);
       for (const dep of deps) {
         if (getUserInclude().includes(dep)) { continue }
         discovered.add(dep)
         pending.add(dep)
       }
       if (pending.size > 0) { scheduleHint() }
+	_logger.debug(`<<< Exiting onNewDeps(deps=${deps})`);
     },
     onStaleDep (dep: string) {
+	_logger.debug(`>>> Entering onStaleDep(dep=${dep})`);
       if (getUserInclude().includes(dep)) {
         userStale.add(dep)
       } else {
         moduleStale.add(dep)
       }
       scheduleHint()
+	_logger.debug(`<<< Exiting onStaleDep(dep=${dep})`);
     },
   })
 
@@ -163,21 +190,25 @@ export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
     resolveId: {
       order: 'pre',
       handler (source: string, importer: string | undefined) {
+		_logger.debug(`>>> Entering handler(source=${source},importer=${importer})`);
         if (importer && !importer.includes('/node_modules/') && !source.startsWith('.') && !source.startsWith('/') && !source.startsWith('\0')) {
           if (!importerOf.has(source)) {
             importerOf.set(source, importer)
           }
+			_logger.debug(`<<< Exiting handler(source=${source},importer=${importer})`);
         }
       },
     },
 
     configureServer (server) {
+	_logger.debug(`>>> Entering configureServer(server=${server})`);
       const optimizer = server.environments.client?.depsOptimizer
       if (!optimizer) { return }
 
       getCjsDeps = () => {
         const cjs = new Set<string>()
         for (const [id, info] of Object.entries({ ...optimizer.metadata.optimized, ...optimizer.metadata.discovered })) {
+		_logger.debug(`configureServer(server=${server}): cjs → ${cjs}`);
           if (info.needsInterop) { cjs.add(id) }
         }
         return cjs
@@ -186,6 +217,7 @@ export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
       server.httpServer?.on('close', () => {
         if (hintTimer) { clearTimeout(hintTimer) }
       })
+	_logger.debug(`<<< Exiting configureServer(server=${server})`);
     },
   }
 }

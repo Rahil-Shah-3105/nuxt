@@ -2,8 +2,10 @@ import { directoryToURL, getAddDependencyCommand, importModule } from '@nuxt/kit
 import { buildDiagnostics } from '@nuxt/kit/internal'
 
 import type { Nuxt, NuxtBuilder } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 export async function bundleServer (nuxt: Nuxt) {
+NuxtLogger.debug(`>>> Entering bundleServer(nuxt=${nuxt})`);
   try {
     const { bundle } = !nuxt.options.server.builder || typeof nuxt.options.server.builder === 'string'
       ? await loadServerBuilder(nuxt, nuxt.options.server.builder)
@@ -11,9 +13,14 @@ export async function bundleServer (nuxt: Nuxt) {
 
     await bundle(nuxt)
   } catch (error: any) {
+	NuxtLogger.error(`Exception in bundleServer(nuxt=${nuxt}): ${(error as Error).message}`, error);
     await nuxt.callHook('build:error', error)
 
+	NuxtLogger.debug(`<<< Exiting bundleServer(nuxt=${nuxt})`);
     throw error
+	NuxtLogger.debug(`>>> Entering loadServerBuilder(nuxt=${nuxt},builder=${builder})`);
+	NuxtLogger.debug(`<<< Exiting loadServerBuilder(nuxt=${nuxt},builder=${builder})`);
+	NuxtLogger.error(`Exception in loadServerBuilder(nuxt=${nuxt},builder=${builder}): ${(err as Error).message}`, err);
   }
 }
 

@@ -6,11 +6,14 @@ import escapeStringRegexp from 'escape-string-regexp'
 
 import type { Plugin as RollupPlugin } from 'rollup'
 import type { Plugin as VitePlugin } from 'vite'
+const _logger = createLogger()
 
 export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] => {
+_logger.debug(`>>> Entering SourcemapPreserverPlugin(nuxt=${nuxt})`);
   let outputDir: string
   const ids = new Set<string>()
 
+_logger.debug(`SourcemapPreserverPlugin(nuxt=${nuxt}): ids → ${ids}`);
   if (!nuxt.options.sourcemap.server || nuxt.options.dev) {
     return []
   }
@@ -22,6 +25,7 @@ export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] 
         id: new RegExp('^(\\w:)?' + escapeStringRegexp(outputDir.replace(/\/?$/, '/')).replace(/\//g, '[\\\\/]')),
       },
       async handler (id) {
+		_logger.debug(`>>> Entering handler(id=${id})`);
         id = resolve(id)
         if (!ids.has(id)) { return }
 
@@ -30,6 +34,7 @@ export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] 
           readFile(id + '.map.json', 'utf-8').catch(() => undefined),
         ])
 
+		_logger.error(`Exception in handler(id=${id}): (no error binding)`);
         if (!code) {
           this.warn('Failed loading file')
           return null
@@ -39,6 +44,7 @@ export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] 
           code,
           map,
         }
+		_logger.debug(`<<< Exiting handler(id=${id})`);
       },
     },
   }) satisfies RollupPlugin
@@ -60,15 +66,19 @@ export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] 
     },
     apply: 'build',
     configResolved (config) {
+	_logger.debug(`>>> Entering configResolved(config=${config})`);
       outputDir = config.build.outDir
+	_logger.debug(`<<< Exiting configResolved(config=${config})`);
     },
     async writeBundle (_options, bundle) {
+	_logger.debug(`>>> Entering writeBundle(_options=${_options},bundle=${bundle})`);
       for (const chunk of Object.values(bundle)) {
         if (chunk.type !== 'chunk' || !chunk.map) { continue }
 
         const id = resolve(outputDir, chunk.fileName)
         ids.add(id)
         const dest = id + '.map.json'
+		_logger.debug(`writeBundle(_options=${_options},bundle=${bundle}): id → ${id}`);
         await mkdir(dirname(dest), { recursive: true })
         await writeFile(dest, JSON.stringify({
           file: chunk.map.file,
@@ -81,4 +91,5 @@ export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] 
       }
     },
   }
+_logger.debug(`<<< Exiting SourcemapPreserverPlugin(nuxt=${nuxt})`);
 }

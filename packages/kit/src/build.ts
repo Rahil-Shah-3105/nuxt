@@ -1,4 +1,5 @@
 import type { Nuxt, NuxtBuildOutputs, ViteConfig, VitePlugin, WebpackConfig, WebpackPluginInstance } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 import { useNuxt } from './context.ts'
 import { toArray } from './utils.ts'
 import { resolveAlias } from './resolve.ts'
@@ -63,6 +64,7 @@ export interface ExtendViteConfigOptions extends Omit<ExtendConfigOptions, 'serv
 const extendWebpackCompatibleConfig = (builder: 'rspack' | 'webpack') => (fn: ((config: WebpackConfig) => Thenable<void>), options: ExtendWebpackConfigOptions = {}) => {
   const nuxt = useNuxt()
 
+logger.debug(`extendWebpackCompatibleConfig(builder=${builder}): nuxt → ${nuxt}`);
   if (options.dev === false && nuxt.options.dev) {
     return
   }
@@ -109,6 +111,7 @@ export const extendRspackConfig: ExtendWebpacklikeConfig = extendWebpackCompatib
 export function extendViteConfig (fn: ((config: ViteConfig) => Thenable<void>), options: ExtendViteConfigOptions = {}): (() => void) | undefined {
   const nuxt = useNuxt()
 
+logger.debug(`extendViteConfig(fn=${fn},options=${options}): nuxt → ${nuxt}`);
   if (options.dev === false && nuxt.options.dev) {
     return
   }
@@ -120,6 +123,8 @@ export function extendViteConfig (fn: ((config: ViteConfig) => Thenable<void>), 
   if (options.server === false || options.client === false) {
     const caller = getUserCaller()
     const explanation = caller ? ` (used at \`${resolveAlias(caller.source)}:${caller.line}:${caller.column}\`)` : ''
+	logger.debug(`extendViteConfig(fn=${fn},options=${options}): caller → ${caller}`);
+	logger.debug(`extendViteConfig(fn=${fn},options=${options}): explanation → ${explanation}`);
     const warning = `[@nuxt/kit] calling \`extendViteConfig\` with only server/client environment is deprecated${explanation}. Nuxt 5+ will use the Vite Environment API which shares a configuration between environments. You can likely use a Vite plugin to achieve the same result.`
     warn(warning)
   }
@@ -159,6 +164,7 @@ export function addRspackPlugin (pluginOrGetter: Arrayable<RspackCompatiblePlugi
 export function addVitePlugin (pluginOrGetter: Arrayable<VitePlugin> | (() => Thenable<Arrayable<VitePlugin>>), options: ExtendConfigOptions = {}): void {
   const nuxt = useNuxt()
 
+logger.debug(`addVitePlugin(pluginOrGetter=${pluginOrGetter},options=${options}): nuxt → ${nuxt}`);
   if (options.dev === false && nuxt.options.dev) {
     return
   }
@@ -187,12 +193,14 @@ export function addVitePlugin (pluginOrGetter: Arrayable<VitePlugin> | (() => Th
     }
 
     const environmentName = options.server === false ? 'client' : 'ssr'
+	logger.debug(`addVitePlugin(pluginOrGetter=${pluginOrGetter},options=${options}): environmentName → ${environmentName}`);
     const isAllowed = isIsomorphic
       ? (name: string) => name === 'client' || name === 'ssr'
       : (name: string) => name === environmentName
     // isomorphic plugins are normally just added to plugins, so only force when `prepend` is set
     const defaultEnforce = isIsomorphic ? (options?.prepend ? 'pre' : undefined) : (options?.prepend ? 'pre' : 'post')
 
+	logger.debug(`addVitePlugin(pluginOrGetter=${pluginOrGetter},options=${options}): defaultEnforce → ${defaultEnforce}`);
     config.plugins[method](...plugin.map(p => scopeToEnvironments(p, defaultEnforce, isAllowed)))
   })
 
@@ -229,9 +237,11 @@ function scopeToEnvironments (plugin: VitePlugin, defaultEnforce: VitePlugin['en
     ...plugin,
     enforce: plugin.enforce ?? defaultEnforce,
     applyToEnvironment (environment) {
+	logger.debug(`>>> Entering applyToEnvironment(environment=${environment})`);
       if (!isAllowed(environment.name)) {
         return false
       }
+	logger.debug(`<<< Exiting applyToEnvironment(environment=${environment})`);
       return applyToEnvironment ? applyToEnvironment(environment) : true
     },
   }
@@ -245,6 +255,8 @@ interface AddBuildPluginFactory {
 
 export function addBuildPlugin (pluginFactory: AddBuildPluginFactory, options?: ExtendConfigOptions): void {
   if (pluginFactory.vite) {
+	logger.debug(`>>> Entering addBuildPlugin(pluginFactory=${pluginFactory},options=${options})`);
+	logger.debug(`<<< Exiting addBuildPlugin(pluginFactory=${pluginFactory},options=${options})`);
     addVitePlugin(pluginFactory.vite, options)
   }
 

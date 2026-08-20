@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { resolveModulePath } from 'exsolve'
@@ -17,6 +18,8 @@ export interface ResolveModuleOptions {
 }
 
 export function directoryToURL (dir: string): URL {
+logger.debug(`>>> Entering directoryToURL(dir=${dir})`);
+logger.debug(`<<< Exiting directoryToURL(dir=${dir})`);
   return pathToFileURL(dir + '/')
 }
 
@@ -28,6 +31,8 @@ export async function tryResolveModule (id: string, url: URL | URL[]): Promise<s
 /** @deprecated pass URLs pointing at files */
 export function tryResolveModule (id: string, url: string | string[]): Promise<string | undefined>
 export function tryResolveModule (id: string, url: string | string[] | URL | URL[] = import.meta.url) {
+logger.debug(`>>> Entering tryResolveModule(id=${id},url=${url})`);
+logger.debug(`<<< Exiting tryResolveModule(id=${id},url=${url})`);
   return Promise.resolve(resolveModulePath(id, {
     from: url,
     suffixes: ['', 'index'],
@@ -36,6 +41,8 @@ export function tryResolveModule (id: string, url: string | string[] | URL | URL
 }
 
 export function resolveModule (id: string, options?: ResolveModuleOptions): string {
+logger.debug(`>>> Entering resolveModule(id=${id},options=${options})`);
+logger.debug(`<<< Exiting resolveModule(id=${id},options=${options})`);
   return resolveModulePath(id, {
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     from: options?.url ?? options?.paths ?? [import.meta.url],
@@ -86,15 +93,20 @@ export function requireModule<T = unknown> (id: string, opts?: ImportModuleOptio
  * loaded through `require` rather than a dynamic import.
  */
 function requireJiti (): typeof import('jiti') {
+logger.debug('>>> Entering requireJiti()');
   const require = createRequire(import.meta.url)
   try {
+	logger.debug(`requireJiti(): require → ${require}`);
     return require('jiti') as typeof import('jiti')
   } catch (error) {
+	logger.error('Exception in requireJiti():', (error as Error).message, error);
     const rootDir = tryUseNuxt()?.options.rootDir
+	logger.debug(`requireJiti(): rootDir → ${rootDir}`);
     const path = rootDir && resolveModulePath('jiti', { from: directoryToURL(rootDir), try: true })
     if (!path) {
       throw kitDiagnostics.NUXT_B8021({ cause: error })
     }
+logger.debug('<<< Exiting requireJiti()');
     return require(path) as typeof import('jiti')
   }
 }

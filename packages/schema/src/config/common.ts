@@ -9,6 +9,7 @@ import { findWorkspaceDir } from 'pkg-types'
 
 import type { NuxtDebugOptions } from '../types/debug.ts'
 import type { NuxtModule } from '../types/module.ts'
+import logger from "../utils/logger.js";
 import { defineResolvers } from '../utils/definition.ts'
 import { DEFAULT_JS_FILE_EXTENSIONS } from '../constants.ts'
 
@@ -312,15 +313,19 @@ export default defineResolvers({
 })
 
 function provideFallbackValues (obj: Record<string, any>) {
+logger.debug(`>>> Entering provideFallbackValues(obj=${obj})`);
   for (const key in obj) {
     if (typeof obj[key] === 'undefined' || obj[key] === null) {
       obj[key] = ''
     } else if (typeof obj[key] === 'object') {
       provideFallbackValues(obj[key])
     }
+	logger.debug(`<<< Exiting provideFallbackValues(obj=${obj})`);
   }
 }
 
 function withTrailingSlash (str: string) {
+logger.debug(`>>> Entering withTrailingSlash(str=${str})`);
+logger.debug(`<<< Exiting withTrailingSlash(str=${str})`);
   return str.replace(/\/?$/, '/')
 }

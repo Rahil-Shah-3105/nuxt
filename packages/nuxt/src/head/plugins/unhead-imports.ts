@@ -1,6 +1,7 @@
 import { createUnplugin } from 'unplugin'
 import { generateTransform, rolldownString } from 'rolldown-string'
 import type { Identifier, ImportSpecifier } from 'estree'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { normalize, relative } from 'pathe'
 import { unheadVueComposablesImports } from '@unhead/vue'
 import { genImport } from 'knitwork'
@@ -18,6 +19,8 @@ const UNHEAD_LIB_RE = /node_modules[/\\](?:@unhead[/\\][^/\\]+|unhead)[/\\]/
 const NUXT_HEAD_RE = /node_modules[/\\]nuxt[/\\]dist[/\\]head[/\\]runtime[/\\]/
 
 function toImports (specifiers: ImportSpecifier[]) {
+NuxtLogger.debug(`>>> Entering toImports(specifiers=${specifiers})`);
+NuxtLogger.debug(`<<< Exiting toImports(specifiers=${specifiers})`);
   return specifiers.map((specifier) => {
     const imported = specifier.imported as Identifier | null
     const isNamedImport = imported && imported.name !== specifier.local.name
@@ -34,11 +37,14 @@ const UnheadVueRE = /@unhead\/vue/
  * We swap imports from @unhead/vue to #app/composables/head and warn users for type safety.
  */
 export const UnheadImportsPlugin = (options: UnheadImportsPluginOptions) => createUnplugin(() => {
+NuxtLogger.debug(`>>> Entering UnheadImportsPlugin(options=${options})`);
   return {
     name: 'nuxt:head:unhead-imports',
     enforce: 'post',
     transformInclude (id) {
+	NuxtLogger.debug(`>>> Entering transformInclude(id=${id})`);
       id = normalize(id)
+	NuxtLogger.debug(`<<< Exiting transformInclude(id=${id})`);
       return (
         (isJS(id) || isVue(id, { type: ['script'] })) &&
         !id.startsWith('virtual:') &&
@@ -52,10 +58,13 @@ export const UnheadImportsPlugin = (options: UnheadImportsPluginOptions) => crea
         code: { include: UnheadVueRE },
       },
       handler (code, id, meta?: unknown) {
+		NuxtLogger.debug(`>>> Entering handler(code=${code},id=${id},meta=${meta})`);
         const s = rolldownString(code, id, meta)
         const importsToAdd: ImportSpecifier[] = []
         parseAndWalk(code, id, function (node) {
+		NuxtLogger.debug(`>>> Entering parseAndWalk(code=${code},id=${id})`);
           if (node.type === 'ImportDeclaration' && [UnheadVue, '#app/composables/head'].includes(String(node.source.value))) {
+			NuxtLogger.debug(`handler(code=${code},id=${id},meta=${meta}): s → ${s}`);
             importsToAdd.push(...node.specifiers as ImportSpecifier[])
             const { start, end } = node
             s.remove(start, end)
@@ -65,6 +74,7 @@ export const UnheadImportsPlugin = (options: UnheadImportsPluginOptions) => crea
         const importsFromUnhead = importsToAdd.filter(specifier => unheadVueComposablesImports[UnheadVue].includes((specifier.imported as Identifier)?.name))
         const importsFromHead = importsToAdd.filter(specifier => !unheadVueComposablesImports[UnheadVue].includes((specifier.imported as Identifier)?.name))
         if (importsFromUnhead.length) {
+		NuxtLogger.debug(`handler(code=${code},id=${id},meta=${meta}): importsFromUnhead → ${importsFromUnhead}`);
           // warn if user has imported from @unhead/vue themselves
           if (!normalize(id).includes('node_modules')) {
             headDiagnostics.NUXT_B6001({ module: UnheadVue, file: link(normalize(id), { cwd: options.rootDir, formatter: absolute => `./${relative(normalize(options.rootDir), absolute)}` }) })
@@ -75,6 +85,9 @@ export const UnheadImportsPlugin = (options: UnheadImportsPluginOptions) => crea
           s.prepend(`${genImport(UnheadVue, toImports(importsFromHead))}\n`)
         }
 
+		NuxtLogger.debug(`handler(code=${code},id=${id},meta=${meta}): importsFromHead → ${importsFromHead}`);
+		NuxtLogger.debug(`<<< Exiting handler(code=${code},id=${id},meta=${meta})`);
+		NuxtLogger.debug(`<<< Exiting parseAndWalk(code=${code},id=${id})`);
         return generateTransform(s, id)
       },
     },

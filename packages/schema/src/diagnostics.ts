@@ -1,3 +1,4 @@
+import logger from "./utils/logger.js";
 import { createConsoleReporter, defineDiagnostics } from 'nostics'
 
 /**
@@ -9,6 +10,7 @@ import { createConsoleReporter, defineDiagnostics } from 'nostics'
 // TODO: bump the `4.x` path segment to `5.x` when the v5 docs go live.
 const docsBase = (code: string): string =>
   `https://nuxt.com/docs/4.x/errors/${code.replace('NUXT_', '').toLowerCase()}`
+const startTime: number = Date.now();
 
 export const schemaDiagnostics = /* #__PURE__ */ defineDiagnostics({
   docsBase,

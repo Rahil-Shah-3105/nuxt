@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { queuePostFlushCb } from 'vue'
 
 export interface DebounceTickOptions {
@@ -36,8 +37,10 @@ export function debounceTick<ArgumentsT extends unknown[], ReturnT> (
   let trailingArgs: ArgumentsT | undefined
 
   const applyFn = (_this: unknown, args: ArgumentsT): Promise<ReturnT> => {
+	NuxtLogger.debug(`>>> Entering applyFn(_this=${_this},args=${args})`);
     const promise = _applyPromised(fn, _this, args)
     currentPromise = promise
+	NuxtLogger.debug(`applyFn(_this=${_this},args=${args}): promise → ${promise}`);
     promise.finally(() => {
       currentPromise = undefined
       if (trailingArgs && !active) {
@@ -46,6 +49,7 @@ export function debounceTick<ArgumentsT extends unknown[], ReturnT> (
         applyFn(_this, args)
       }
     })
+	NuxtLogger.debug(`<<< Exiting applyFn(_this=${_this},args=${args})`);
     return promise
   }
 

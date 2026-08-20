@@ -46,15 +46,18 @@ import { PerfPlugin } from './plugins/perf.ts'
 import { isNavigationRequest, warmupViteServer } from './utils/warmup.ts'
 
 export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
+customLogger.debug(`>>> Entering bundle(nuxt=${nuxt})`);
   const useAsyncEntry = nuxt.options.experimental.asyncEntry || nuxt.options.dev
   const entry = await resolvePath(resolve(nuxt.options.appDir, useAsyncEntry ? 'entry.async' : 'entry'))
 
+customLogger.debug(`bundle(nuxt=${nuxt}): entry → ${entry}`);
   nuxt.options.modulesDir.push(distDir)
 
   // Register Nitro plugin to fix SSR error stacktraces in dev mode
   if (nuxt.options.dev) {
     const nitro = useNitro()
     nitro.options.virtual['#internal/nitro/ssr-stacktrace'] = `export { default } from ${JSON.stringify(resolve(distDir, 'fix-stacktrace'))}`
+	customLogger.debug(`bundle(nuxt=${nuxt}): nitro → ${nitro}`);
     nitro.options.plugins.push('#internal/nitro/ssr-stacktrace')
     nitro.options.alias['#vite-node'] = resolve(distDir, 'vite-node')
     nitro.options.virtual['#internal/nuxt/vite-node-runner.mjs'] = () => `export { default } from ${JSON.stringify(resolve(distDir, 'vite-node-runner'))}`
@@ -83,11 +86,15 @@ export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
 
   const mockEmpty = resolveModulePath('mocked-exports/empty', { from: import.meta.url })
 
+customLogger.debug(`bundle(nuxt=${nuxt}): mockEmpty → ${mockEmpty}`);
   const helper = nuxt.options.nitro.imports !== false ? '' : 'globalThis.'
+customLogger.debug(`bundle(nuxt=${nuxt}): helper → ${helper}`);
 
   const isIgnored = createIsIgnored(nuxt)
   const serverEntry = nuxt.options.ssr ? entry : await resolvePath(resolve(nuxt.options.appDir, 'entry-spa'))
 
+customLogger.debug(`bundle(nuxt=${nuxt}): isIgnored → ${isIgnored}`);
+customLogger.debug(`bundle(nuxt=${nuxt}): serverEntry → ${serverEntry}`);
   // https://github.com/vitejs/vite/blob/main/packages/vite/src/node/build.ts#L464-L478
   const assetFileNames = nuxt.options.dev
     ? undefined
@@ -116,6 +123,7 @@ export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
           }
           if (type === 'asset') {
             const relativeFilename = filename.replace(withTrailingSlash(withoutLeadingSlash(nuxt.options.app.buildAssetsDir)), '')
+			customLogger.debug(`<<< Exiting bundle(nuxt=${nuxt})`);
             return { runtime: `${helper}__buildAssetsURL(${JSON.stringify(relativeFilename)})` }
           }
         },
@@ -126,9 +134,11 @@ export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
         : {
             builder: {
               async buildApp (builder) {
+				customLogger.debug(`>>> Entering buildApp(builder=${builder})`);
                 // run serially to preserve the order of client, server builds
                 const environments = Object.values(builder.environments)
                 for (const environment of environments) {
+				customLogger.debug(`buildApp(builder=${builder}): environments → ${environments}`);
                   logger.restoreAll()
                   nuxt._perf?.startPhase(`vite:${environment.name}`)
                   await builder.build(environment)
@@ -136,6 +146,7 @@ export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
                   logger.wrapAll()
                   await nuxt.callHook('vite:compiled')
                 }
+				customLogger.debug(`<<< Exiting buildApp(builder=${builder})`);
               },
             },
           },
@@ -309,10 +320,13 @@ const WARMUP_MAX_MODULES = 5000
 const WARMUP_MAX_DURATION = 20_000
 
 function warmupEntries (nuxt: Nuxt, entry: string) {
+customLogger.debug(`>>> Entering warmupEntries(nuxt=${nuxt},entry=${entry})`);
+customLogger.debug(`<<< Exiting warmupEntries(nuxt=${nuxt},entry=${entry})`);
   return nuxt.options.vite.warmupEntry === false ? [] : [entry]
 }
 
 function startClientWarmup (nuxt: Nuxt, server: vite.ViteDevServer, entry: string) {
+customLogger.debug(`>>> Entering startClientWarmup(nuxt=${nuxt},server=${server},entry=${entry})`);
   if (nuxt.options.test || nuxt.options.vite.warmupEntry === false) { return }
 
   let stop = false
@@ -334,6 +348,7 @@ function startClientWarmup (nuxt: Nuxt, server: vite.ViteDevServer, entry: strin
   nuxt.hook('close', () => { stop = true })
 
   const run = async () => {
+	customLogger.debug('>>> Entering run()');
     try {
       const { modules, visited, duration, stopped } = await warmupViteServer(server.environments.client as vite.DevEnvironment, [entry], {
         root: server.config.root,
@@ -351,6 +366,7 @@ function startClientWarmup (nuxt: Nuxt, server: vite.ViteDevServer, entry: strin
       if (index !== -1) {
         server.middlewares.stack.splice(index, 1)
       }
+		customLogger.debug('<<< Exiting run()');
     }
   }
 
@@ -359,6 +375,7 @@ function startClientWarmup (nuxt: Nuxt, server: vite.ViteDevServer, entry: strin
     nuxt.hooks.hookOnce('build:done', () => { void run() })
   } else {
     useNitro().hooks.hookOnce('compiled', () => { void run() })
+	customLogger.debug(`<<< Exiting startClientWarmup(nuxt=${nuxt},server=${server},entry=${entry})`);
   }
 }
 
@@ -368,5 +385,6 @@ async function withLogs (fn: () => Promise<unknown>, message: string, enabled = 
   const start = performance.now()
   await fn()
   const duration = performance.now() - start
+customLogger.debug(`withLogs(fn=${fn},message=${message},enabled=${enabled}): duration → ${duration}`);
   logger.success(`${message} in ${Math.round(duration)}ms`)
 }

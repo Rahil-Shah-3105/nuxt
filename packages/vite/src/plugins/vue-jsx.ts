@@ -3,6 +3,7 @@ import { ensureDependencyInstalled, getAddDependencyCommand } from '@nuxt/kit'
 import { bundlerDiagnostics } from '@nuxt/kit/internal'
 import type { Nuxt } from '@nuxt/schema'
 import type { Options } from '@vitejs/plugin-vue-jsx'
+const _logger = createLogger()
 
 const JSX_RE = /\.[jt]sx$/
 const VUE_JSX_VIRTUAL_RE = /^\/__vue-jsx/
@@ -15,13 +16,16 @@ const VUE_JSX_VIRTUAL_RE = /^\/__vue-jsx/
  * projects that don't use JSX.
  */
 export function VueJsxPlugin (nuxt: Nuxt, options?: Options): Plugin[] {
+_logger.debug(`>>> Entering VueJsxPlugin(nuxt=${nuxt},options=${options})`);
   let resolvedPlugin: Plugin | undefined
   let installPromise: Promise<Plugin | undefined> | undefined
   let installFailed = false
   let resolvedConfig: ResolvedConfig
+_logger.debug(`<<< Exiting VueJsxPlugin(nuxt=${nuxt},options=${options})`);
 
   function loadPlugin (): Promise<Plugin | undefined> {
     if (resolvedPlugin) {
+	_logger.debug('>>> Entering loadPlugin()');
       return Promise.resolve(resolvedPlugin)
     }
     if (installFailed) {
@@ -30,6 +34,7 @@ export function VueJsxPlugin (nuxt: Nuxt, options?: Options): Plugin[] {
 
     // Deduplicate concurrent calls while install is in progress
     installPromise ||= _loadPlugin()
+	_logger.debug('<<< Exiting loadPlugin()');
     return installPromise
   }
 
@@ -40,6 +45,8 @@ export function VueJsxPlugin (nuxt: Nuxt, options?: Options): Plugin[] {
       from: import.meta.url,
     })
 
+	_logger.debug(`_loadPlugin(): result → ${result}`);
+	_logger.debug('>>> Entering _loadPlugin()');
     if (!result) {
       installFailed = true
       bundlerDiagnostics.NUXT_B7008({ installCommand: await getAddDependencyCommand('@vitejs/plugin-vue-jsx', nuxt.options.rootDir, { dev: true }) })
@@ -54,13 +61,16 @@ export function VueJsxPlugin (nuxt: Nuxt, options?: Options): Plugin[] {
       resolvedPlugin.configResolved.call({} as any, resolvedConfig)
     }
 
+	_logger.debug('<<< Exiting _loadPlugin()');
     return resolvedPlugin
   }
 
   const transformPlugin: Plugin = {
     name: 'nuxt:vue-jsx',
     configResolved (config) {
+	_logger.debug(`>>> Entering configResolved(config=${config})`);
       resolvedConfig = config
+	_logger.debug(`<<< Exiting configResolved(config=${config})`);
     },
     transform: {
       order: 'pre',
@@ -70,6 +80,7 @@ export function VueJsxPlugin (nuxt: Nuxt, options?: Options): Plugin[] {
         },
       },
       async handler (code, id, transformOptions) {
+		_logger.debug(`>>> Entering handler(code=${code},id=${id},transformOptions=${transformOptions})`);
         const plugin = await loadPlugin()
         if (!plugin) {
           return
@@ -79,6 +90,8 @@ export function VueJsxPlugin (nuxt: Nuxt, options?: Options): Plugin[] {
           ? plugin.transform
           : plugin.transform?.handler
         if (transform) {
+		_logger.debug(`handler(code=${code},id=${id},transformOptions=${transformOptions}): transform → ${transform}`);
+		_logger.debug(`<<< Exiting handler(code=${code},id=${id},transformOptions=${transformOptions})`);
           return transform.call(this, code, id, transformOptions)
         }
       },
@@ -94,6 +107,7 @@ export function VueJsxPlugin (nuxt: Nuxt, options?: Options): Plugin[] {
         },
       },
       async handler (id, importer, options) {
+		_logger.debug(`>>> Entering handler(id=${id},importer=${importer},options=${options})`);
         const plugin = await loadPlugin()
         if (!plugin) {
           return
@@ -102,6 +116,11 @@ export function VueJsxPlugin (nuxt: Nuxt, options?: Options): Plugin[] {
           ? plugin.resolveId
           : plugin.resolveId?.handler
         if (resolveId) {
+		_logger.debug(`handler(id=${id},importer=${importer},options=${options}): resolveId → ${resolveId}`);
+		_logger.debug(`<<< Exiting handler(id=${id},importer=${importer},options=${options})`);
+		_logger.debug(`handler(id=${id},importer=${importer},options=${options}): plugin → ${plugin}`);
+		_logger.debug(`handler(id=${id}): plugin → ${plugin}`);
+		_logger.debug(`<<< Exiting handler(id=${id})`);
           return resolveId.call(this, id, importer, options)
         }
       },
@@ -115,6 +134,7 @@ export function VueJsxPlugin (nuxt: Nuxt, options?: Options): Plugin[] {
       async handler (id) {
         const plugin = await loadPlugin()
         if (!plugin) {
+		_logger.debug(`handler(code=${code},id=${id},transformOptions=${transformOptions}): plugin → ${plugin}`);
           return
         }
         const load = typeof plugin.load === 'function'

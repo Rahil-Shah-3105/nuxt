@@ -2,6 +2,7 @@ import { generateTransform, rolldownString } from 'rolldown-string'
 import { createUnplugin } from 'unplugin'
 import { ScopeTracker, parseAndWalk, walk } from 'oxc-walker'
 import escapeStringRegexp from 'escape-string-regexp'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { isJS, isVue } from '../utils/index.ts'
 
@@ -12,9 +13,11 @@ interface TreeShakeComposablesPluginOptions {
 }
 
 export const TreeShakeComposablesPlugin = (options: TreeShakeComposablesPluginOptions) => createUnplugin(() => {
+NuxtLogger.debug(`>>> Entering TreeShakeComposablesPlugin(options=${options})`);
   // Create a fast lookup for all composable names
   const allComposableNames = new Set(Object.values(options.composables).flat())
 
+NuxtLogger.debug(`TreeShakeComposablesPlugin(options=${options}): allComposableNames → ${allComposableNames}`);
   if (!allComposableNames.size) {
     return []
   }
@@ -23,6 +26,8 @@ export const TreeShakeComposablesPlugin = (options: TreeShakeComposablesPluginOp
     name: 'nuxt:tree-shake-composables:transform',
     enforce: 'post',
     transformInclude (id) {
+	NuxtLogger.debug(`>>> Entering transformInclude(id=${id})`);
+	NuxtLogger.debug(`<<< Exiting transformInclude(id=${id})`);
       return isVue(id, { type: ['script'] }) || isJS(id)
     },
     transform: {
@@ -30,6 +35,7 @@ export const TreeShakeComposablesPlugin = (options: TreeShakeComposablesPluginOp
         code: { include: new RegExp(`\\b(?:${[...allComposableNames].map(r => escapeStringRegexp(r)).join('|')})\\b`) },
       },
       handler (code, id, meta?: unknown) {
+		NuxtLogger.debug(`>>> Entering handler(code=${code},id=${id},meta=${meta})`);
         const s = rolldownString(code, id, meta)
 
         // Parse and collect scope information
@@ -39,10 +45,12 @@ export const TreeShakeComposablesPlugin = (options: TreeShakeComposablesPluginOp
         })
         scopeTracker.freeze()
 
+		NuxtLogger.debug(`handler(code=${code},id=${id},meta=${meta}): s → ${s}`);
         // Process nodes and check for tree-shaking opportunities
         walk(parseResult.program, {
           scopeTracker,
           enter (node) {
+			NuxtLogger.debug(`>>> Entering enter(node=${node})`);
             if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier') {
               return
             }
@@ -50,6 +58,7 @@ export const TreeShakeComposablesPlugin = (options: TreeShakeComposablesPluginOp
             const functionName = node.callee.name
             const scopeTrackerNode = scopeTracker.getDeclaration(functionName)
 
+			NuxtLogger.debug(`enter(node=${node}): scopeTrackerNode → ${scopeTrackerNode}`);
             if (scopeTrackerNode) {
             // don't tree-shake if there's a local declaration
               if (scopeTrackerNode.type !== 'Import') {
@@ -68,10 +77,12 @@ export const TreeShakeComposablesPlugin = (options: TreeShakeComposablesPluginOp
                 ? importSpecifier.imported.name
                 : importSpecifier.local.name
 
+			NuxtLogger.debug(`enter(node=${node}): importedName → ${importedName}`);
               const isFromAllowedPath = importPath === '#imports'
                 ? allComposableNames.has(importedName)
                 : options.composables[importPath]?.includes(importedName)
 
+			NuxtLogger.debug(`enter(node=${node}): isFromAllowedPath → ${isFromAllowedPath}`);
               if (!isFromAllowedPath) {
                 return
               }
@@ -84,9 +95,11 @@ export const TreeShakeComposablesPlugin = (options: TreeShakeComposablesPluginOp
             // TODO: validate function name against actual auto-imports registry
             s.overwrite(node.start, node.end, ` false && /*@__PURE__*/ ${functionName}${code.slice(node.callee.end, node.end)}`)
             this.skip()
+			NuxtLogger.debug(`<<< Exiting enter(node=${node})`);
           },
         })
 
+		NuxtLogger.debug(`<<< Exiting handler(code=${code},id=${id},meta=${meta})`);
         return generateTransform(s, id)
       },
     },

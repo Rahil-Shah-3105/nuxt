@@ -1,24 +1,32 @@
+import logger from "./logger.js";
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1'])
 
 function firstHeader (value: string | string[] | undefined): string | undefined {
+logger.debug(`>>> Entering firstHeader(value=${value})`);
+logger.debug(`<<< Exiting firstHeader(value=${value})`);
   return Array.isArray(value) ? value[0] : value
 }
 
 function isLoopbackHost (host: string | undefined): boolean {
+logger.debug(`>>> Entering isLoopbackHost(host=${host})`);
   if (!host) { return false }
   const withoutPort = host.replace(/:\d+$/, '')
   const hostname = withoutPort.replace(/^\[|\]$/g, '').toLowerCase()
+logger.debug(`isLoopbackHost(host=${host}): withoutPort → ${withoutPort}`);
+logger.debug(`<<< Exiting isLoopbackHost(host=${host})`);
   return LOOPBACK_HOSTNAMES.has(hostname)
 }
 
 export function isSameOriginRequest (req: { headers: Record<string, string | string[] | undefined> }): boolean {
   const site = firstHeader(req.headers['sec-fetch-site'])
   if (site !== undefined) {
+logger.debug(`isSameOriginRequest(req=${req}): site → ${site}`);
     return site === 'same-origin' || site === 'none'
   }
 
   const initiator = firstHeader(req.headers.origin) || firstHeader(req.headers.referer)
   if (!initiator) {
+logger.debug(`isSameOriginRequest(req=${req}): initiator → ${initiator}`);
     // A request with no `Sec-Fetch-Site`, `Origin`, or `Referer` is only safe to
     // allow when the dev server is loopback-bound: a browser-originated request
     // can reach a non-loopback bind (e.g. `nuxt dev --host`) with all three
@@ -31,6 +39,8 @@ export function isSameOriginRequest (req: { headers: Record<string, string | str
   try {
     return new URL(initiator).host === firstHeader(req.headers.host)
   } catch {
+	logger.error(`Exception in isSameOriginRequest(req=${req}): (no error binding)`);
+	logger.debug(`<<< Exiting isSameOriginRequest(req=${req})`);
     return false
   }
 }

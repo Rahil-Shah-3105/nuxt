@@ -4,6 +4,7 @@ import type { ParsedTrace } from 'errx'
 import { h } from 'vue'
 import { defineNuxtPlugin } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { devLogs, devRootDir } from '#build/nuxt.config.mjs'
 
@@ -51,6 +52,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin(async (nuxtApp) => {
 })
 
 function normalizeFilenames (stack?: ParsedTrace[]) {
+NuxtLogger.debug(`>>> Entering normalizeFilenames(stack=${stack})`);
   if (!stack) {
     return ''
   }
@@ -63,13 +65,18 @@ function normalizeFilenames (stack?: ParsedTrace[]) {
       message += `  at ${source}\n`
     }
   }
+NuxtLogger.debug(`normalizeFilenames(stack=${stack}): message → ${message}`);
+NuxtLogger.debug(`<<< Exiting normalizeFilenames(stack=${stack})`);
   return message
 }
 
 function normalizeServerLog (log: LogObject) {
+NuxtLogger.debug(`>>> Entering normalizeServerLog(log=${log})`);
   log.additional = normalizeFilenames(log.stack as ParsedTrace[])
   log.tag = 'ssr'
+NuxtLogger.debug(`normalizeServerLog(log=${log}): log.tag → ${log.tag}`);
   delete log.stack
+NuxtLogger.debug(`<<< Exiting normalizeServerLog(log=${log})`);
   return log
 }
 

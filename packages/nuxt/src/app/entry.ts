@@ -13,6 +13,7 @@ import { appDiagnostics } from './diagnostics/core'
 import '#build/css'
 import plugins from '#build/plugins'
 import RootComponent from '#build/root-component.mjs'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { appId, appSpaLoaderAttrs, multiApp, spaLoadingTemplateOutside, vueAppRootContainer } from '#build/nuxt.config.mjs'
 
 export type Entry = (ssrContext?: NuxtSSRContext) => Promise<App<Element>>
@@ -21,19 +22,24 @@ let entry: Entry
 
 if (import.meta.server) {
   entry = async function createNuxtAppServer (ssrContext: CreateOptions['ssrContext']) {
+	NuxtLogger.debug(`>>> Entering createNuxtAppServer(ssrContext=${ssrContext})`);
     const vueApp = createApp(RootComponent)
 
+	NuxtLogger.debug(`createNuxtAppServer(ssrContext=${ssrContext}): vueApp → ${vueApp}`);
     const nuxt = createNuxtApp({ vueApp, ssrContext })
 
+	NuxtLogger.debug(`createNuxtAppServer(ssrContext=${ssrContext}): nuxt → ${nuxt}`);
     try {
       await applyPlugins(nuxt, plugins)
       await nuxt.hooks.callHook('app:created', vueApp)
     } catch (error) {
+	NuxtLogger.error(`Exception in createNuxtAppServer(ssrContext=${ssrContext}): ${(error as Error).message}`, error);
       await nuxt.hooks.callHook('app:error', error)
       nuxt.payload.error ||= createError(error as any)
     }
     if (ssrContext?.['~renderResponse']) { throw new Error('skipping render') }
 
+	NuxtLogger.debug(`<<< Exiting createNuxtAppServer(ssrContext=${ssrContext})`);
     return vueApp
   }
 }
@@ -49,6 +55,7 @@ if (import.meta.client) {
   let vueAppPromise: Promise<App<Element>>
 
   entry = async function initApp () {
+	NuxtLogger.debug('>>> Entering initApp()');
     if (vueAppPromise) { return vueAppPromise }
 
     const isSSR = Boolean(
@@ -57,11 +64,15 @@ if (import.meta.client) {
     )
     const vueApp = isSSR ? createSSRApp(RootComponent) : createApp(RootComponent)
 
+	NuxtLogger.debug(`initApp(): vueApp → ${vueApp}`);
     const nuxt = createNuxtApp({ vueApp })
 
+	NuxtLogger.debug('<<< Exiting initApp()');
     async function handleVueError (error: any) {
+	NuxtLogger.debug(`>>> Entering handleVueError(error=${error})`);
       await nuxt.callHook('app:error', error)
       nuxt.payload.error ||= createError(error as any)
+	NuxtLogger.debug(`<<< Exiting handleVueError(error=${error})`);
     }
     // marker so nuxt-root.vue can skip re-invoking the default handler from
     // its onErrorCaptured (which already calls `app:error` via showError)

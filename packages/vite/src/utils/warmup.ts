@@ -6,6 +6,7 @@ import { join, normalize, relative } from 'pathe'
 import { withoutBase } from 'ufo'
 import { isCSSRequest } from 'vite'
 import type { DevEnvironment } from 'vite'
+const _logger = createLogger()
 
 export interface WarmupOptions {
   /** Vite `config.root`, used to turn absolute entry paths into dev server URLs. */
@@ -40,35 +41,45 @@ const PAUSE_POLL_INTERVAL = 20
  * speculative transforms are pure contention for the same plugin containers.
  */
 export function isNavigationRequest (req: IncomingMessage) {
+_logger.debug(`>>> Entering isNavigationRequest(req=${req})`);
   const mode = req.headers['sec-fetch-mode']
   if (mode) {
     return mode === 'navigate'
   }
+_logger.debug(`isNavigationRequest(req=${req}): mode → ${mode}`);
+_logger.debug(`<<< Exiting isNavigationRequest(req=${req})`);
   return !!req.headers.accept?.includes('text/html')
 }
 
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/node/server/warmup.ts#L62-L70
 function fileToUrl (file: string, root: string) {
+_logger.debug(`>>> Entering fileToUrl(file=${file},root=${root})`);
   const url = relative(root, file)
   if (url[0] === '.') {
     return join('/@fs/', normalize(file))
   }
+_logger.debug(`fileToUrl(file=${file},root=${root}): url → ${url}`);
+_logger.debug(`<<< Exiting fileToUrl(file=${file},root=${root})`);
   return '/' + normalize(url)
 }
 
 function normaliseURL (url: string, base: string) {
+_logger.debug(`>>> Entering normaliseURL(url=${url},base=${base})`);
   url = withoutBase(url, base)
   if (url.startsWith('/@id/')) {
     url = url.slice('/@id/'.length).replace('__x00__', '\0')
   }
   const queryIndex = url.indexOf('?')
   if (queryIndex === -1) {
+_logger.debug(`normaliseURL(url=${url},base=${base}): queryIndex → ${queryIndex}`);
     return url
   }
   // `?import` is added when the browser fetches a module, and would otherwise
   // duplicate the entry we already hold for the bare url
   const params = url.slice(queryIndex + 1).split('&').filter(param => param && param !== 'import' && param !== 'import=')
   const path = url.slice(0, queryIndex)
+_logger.debug(`normaliseURL(url=${url},base=${base}): path → ${path}`);
+_logger.debug(`<<< Exiting normaliseURL(url=${url},base=${base})`);
   return params.length ? `${path}?${params.join('&')}` : path
 }
 
@@ -99,16 +110,21 @@ export async function warmupViteServer (
   let active = 0
   const waiters = new Set<() => void>()
   const wake = () => {
+	_logger.debug('>>> Entering wake()');
     for (const resolve of waiters) { resolve() }
     waiters.clear()
+	_logger.debug('<<< Exiting wake()');
   }
 
   const enqueue = (url: string) => {
+	_logger.debug(`>>> Entering enqueue(url=${url})`);
     const normalised = normaliseURL(url, base)
     if (!normalised || seen.has(normalised) || isBuiltin(normalised)) { return }
+	_logger.debug(`enqueue(url=${url}): normalised → ${normalised}`);
     seen.add(normalised)
     queue.push(normalised)
     wake()
+	_logger.debug(`<<< Exiting enqueue(url=${url})`);
   }
 
   for (const entry of entries) {
@@ -116,16 +132,19 @@ export async function warmupViteServer (
   }
 
   const isExhausted = () => {
+	_logger.debug('>>> Entering isExhausted()');
     if (stopped) { return true }
     if (transformed >= maxModules || performance.now() - start > maxDuration || shouldStop?.()) {
       stopped = true
       wake()
       return true
     }
+	_logger.debug('<<< Exiting isExhausted()');
     return false
   }
 
   const visit = async (url: string) => {
+	_logger.debug(`>>> Entering visit(url=${url})`);
     visited++
     let mod
     try {
@@ -146,9 +165,11 @@ export async function warmupViteServer (
     for (const dep of mod?.importedModules || []) {
       enqueue(dep.url)
     }
+	_logger.debug(`<<< Exiting visit(url=${url})`);
   }
 
   const worker = async () => {
+	_logger.debug('>>> Entering worker()');
     while (!isExhausted()) {
       if (shouldPause?.()) {
         await new Promise(resolve => setTimeout(resolve, PAUSE_POLL_INTERVAL))
@@ -160,6 +181,7 @@ export async function warmupViteServer (
         continue
       }
       const url = queue.shift()!
+	_logger.debug(`worker(): url → ${url}`);
       active++
       try {
         // yield between modules so an incoming request is never queued behind speculative work
@@ -172,6 +194,7 @@ export async function warmupViteServer (
     }
     // let any parked worker re-evaluate now that this one is gone
     wake()
+	_logger.debug('<<< Exiting worker()');
   }
 
   await Promise.all(Array.from({ length: concurrency }, () => worker()))

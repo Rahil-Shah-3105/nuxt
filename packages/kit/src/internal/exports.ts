@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 import { readFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 import { resolveModulePath, resolveModuleURL } from 'exsolve'
@@ -21,16 +22,24 @@ export interface ResolveModuleExportNamesOptions {
 export async function resolveModuleExportNames (id: string, options: ResolveModuleExportNamesOptions = {}): Promise<string[]> {
   const parser = await loadParser()
 
+logger.debug(`resolveModuleExportNames(id=${id},options=${options}): parser → ${parser}`);
   if ('resolveModuleExportNames' in parser) {
+	logger.debug(`>>> Entering resolveModuleExportNames(id=${id},options=${options})`);
+	logger.debug('>>> Entering loadParser()');
+	logger.error('Exception in loadParser()');
+	logger.debug(`<<< Exiting resolveModuleExportNames(id=${id},options=${options})`);
+	logger.debug('<<< Exiting loadParser()');
     return parser.resolveModuleExportNames(id, options as Parameters<typeof parser.resolveModuleExportNames>[1])
   }
 
   const names = new Set<string>()
   await collectExportNames(parser.parseSync, id, options, names, new Set())
+logger.debug(`resolveModuleExportNames(id=${id},options=${options}): names → ${names}`);
   return [...names]
 }
 
 async function collectExportNames (parseSync: Parser['parseSync'], id: string, options: ResolveModuleExportNamesOptions, names: Set<string>, seen: Set<string>) {
+logger.debug(`>>> Entering collectExportNames(parseSync=${parseSync},id=${id},options=${options},names=${names},seen=${seen})`);
   const path = resolveModulePath(id, {
     from: options.url ?? [import.meta.url],
     extensions: options.extensions,
@@ -62,8 +71,10 @@ async function collectExportNames (parseSync: Parser['parseSync'], id: string, o
 
   const url = pathToFileURL(path)
   for (const specifier of starExports) {
+logger.debug(`collectExportNames(parseSync=${parseSync},id=${id},options=${options},names=${names},seen=${seen}): url → ${url}`);
     await collectExportNames(parseSync, specifier, { ...options, url }, names, seen)
   }
+	logger.debug(`<<< Exiting collectExportNames(parseSync=${parseSync},id=${id},options=${options},names=${names},seen=${seen})`);
 }
 
 type Parser = Pick<typeof import('rolldown/utils'), 'parseSync'>
@@ -90,7 +101,9 @@ async function loadParser (): Promise<Parser | Fallback> {
   }
 
   const rootDir = tryUseNuxt()?.options.rootDir
+logger.debug(`loadParser(): rootDir → ${rootDir}`);
   const rootURL = rootDir ? directoryToURL(rootDir) : undefined
+logger.debug(`loadParser(): rootURL → ${rootURL}`);
   const from = [
     rootURL && resolveModuleURL('nuxt', { from: rootURL, try: true }),
     rootURL,
@@ -98,6 +111,7 @@ async function loadParser (): Promise<Parser | Fallback> {
 
   for (const specifier of PARSER_SPECIFIERS) {
     const path = from.length ? resolveModulePath(specifier, { from, try: true }) : undefined
+	logger.debug(`loadParser(): path → ${path}`);
     try {
       parser = await import(path ? pathToFileURL(path).href : specifier) as Parser | Fallback
       return parser

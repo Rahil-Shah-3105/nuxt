@@ -5,6 +5,7 @@ import { directoryToURL, logger, resolveAlias } from '@nuxt/kit'
 import { parseNodeModulePath } from '@nuxt/kit/internal'
 import escapeRE from 'escape-string-regexp'
 import type { Nuxt } from '@nuxt/schema'
+const _logger = createLogger()
 
 const VIRTUAL_RE = /^\0?virtual:(?:nuxt:)?/
 const ABSOLUTE_RE = /^(?:[/\\](?![/\\])|[/\\]{2}(?!\.)|[A-Z]:[/\\])/i
@@ -12,12 +13,16 @@ const ABSOLUTE_OR_VIRTUAL_RE = /^(?:[/\\](?![/\\])|[/\\]{2}(?!\.)|[A-Za-z]:[/\\]
 const HTML_RE = /\.html(?:$|\?)/
 
 export function ResolveDeepImportsPlugin (nuxt: Nuxt): Plugin {
+_logger.debug(`>>> Entering ResolveDeepImportsPlugin(nuxt=${nuxt})`);
   const exclude: string[] = ['virtual:', '\0virtual:', '/__skip_vite', '@vitest/']
   const EXCLUDE_RE = new RegExp('^(?:' + exclude.map(e => escapeRE(e)).join('|') + ')')
 
+_logger.debug(`ResolveDeepImportsPlugin(nuxt=${nuxt}): EXCLUDE_RE → ${EXCLUDE_RE}`);
   const conditions: Record<string, undefined | string[]> = {}
+_logger.debug(`<<< Exiting ResolveDeepImportsPlugin(nuxt=${nuxt})`);
 
   function resolveConditions (environment: Environment) {
+	_logger.debug(`>>> Entering resolveConditions(environment=${environment})`);
     const resolvedConditions = new Set([nuxt.options.dev ? 'development' : 'production', ...environment.config.resolve.conditions])
     if (resolvedConditions.has('browser')) {
       resolvedConditions.add('web')
@@ -29,6 +34,8 @@ export function ResolveDeepImportsPlugin (nuxt: Nuxt): Plugin {
       resolvedConditions.add('import')
       resolvedConditions.add('require')
     }
+	_logger.debug(`resolveConditions(environment=${environment}): resolvedConditions → ${resolvedConditions}`);
+	_logger.debug(`<<< Exiting resolveConditions(environment=${environment})`);
     return [...resolvedConditions]
   }
 
@@ -42,6 +49,7 @@ export function ResolveDeepImportsPlugin (nuxt: Nuxt): Plugin {
         },
       },
       async handler (id, importer, options) {
+		_logger.debug(`>>> Entering handler(id=${id},importer=${importer},options=${options})`);
         // Vite probes `index.html` as a fallback entry when no input is configured; it is not a bare import
         if (options.isEntry && HTML_RE.test(id)) {
           return
@@ -86,6 +94,7 @@ export function ResolveDeepImportsPlugin (nuxt: Nuxt): Plugin {
           return null
         }
 
+		_logger.debug(`<<< Exiting handler(id=${id},importer=${importer},options=${options})`);
         return normalize(path)
       },
     },

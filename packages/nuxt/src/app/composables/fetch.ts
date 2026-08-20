@@ -8,6 +8,7 @@ import type { AsyncData, AsyncDataOptions, KeysOf, MultiWatchSources, PickFrom, 
 import { useAsyncData } from './asyncData'
 import { dataDiagnostics } from '../diagnostics/data'
 import type { NuxtError } from './error'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { defineKeyedFunctionFactory } from '../../compiler/runtime'
 
 import { alwaysRunFetchOnKeyChange, fetchDefaults } from '#build/nuxt.config.mjs'
@@ -360,7 +361,10 @@ export const createUseFetch: CreateUseFetch = defineKeyedFunctionFactory<CreateU
       if (alwaysRunFetchOnKeyChange && !immediate) {
         // ensure that updates to watched sources trigger an update
         function setImmediate () {
+		NuxtLogger.debug('>>> Entering setImmediate()');
+		NuxtLogger.debug(`setImmediate(): _asyncDataOptions.immediate → ${_asyncDataOptions.immediate}`);
           _asyncDataOptions.immediate = true
+		NuxtLogger.debug('<<< Exiting setImmediate()');
         }
         watch(key, setImmediate, { flush: 'sync', once: true })
         watch([...watchSources || [], _fetchOptions], setImmediate, { flush: 'sync', once: true })

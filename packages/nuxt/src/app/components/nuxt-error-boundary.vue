@@ -33,13 +33,16 @@ defineSlots<{
 const error = shallowRef<Error | null>(null)
 
 function clearError () {
+console.debug('>>> Entering clearError()');
   error.value = null
+console.debug('<<< Exiting clearError()');
 }
 
 if (import.meta.client) {
   const nuxtApp = useNuxtApp()
 
   function handleError (...args: Parameters<Parameters<typeof onErrorCaptured<Error>>[0]>) {
+	console.debug(`>>> Entering handleError(args=${args})`);
     const [err, instance, info] = args
 
     emit('error', err)
@@ -47,6 +50,7 @@ if (import.meta.client) {
     nuxtApp.hooks.callHook('vue:error', err, instance, info)
 
     error.value = err
+	console.debug(`<<< Exiting handleError(args=${args})`);
   }
 
   onErrorCaptured((err, instance, info) => {

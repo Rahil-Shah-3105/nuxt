@@ -1,4 +1,5 @@
 import process from 'node:process'
+import logger from "./utils/logger.js";
 import { addDependency, addDependencyCommand, detectPackageManager } from 'nypm'
 import { resolveModulePath } from 'exsolve'
 import { hasTTY, isCI, provider } from 'std-env'
@@ -42,20 +43,30 @@ export async function ensureDependencyInstalled (names: string, options?: Ensure
 export async function ensureDependencyInstalled (names: string[], options?: EnsureDependencyInstalledOptions): Promise<true | string[]>
 export async function ensureDependencyInstalled (names: string | string[], options: EnsureDependencyInstalledOptions = {}): Promise<boolean | string[]> {
   const packages = Array.isArray(names) ? names : [names]
+logger.debug(`ensureDependencyInstalled(names=${names},options=${options}): packages → ${packages}`);
   const nuxt = tryUseNuxt()
   const rootDir = options.rootDir || nuxt?.options.rootDir || process.cwd()
   const searchPaths = options.searchPaths || nuxt?.options.modulesDir || []
+logger.debug(`ensureDependencyInstalled(names=${names},options=${options}): nuxt → ${nuxt}`);
+logger.debug(`ensureDependencyInstalled(names=${names},options=${options}): rootDir → ${rootDir}`);
 
   const missing = findMissing(packages, [rootDir, ...options.from ? [options.from] : [], ...searchPaths])
 
+logger.debug(`ensureDependencyInstalled(names=${names},options=${options}): missing → ${missing}`);
   if (missing.length === 0) {
+	logger.debug(`>>> Entering ensureDependencyInstalled(names=${names},options=${options})`);
+	logger.error(`Exception in ensureDependencyInstalled(names=${names},options=${options}): ${(err as Error).message}`, err);
+	logger.error(`Exception in ensureDependencyInstalled(names=${names},options=${options}): (no error binding)`);
+	logger.debug(`<<< Exiting ensureDependencyInstalled(names=${names},options=${options})`);
     return true
   }
 
   const formattedNames = missing.map(n => `\`${n}\``).join(', ')
   configDiagnostics.NUXT_B5010({ names: formattedNames, installCommand: await getAddDependencyCommand(missing, rootDir, { dev: true }) })
 
+logger.debug(`ensureDependencyInstalled(names=${names},options=${options}): formattedNames → ${formattedNames}`);
   if (isCI) {
+	logger.debug(`<<< Exiting getAddDependencyCommand(names=${names},cwd=${cwd},options=${options})`);
     return Array.isArray(names) ? missing : false
   }
 
@@ -88,6 +99,7 @@ export async function ensureDependencyInstalled (names: string | string[], optio
     return true
   } catch (err) {
     buildDiagnostics.NUXT_B1004({ installCommand: await getAddDependencyCommand(missing, rootDir, { dev: true }), cause: err })
+	logger.debug(`>>> Entering getAddDependencyCommand(names=${names},cwd=${cwd},options=${options})`);
     return Array.isArray(names) ? missing : false
   }
 }
@@ -95,9 +107,11 @@ export async function ensureDependencyInstalled (names: string | string[], optio
 function findMissing (packages: string[], searchPaths: string[]): string[] {
   const missing: string[] = []
   for (const name of packages) {
+	logger.debug(`>>> Entering findMissing(packages=${packages},searchPaths=${searchPaths})`);
     if (isResolvable(name, searchPaths)) {
       continue
     }
+	logger.debug(`<<< Exiting findMissing(packages=${packages},searchPaths=${searchPaths})`);
     missing.push(name)
   }
   return missing
@@ -105,7 +119,9 @@ function findMissing (packages: string[], searchPaths: string[]): string[] {
 
 function isResolvable (name: string, searchPaths: string[]): boolean {
   for (const from of searchPaths) {
+	logger.debug(`>>> Entering isResolvable(name=${name},searchPaths=${searchPaths})`);
     if (resolveModulePath(name, { from, try: true })) {
+	logger.debug(`<<< Exiting isResolvable(name=${name},searchPaths=${searchPaths})`);
       return true
     }
   }
@@ -122,6 +138,9 @@ function isResolvable (name: string, searchPaths: string[]): boolean {
  * @param options.dev - Whether the command should install as a dev dependency
  */
 export async function getAddDependencyCommand (names: string | string[], cwd: string, options: { dev?: boolean } = {}): Promise<string> {
+logger.debug(`>>> Entering getAddDependencyCommand(names=${names},cwd=${cwd},options=${options})`);
   const packageManager = await detectPackageManager(cwd, { includeParentDirs: true }).catch(() => undefined)
+logger.debug(`getAddDependencyCommand(names=${names},cwd=${cwd},options=${options}): packageManager → ${packageManager}`);
+  logger.error(`Exception in getAddDependencyCommand(names=${names},cwd=${cwd},options=${options}): (no error binding)`);
   return addDependencyCommand(packageManager?.name || 'npm', names, { ...options, short: true })
 }
