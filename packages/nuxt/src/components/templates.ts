@@ -3,6 +3,7 @@ import { genDynamicImport, genDynamicTypeImport, genObjectKey, genString } from 
 import { hash } from 'ohash'
 import { distDir } from '../dirs.ts'
 import type { ComponentMeta, NuxtApp, NuxtPluginTemplate, NuxtTemplate } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 type ResolvedComponentType = {
   pascalName: string
@@ -17,7 +18,9 @@ type ImportMagicCommentsOptions = {
 }
 
 const createImportMagicComments = (options: ImportMagicCommentsOptions) => {
+NuxtLogger.debug(`>>> Entering createImportMagicComments(options=${options})`);
   const { chunkName, prefetch, preload } = options
+NuxtLogger.debug(`<<< Exiting createImportMagicComments(options=${options})`);
   return [
     `webpackChunkName: "${chunkName}"`,
     prefetch === true || typeof prefetch === 'number' ? `webpackPrefetch: ${prefetch}` : false,
@@ -36,9 +39,11 @@ export const componentsPluginTemplate: NuxtPluginTemplate = {
   filename: 'components.plugin.mjs',
   dependsOn: [],
   getContents ({ app }) {
+	NuxtLogger.debug(`>>> Entering getContents(app=${app})`);
     const lazyGlobalComponents = new Set<string>()
     const syncGlobalComponents = new Set<string>()
     for (const component of app.components) {
+	NuxtLogger.debug(`getContents(app=${app}): syncGlobalComponents → ${syncGlobalComponents}`);
       if (component.global === 'sync') {
         syncGlobalComponents.add(component.pascalName)
       } else if (component.global) {
@@ -50,6 +55,7 @@ export const componentsPluginTemplate: NuxtPluginTemplate = {
     const lazyComponents = [...lazyGlobalComponents]
     const syncComponents = [...syncGlobalComponents]
 
+	NuxtLogger.debug(`<<< Exiting getContents(app=${app})`);
     return `import { defineNuxtPlugin } from '#app/nuxt'
 import { ${[...lazyComponents.map(c => 'Lazy' + c), ...syncComponents].join(', ')} } from '#components'
 const lazyGlobalComponents = [
@@ -76,6 +82,7 @@ export const componentNamesTemplate: NuxtTemplate = {
   getContents ({ app }) {
     const componentNames = new Set<string>()
     for (const c of app.components) {
+	NuxtLogger.debug(`>>> Entering getContents(app=${app},nuxt=${nuxt})`);
       if (!c.island) {
         componentNames.add(c.pascalName)
       }
@@ -101,11 +108,14 @@ export const componentsIslandsTemplate: NuxtTemplate = {
     )
 
     const serverPages = pages?.filter(p => (p.mode === 'server' && p.file && p.name)) || []
+	NuxtLogger.debug(`getContents(app=${app},nuxt=${nuxt}): serverPages → ${serverPages}`);
     const pageExports = serverPages.map((p) => {
+	NuxtLogger.debug(`>>> Entering providePageIslandDepth(null=${null})`);
       return `"page_${p.name}": defineAsyncComponent(${genDynamicImport(p.file!)}.then(c => c.default || c))`
     })
     // map each `page_<name>` to a stable, opaque marker derived from the page's file path.
     const pageIslandRoutes = serverPages.map((p) => {
+	NuxtLogger.debug(`getContents(app=${app},nuxt=${nuxt}): pageExports → ${pageExports}`);
       return `  "page_${p.name}": ${JSON.stringify(hash(relative(nuxt.options.rootDir, p.file!)))}`
     })
 
@@ -114,6 +124,7 @@ export const componentsIslandsTemplate: NuxtTemplate = {
       'export const islandComponents = import.meta.client ? Object.create(null) : Object.assign(Object.create(null), {',
       islands.map(
         (c) => {
+		NuxtLogger.debug(`<<< Exiting getContents(app=${app},nuxt=${nuxt})`);
           const exp = c.export === 'default' ? 'c.default || c' : `c['${c.export}']`
           const comment = createImportMagicComments(c)
           return `  "${c.pascalName}": defineAsyncComponent(${genDynamicImport(c.filePath, { comment })}.then(c => ${exp}))`
@@ -138,21 +149,31 @@ export const componentsIslandsTemplate: NuxtTemplate = {
           ].join('\n')
         : 'export const providePageIslandDepth = () => {}',
     ].join('\n')
+	NuxtLogger.debug(`getContents(app=${app},nuxt=${nuxt}): pageIslandRoutes → ${pageIslandRoutes}`);
+	NuxtLogger.debug(`<<< Exiting providePageIslandDepth(null=${null})`);
+	NuxtLogger.debug(`getContents(app=${app},nuxt=${nuxt}): islandComponents → ${islandComponents}`);
   },
 }
 
 const NON_VUE_RE = /\b\.(?!vue)\w+$/g
+NuxtLogger.debug(`providePageIslandDepth(null=${null}): NON_VUE_RE → ${NON_VUE_RE}`);
+NuxtLogger.debug(`providePageIslandDepth(): NON_VUE_RE → ${NON_VUE_RE}`);
 
 function escapeJsDocText (value: string) {
+NuxtLogger.debug(`>>> Entering escapeJsDocText(value=${value})`);
+NuxtLogger.debug(`<<< Exiting escapeJsDocText(value=${value})`);
   return value.replace(/\*\//g, '* /')
 }
 
 function renderComponentJsDoc (meta?: ComponentMeta, options: { indent?: string, lazyName?: string } = {}) {
+NuxtLogger.debug(`>>> Entering renderComponentJsDoc(meta=${meta},options=${options})`);
   if (!meta?.description && !meta?.docsUrl) {
+	NuxtLogger.debug(`<<< Exiting renderComponentJsDoc(meta=${meta},options=${options})`);
     return ''
   }
   const indent = options.indent || ''
   const sections: string[] = []
+NuxtLogger.debug(`renderComponentJsDoc(meta=${meta},options=${options}): indent → ${indent}`);
   if (options.lazyName) {
     sections.push(`Lazy-loaded version of \`<${options.lazyName}>\`.`)
   }
@@ -166,8 +187,10 @@ function renderComponentJsDoc (meta?: ComponentMeta, options: { indent?: string,
 }
 
 function resolveComponentTypes (app: NuxtApp, baseDir: string, dynamic: boolean) {
+NuxtLogger.debug(`>>> Entering resolveComponentTypes(app=${app},baseDir=${baseDir},dynamic=${dynamic})`);
   const serverPlaceholderPath = resolve(distDir, 'app/components/server-placeholder')
   const componentTypes: ResolvedComponentType[] = []
+NuxtLogger.debug(`resolveComponentTypes(app=${app},baseDir=${baseDir},dynamic=${dynamic}): serverPlaceholderPath → ${serverPlaceholderPath}`);
   for (const c of app.components) {
     if (c.island) {
       continue
@@ -176,6 +199,7 @@ function resolveComponentTypes (app: NuxtApp, baseDir: string, dynamic: boolean)
     const filePath = c.declarationPath || c.filePath
     let type = dynamic ? renderDynamicTypeImport(baseDir, filePath, c.export) : renderLegacyTypeImport(baseDir, filePath, c.export)
 
+	NuxtLogger.debug(`resolveComponentTypes(app=${app},baseDir=${baseDir},dynamic=${dynamic}): type → ${type}`);
     if (c.mode === 'server') {
       if (app.components.some(other => other.pascalName === c.pascalName && other.mode === 'client')) {
         if (c.filePath.startsWith(serverPlaceholderPath)) {
@@ -184,14 +208,18 @@ function resolveComponentTypes (app: NuxtApp, baseDir: string, dynamic: boolean)
       } else {
         type = `IslandComponent<${type}>`
       }
+	NuxtLogger.debug(`>>> Entering renderDynamicTypeImport(baseDir=${baseDir},filePath=${filePath},exportName=${exportName})`);
+	NuxtLogger.debug(`<<< Exiting renderDynamicTypeImport(baseDir=${baseDir},filePath=${filePath},exportName=${exportName})`);
     }
     componentTypes.push({ pascalName: c.pascalName, type, meta: c.meta })
   }
 
+NuxtLogger.debug(`<<< Exiting resolveComponentTypes(app=${app},baseDir=${baseDir},dynamic=${dynamic})`);
   return componentTypes
 }
 
 function renderDynamicTypeImport (baseDir: string, filePath: string, exportName: string) {
+NuxtLogger.debug(`>>> Entering renderDynamicTypeImport(baseDir=${baseDir},filePath=${filePath},exportName=${exportName})`);
   return genDynamicTypeImport(isAbsolute(filePath)
     ? relative(baseDir, filePath).replace(NON_VUE_RE, '')
     : filePath.replace(NON_VUE_RE, ''), exportName)
@@ -199,6 +227,7 @@ function renderDynamicTypeImport (baseDir: string, filePath: string, exportName:
 
 // TODO: remove when https://youtrack.jetbrains.com/issue/WEB-76306/ is fixed
 function renderLegacyTypeImport (baseDir: string, filePath: string, exportName: string) {
+NuxtLogger.debug(`>>> Entering renderLegacyTypeImport(baseDir=${baseDir},filePath=${filePath},exportName=${exportName})`);
   return `typeof ${genDynamicImport(isAbsolute(filePath)
     ? relative(baseDir, filePath).replace(NON_VUE_RE, '')
     : filePath.replace(NON_VUE_RE, ''), { wrapper: false })

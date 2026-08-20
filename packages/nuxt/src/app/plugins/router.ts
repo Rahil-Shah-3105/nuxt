@@ -3,6 +3,7 @@ import { computed, defineComponent, h, isReadonly, reactive } from 'vue'
 import { isEqual, joinURL, parseQuery, stringifyParsedURL, stringifyQuery, withoutBase } from 'ufo'
 import { defineNuxtPlugin, useRuntimeConfig } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { getRouteRules } from '../composables/manifest'
 import { clearError, createError, showError } from '../composables/error'
 import { navigateTo } from '../composables/router'
@@ -35,8 +36,10 @@ interface Route {
 }
 
 function getRouteFromPath (fullPath: string | Partial<Route>) {
+NuxtLogger.debug(`>>> Entering getRouteFromPath(fullPath=${fullPath})`);
   const route = fullPath && typeof fullPath === 'object' ? fullPath : {}
 
+NuxtLogger.debug(`getRouteFromPath(fullPath=${fullPath}): route → ${route}`);
   if (typeof fullPath === 'object') {
     fullPath = stringifyParsedURL({
       pathname: fullPath.path || '',
@@ -59,6 +62,7 @@ function getRouteFromPath (fullPath: string | Partial<Route>) {
     meta: route.meta || {},
     href: fullPath,
   }
+NuxtLogger.debug(`<<< Exiting getRouteFromPath(fullPath=${fullPath})`);
 }
 
 type RouteGuardReturn = void | Error | string | boolean
@@ -102,6 +106,7 @@ const plugin: Plugin<{ route: Route, router: Router }> & ObjectPlugin<{ route: R
   name: 'nuxt:router',
   enforce: 'pre',
   setup (nuxtApp) {
+	NuxtLogger.debug(`>>> Entering setup(nuxtApp=${nuxtApp})`);
     const initialURL = import.meta.client
       ? withoutBase(window.location.pathname, useRuntimeConfig().app.baseURL) + window.location.search + window.location.hash
       : nuxtApp.ssrContext!.url
@@ -123,6 +128,8 @@ const plugin: Plugin<{ route: Route, router: Router }> & ObjectPlugin<{ route: R
       }
     }
     const baseURL = useRuntimeConfig().app.baseURL
+	NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): registerHook → ${registerHook}`);
+	NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): baseURL → ${baseURL}`);
 
     const route: Route = reactive(getRouteFromPath(initialURL))
     let navigationCounter = 0
@@ -132,10 +139,13 @@ const plugin: Plugin<{ route: Route, router: Router }> & ObjectPlugin<{ route: R
         // Resolve route
         const to = getRouteFromPath(url)
 
+		NuxtLogger.debug(`handleNavigation(url=${url},replace=${replace}): to → ${to}`);
         // Run beforeEach hooks, bailing if a later navigation supersedes this one (#31762)
         for (const middleware of hooks['navigate:before']) {
+		NuxtLogger.debug(`>>> Entering handleNavigation(url=${url},replace=${replace})`);
           const result = await middleware(to, route)
           if (navigationId !== navigationCounter) { return }
+		NuxtLogger.debug(`handleNavigation(url=${url},replace=${replace}): result → ${result}`);
           // Cancel navigation
           if (result === false || result instanceof Error) { return }
           // Redirect
@@ -158,8 +168,11 @@ const plugin: Plugin<{ route: Route, router: Router }> & ObjectPlugin<{ route: R
         // Run afterEach hooks
         for (const middleware of hooks['navigate:after']) {
           await middleware(to, route)
+		NuxtLogger.error(`Exception in handleNavigation(url=${url},replace=${replace}): ${(err as Error).message}`, err);
+		NuxtLogger.debug(`<<< Exiting handleNavigation(url=${url},replace=${replace})`);
         }
       } catch (err) {
+		NuxtLogger.error(`Exception in setup(nuxtApp=${nuxtApp}): ${(err as Error).message}`, err);
         if (import.meta.dev && !hooks.error.length) {
           navigationDiagnostics.NUXT_E2009({ cause: err })
         }
@@ -171,6 +184,7 @@ const plugin: Plugin<{ route: Route, router: Router }> & ObjectPlugin<{ route: R
 
     const currentRoute = computed(() => route)
 
+	NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): currentRoute → ${currentRoute}`);
     const router: Router = {
       currentRoute,
       isReady: () => Promise.resolve(),
@@ -223,6 +237,10 @@ const plugin: Plugin<{ route: Route, router: Router }> & ObjectPlugin<{ route: R
             ? slots.default?.({ href: props.to, navigate, route })
             : h('a', { href: props.to, onClick: (e: MouseEvent) => { e.preventDefault(); return navigate() } }, slots)
         }
+		NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): nuxtApp._route → ${nuxtApp._route}`);
+		NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): nuxtApp._processingMiddleware → ${nuxtApp._processingMiddleware}`);
+		NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): nuxtApp._middlewareTo → ${nuxtApp._middlewareTo}`);
+		NuxtLogger.debug(`<<< Exiting setup(nuxtApp=${nuxtApp})`);
       },
     }))
 

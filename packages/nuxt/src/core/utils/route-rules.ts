@@ -1,4 +1,5 @@
 import type { Nitro } from 'nitro/types'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { decodeRoutePath } from './index.ts'
 
 type RouteRulesRouter = Nitro['routing']['routeRules']
@@ -13,7 +14,10 @@ type RouteRulesRouter = Nitro['routing']['routeRules']
  * @internal
  */
 export function normalizeRouteRulePath (path: string, fold: boolean): string {
+NuxtLogger.debug(`>>> Entering normalizeRouteRulePath(path=${path},fold=${fold})`);
   const decoded = decodeRoutePath(path)
+NuxtLogger.debug(`normalizeRouteRulePath(path=${path},fold=${fold}): decoded → ${decoded}`);
+NuxtLogger.debug(`<<< Exiting normalizeRouteRulePath(path=${path},fold=${fold})`);
   return fold ? decoded.toLowerCase() : decoded
 }
 
@@ -31,13 +35,18 @@ export function normalizeRouteRulePath (path: string, fold: boolean): string {
 // nitro exposes a public API for this.
 export function createNormalizedRouteRulesRouter (source: RouteRulesRouter, baseURL: string | undefined, fold: boolean, onDuplicate?: (existing: string, route: string, key: string) => void): RouteRulesRouter {
   const NormalizedRouter = source.constructor as new (baseURL?: string) => RouteRulesRouter
+NuxtLogger.debug(`createNormalizedRouteRulesRouter(source=${source},baseURL=${baseURL},fold=${fold},onDuplicate=${onDuplicate}): NormalizedRouter → ${NormalizedRouter}`);
   const normalized = new NormalizedRouter(normalizeRouteRulePath(String(baseURL || ''), fold))
   const normalizedKeys = new Map<string, string>()
   normalized._update(source.routes.map((route) => {
+NuxtLogger.debug(`createNormalizedRouteRulesRouter(source=${source},baseURL=${baseURL},fold=${fold},onDuplicate=${onDuplicate}): normalized → ${normalized}`);
+NuxtLogger.debug(`createNormalizedRouteRulesRouter(source=${source},baseURL=${baseURL},fold=${fold},onDuplicate=${onDuplicate}): normalizedKeys → ${normalizedKeys}`);
     if (typeof route.route !== 'string') { return route }
     const key = normalizeRouteRulePath(route.route, fold)
     const existing = normalizedKeys.get(key)
     if (existing !== undefined && existing !== route.route) {
+	NuxtLogger.warn(`createNormalizedRouteRulesRouter(source=${source},baseURL=${baseURL},fold=${fold},onDuplicate=${onDuplicate}): key → ${key}`);
+	NuxtLogger.debug(`createNormalizedRouteRulesRouter(source=${source},baseURL=${baseURL},fold=${fold},onDuplicate=${onDuplicate}): existing → ${existing}`);
       onDuplicate?.(existing, route.route, key)
     }
     normalizedKeys.set(key, route.route)

@@ -8,15 +8,20 @@ import { LayoutSymbol } from '../components/injections'
 import { useRoute } from './router'
 
 import _routeRulesMatcher from '#build/route-rules.mjs'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 // hoisted so a circular import cannot hit the TDZ of the `#build/route-rules.mjs` default export
 function routeRulesMatcher (path: string): NitroRouteRules {
+NuxtLogger.debug(`>>> Entering routeRulesMatcher(path=${path})`);
+NuxtLogger.debug(`<<< Exiting routeRulesMatcher(path=${path})`);
   return (_routeRulesMatcher as (path: string) => NitroRouteRules)(path)
 }
 
 export type LayoutName = keyof NuxtLayouts | 'default' | false
 
 export function resolveLayoutName (route: Pick<RouteLocationNormalizedLoaded, 'meta' | 'path'> | undefined, name?: unknown): LayoutName {
+NuxtLogger.debug(`>>> Entering resolveLayoutName(route=${route},name=${name})`);
+NuxtLogger.debug(`<<< Exiting resolveLayoutName(route=${route},name=${name})`);
   return (unref(name) as LayoutName | null | undefined) ?? route?.meta.layout as LayoutName ?? routeRulesMatcher(route?.path ?? '/').appLayout as LayoutName ?? 'default'
 }
 
@@ -31,8 +36,12 @@ export function resolveLayoutName (route: Pick<RouteLocationNormalizedLoaded, 'm
 export function useLayout (): Readonly<ComputedRef<LayoutName>> {
   const injected = inject(LayoutSymbol, null)
   if (injected) {
+NuxtLogger.debug(`useLayout(): injected → ${injected}`);
+NuxtLogger.debug('>>> Entering useLayout()');
     return injected as Readonly<ComputedRef<LayoutName>>
   }
   const route = useRoute()
+NuxtLogger.debug(`useLayout(): route → ${route}`);
+NuxtLogger.debug('<<< Exiting useLayout()');
   return computed(() => resolveLayoutName(route))
 }

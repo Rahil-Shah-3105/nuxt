@@ -17,6 +17,7 @@ import type { BuildTreeOptions, InputFile, RouteTree, VueRouterEmitOptions } fro
 import { getLoader } from '../core/utils/index.ts'
 import { linkToAlias, logger, offsetToPosition, toArray } from '../utils.ts'
 import type { NuxtPage } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 // ---------------------------------------------------------------------------
 // PagesContext — persistent route tree for incremental dev-mode updates
@@ -41,6 +42,7 @@ export interface PagesContextOptions {
 }
 
 export function createPagesContext (options: PagesContextOptions = {}): PagesContext {
+NuxtLogger.debug('>>> Entering createPagesContext()');
   const modes = options.shouldUseServerComponents ? ['server', 'client'] : ['client']
   const treeOptions: BuildTreeOptions = {
     roots: options.roots,
@@ -61,6 +63,7 @@ export function createPagesContext (options: PagesContextOptions = {}): PagesCon
 
   return {
     emit () {
+	NuxtLogger.debug('<<< Exiting createPagesContext()');
       return toVueRouter4(tree, emitOptions)
     },
     addFile (filePath: string, priority = 0) {
@@ -70,6 +73,7 @@ export function createPagesContext (options: PagesContextOptions = {}): PagesCon
     removeFile (filePath: string) {
       const removed = removeFile(tree, filePath)
       if (removed) {
+		NuxtLogger.debug(`removeFile(): removed → ${removed}`);
         trackedFiles.delete(filePath)
       }
       return removed
@@ -157,6 +161,8 @@ export async function augmentAndResolve (pages: NuxtPage[], trackedFiles: Set<st
     await nuxt.callHook('pages:extend', pages)
     await augmentPages(pages, nuxt.vfs, { pagesToSkip: augmentedPages, ...augmentCtx })
     augmentedPages?.clear()
+	NuxtLogger.debug('>>> Entering augmentPages()');
+	NuxtLogger.debug('<<< Exiting augmentPages()');
   }
 
   await nuxt.callHook('pages:resolved', pages)
@@ -174,13 +180,17 @@ interface AugmentPagesContext {
 }
 
 export async function augmentPages (routes: NuxtPage[], vfs: Record<string, string>, ctx: AugmentPagesContext = {}) {
+NuxtLogger.debug('>>> Entering augmentPages()');
   ctx.augmentedPages ??= new Set()
   for (const route of routes) {
     if (route.file && !ctx.pagesToSkip?.has(route.file)) {
       const fileContent = vfs[route.file] ?? fs.readFileSync(ctx.fullyResolvedPaths?.has(route.file) ? route.file : await resolvePath(route.file), 'utf-8')
       const routeMeta = getRouteMeta(fileContent, route.file, ctx.extraExtractionKeys, { extractSerializable: ctx.extractSerializable })
       if (route.meta) {
+	NuxtLogger.debug(`augmentPages(): fileContent → ${fileContent}`);
+	NuxtLogger.debug(`augmentPages(): routeMeta → ${routeMeta}`);
         const dynamic = [...getDynamicMeta(routeMeta.meta), ...getDynamicMeta(route.meta)]
+		NuxtLogger.debug(`augmentPages(): dynamic → ${dynamic}`);
         routeMeta.meta = defu({}, routeMeta.meta, route.meta)
         addDynamicMeta(routeMeta.meta, dynamic)
       }
@@ -208,6 +218,7 @@ export async function augmentPages (routes: NuxtPage[], vfs: Record<string, stri
       await augmentPages(route.children, vfs, ctx)
     }
   }
+NuxtLogger.debug('<<< Exiting augmentPages()');
   return ctx.augmentedPages
 }
 
@@ -525,13 +536,18 @@ export function getRouteMeta (contents: string, absolutePath: string, extraExtra
 }
 
 function cloneExtractedData (data: Partial<Record<keyof NuxtPage, any>>) {
+NuxtLogger.debug('>>> Entering cloneExtractedData()');
   const cloned = klona(data)
   addDynamicMeta(cloned.meta, getDynamicMeta(data.meta))
+NuxtLogger.debug(`cloneExtractedData(): cloned → ${cloned}`);
+NuxtLogger.debug('<<< Exiting cloneExtractedData()');
   return cloned
 }
 
 function serializeRouteValue (value: any, skipSerialisation = false) {
+NuxtLogger.debug('>>> Entering serializeRouteValue()');
   if (skipSerialisation || value === undefined) { return undefined }
+NuxtLogger.debug('<<< Exiting serializeRouteValue()');
   return JSON.stringify(value)
 }
 
@@ -577,6 +593,8 @@ function normalizeComponent (page: NuxtPage, pageImport: string, routeName: stri
 // Dropping the loader on the server keeps the page chunk out of that bundle;
 // `createClientPage` falls back to a placeholder without it.
 function onlyOnClient (pageImport: string) {
+NuxtLogger.debug('>>> Entering onlyOnClient()');
+NuxtLogger.debug('<<< Exiting onlyOnClient()');
   return `import.meta.client ? ${pageImport} : undefined`
 }
 
@@ -600,8 +618,10 @@ export function normalizeRoutes (routes: NuxtPage[], metaImports: Set<string> = 
   return {
     imports: metaImports,
     routes: genArrayFromRaw(routes.map((page) => {
+	NuxtLogger.debug('>>> Entering normalizeRoutes()');
       const markedDynamic = getDynamicMeta(page.meta)
       const metaFiltered: Record<string, any> = {}
+	NuxtLogger.debug('<<< Exiting normalizeRoutes()');
       let skipMeta = true
       for (const key in page.meta || {}) {
         if (page.meta![key] !== undefined) {

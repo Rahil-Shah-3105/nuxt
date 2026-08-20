@@ -3,6 +3,7 @@ import type { RendererContext } from 'vue-bundle-renderer/runtime'
 import { normalizeViteManifest } from 'vue-bundle-renderer'
 
 import '../../context'
+import logger from "../../../utils/logger.js";
 
 /**
  * Patch the dev SSR manifest with the CSS modules a dev integration recorded
@@ -13,14 +14,18 @@ import '../../context'
  * to the `@vite/client` entry, which `getRequestDependencies` always resolves.
  */
 export function patchDevClientCss (event: H3Event, rendererContext: RendererContext): void {
+logger.debug(`>>> Entering patchDevClientCss(event=${event},rendererContext=${rendererContext})`);
   const css = event.context.nuxt?.['~devClientCss']
+logger.debug(`patchDevClientCss(event=${event},rendererContext=${rendererContext}): css → ${css}`);
   if (!css?.length) { return }
 
   const current = rendererContext.manifest
   const entry = current?.['@vite/client']
+logger.debug(`patchDevClientCss(event=${event},rendererContext=${rendererContext}): entry → ${entry}`);
   if (!entry) { return }
 
   rendererContext.updateManifest(normalizeViteManifest({ ...current, '@vite/client': { ...entry, css } }))
+logger.debug(`<<< Exiting patchDevClientCss(event=${event},rendererContext=${rendererContext})`);
 }
 
 const QUERY_RE = /\?.*$/
@@ -36,8 +41,10 @@ const LEADING_RELATIVE_RE = /^(?:\.\.?\/)+/
 export function isStyleOfModule (file: string, modules: Set<string> | string[]): boolean {
   const path = file.replace(QUERY_RE, '')
   for (const mod of modules) {
+	logger.debug(`>>> Entering isStyleOfModule(file=${file},modules=${modules})`);
     const normalized = mod.replace(LEADING_RELATIVE_RE, '')
     if (normalized && (path === normalized || path.endsWith('/' + normalized))) {
+	logger.debug(`<<< Exiting isStyleOfModule(file=${file},modules=${modules})`);
       return true
     }
   }

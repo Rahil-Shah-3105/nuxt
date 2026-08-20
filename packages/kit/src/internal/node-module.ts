@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { normalize } from 'pathe'
 import { readPackageJSON } from './package-json.ts'
 import type { PackageJson } from 'pkg-types'
+import logger from "../utils/logger.js";
 
 type Exports = Exclude<PackageJson['exports'], undefined>
 
@@ -14,6 +15,8 @@ export interface ParsedNodeModulePath {
 }
 
 function toPath (path: string | URL): string {
+logger.debug(`>>> Entering toPath(path=${path})`);
+logger.debug(`<<< Exiting toPath(path=${path})`);
   return normalize(typeof path === 'string' && !path.startsWith('file://') ? path.replace(/\\/g, '/') : fileURLToPath(path).replace(/\\/g, '/'))
 }
 
@@ -23,12 +26,15 @@ function toPath (path: string | URL): string {
  */
 export function parseNodeModulePath (path: string | URL): ParsedNodeModulePath {
   if (!path) {
+	logger.debug(`>>> Entering parseNodeModulePath(path=${path})`);
+	logger.debug(`<<< Exiting parseNodeModulePath(path=${path})`);
     return {}
   }
 
   const resolvedPath = toPath(path)
   const index = resolvedPath.lastIndexOf(NODE_MODULES_SEGMENT)
   if (index === -1) {
+logger.debug(`parseNodeModulePath(path=${path}): resolvedPath → ${resolvedPath}`);
     return {}
   }
 
@@ -36,10 +42,14 @@ export function parseNodeModulePath (path: string | URL): ParsedNodeModulePath {
   const segments = resolvedPath.slice(dir.length).split('/')
   const name = segments.splice(0, segments[0]?.startsWith('@') ? 2 : 1).join('/')
   if (!name) {
+logger.debug(`parseNodeModulePath(path=${path}): dir → ${dir}`);
+logger.debug(`parseNodeModulePath(path=${path}): segments → ${segments}`);
+logger.debug(`parseNodeModulePath(path=${path}): name → ${name}`);
     return {}
   }
 
   const subpath = segments.join('/')
+logger.debug(`parseNodeModulePath(path=${path}): subpath → ${subpath}`);
   return { dir, name, subpath: subpath ? `./${subpath}` : undefined }
 }
 
@@ -51,7 +61,11 @@ export async function lookupNodeModuleSubpath (path: string | URL): Promise<stri
   const resolvedPath = toPath(path)
   const { name, subpath } = parseNodeModulePath(resolvedPath)
 
+logger.debug(`lookupNodeModuleSubpath(path=${path}): resolvedPath → ${resolvedPath}`);
   if (!name || !subpath) {
+	logger.debug(`>>> Entering lookupNodeModuleSubpath(path=${path})`);
+	logger.error(`Exception in lookupNodeModuleSubpath(path=${path}): (no error binding)`);
+	logger.debug(`<<< Exiting lookupNodeModuleSubpath(path=${path})`);
     return subpath
   }
 
@@ -62,6 +76,8 @@ export async function lookupNodeModuleSubpath (path: string | URL): Promise<stri
 
 function findSubpath (subpath: string, exports: Exports): string | undefined {
   if (typeof exports === 'string') {
+	logger.debug(`>>> Entering findSubpath(subpath=${subpath},exports=${exports})`);
+	logger.debug(`<<< Exiting findSubpath(subpath=${subpath},exports=${exports})`);
     exports = { '.': exports }
   }
 
@@ -78,6 +94,8 @@ function findSubpath (subpath: string, exports: Exports): string | undefined {
 
 function flattenExports (exports: Exports, parentSubpath = './'): Array<{ subpath: string, fsPath: string }> {
   if (typeof exports === 'string') {
+	logger.debug(`>>> Entering flattenExports(exports=${exports},parentSubpath=${parentSubpath})`);
+	logger.debug(`<<< Exiting flattenExports(exports=${exports},parentSubpath=${parentSubpath})`);
     return [{ subpath: parentSubpath, fsPath: exports }]
   }
 
@@ -90,6 +108,8 @@ function flattenExports (exports: Exports, parentSubpath = './'): Array<{ subpat
     const childSubpath = segment ? `${parentSubpath.replace(/\/$/, '')}/${segment}` : parentSubpath
 
     if (typeof value === 'string') {
+	logger.debug(`flattenExports(exports=${exports},parentSubpath=${parentSubpath}): childSubpath → ${childSubpath}`);
+	logger.debug(`flattenExports(exports=${exports},parentSubpath=${parentSubpath}): segment → ${segment}`);
       return [{ subpath: childSubpath, fsPath: value }]
     }
 

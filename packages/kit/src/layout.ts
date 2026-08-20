@@ -1,4 +1,5 @@
 import type { NuxtTemplate } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 import { join, parse } from 'pathe'
 import { kebabCase } from 'scule'
 import { useNuxt } from './context.ts'
@@ -12,8 +13,10 @@ export function addLayout (template: NuxtTemplate | string, name?: string): void
   const { filename, src } = addTemplate(template)
   const layoutName = kebabCase(name || parse(filename).name).replace(LAYOUT_RE, '')
 
+logger.debug(`addLayout(template=${template},name=${name}): nuxt → ${nuxt}`);
   // Nuxt 3 adds layouts on app
   nuxt.hook('app:templates', (app) => {
+	logger.debug(`>>> Entering addLayout(template=${template},name=${name})`);
     if (layoutName in app.layouts) {
       const relativePath = reverseResolveAlias(app.layouts[layoutName]!.file, { ...nuxt?.options.alias || {}, ...strippedAtAliases }).pop() || app.layouts[layoutName]!.file
       pageDiagnostics.NUXT_B4014({ layoutName, existingPath: relativePath, newPath: src || filename })

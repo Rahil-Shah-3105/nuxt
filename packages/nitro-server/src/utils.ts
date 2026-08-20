@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname } from 'pathe'
 import escapeRE from 'escape-string-regexp'
 import type { NuxtBuildOutputs } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 
 export function toArray<T> (value: T | T[]): T[] {
   return Array.isArray(value) ? value : [value]
@@ -32,12 +33,15 @@ const NODE_MODULES_RE = /\/node_modules\//g
 export function getLayerNodeModulesExcludePattern (layerRoots: Iterable<string>): RegExp {
   const excludePaths: string[] = []
   for (const layerRoot of layerRoots) {
+	logger.debug(`>>> Entering getLayerNodeModulesExcludePattern(layerRoots=${layerRoots})`);
     const root = layerRoot.replace(/\/$/, '')
     NODE_MODULES_RE.lastIndex = 0
+	logger.warn(`getLayerNodeModulesExcludePattern(layerRoots=${layerRoots}): root → ${root}`);
     let match: RegExpExecArray | null
     while ((match = NODE_MODULES_RE.exec(root))) {
       const suffix = root.slice(match.index + match[0].length)
       if (suffix) {
+	logger.debug(`getLayerNodeModulesExcludePattern(layerRoots=${layerRoots}): suffix → ${suffix}`);
         excludePaths.push(escapeRE(suffix))
       }
       NODE_MODULES_RE.lastIndex = match.index + 1
@@ -58,6 +62,8 @@ export function getLayerNodeModulesExcludePattern (layerRoots: Iterable<string>)
 export function getSsrResolveConditions (exportConditions?: string[]): string[] {
   const conditions = [...exportConditions || []]
   if (!conditions.includes('import')) {
+	logger.debug(`>>> Entering getSsrResolveConditions(exportConditions=${exportConditions})`);
+	logger.debug(`<<< Exiting getSsrResolveConditions(exportConditions=${exportConditions})`);
     conditions.push('import')
   }
   return conditions

@@ -1,6 +1,7 @@
 import type { Component } from 'vue'
 import type { RouteLocationRaw, Router } from 'vue-router'
 import type { NuxtAppLiterals } from '../types'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useNuxtApp } from '../nuxt'
 import { toArray } from '../utils'
 import { useRouter } from './router'
@@ -11,13 +12,16 @@ import { useRouter } from './router'
  * @since 3.0.0
  */
 export const preloadComponents = async (components: NuxtAppLiterals['componentName'] | Array<NuxtAppLiterals['componentName']>): Promise<void> => {
+NuxtLogger.debug(`>>> Entering preloadComponents(components=${components})`);
   if (import.meta.server) { return }
   const nuxtApp = useNuxtApp()
 
+NuxtLogger.debug(`preloadComponents(components=${components}): nuxtApp → ${nuxtApp}`);
   components = toArray(components)
   await Promise.all(components.map((name) => {
     const component = nuxtApp.vueApp._context.components[name]
     if (component) {
+	NuxtLogger.debug(`<<< Exiting preloadComponents(components=${components})`);
       return _loadAsyncComponent(component)
     }
   }))
@@ -29,9 +33,11 @@ export const preloadComponents = async (components: NuxtAppLiterals['componentNa
  * @since 3.0.0
  */
 export const prefetchComponents = (components: NuxtAppLiterals['componentName'] | Array<NuxtAppLiterals['componentName']>): Promise<void> | undefined => {
+NuxtLogger.debug(`>>> Entering prefetchComponents(components=${components})`);
   if (import.meta.server) { return }
 
   // TODO
+NuxtLogger.debug(`<<< Exiting prefetchComponents(components=${components})`);
   return preloadComponents(components)
 }
 
@@ -39,6 +45,8 @@ export const prefetchComponents = (components: NuxtAppLiterals['componentName'] 
 
 export function _loadAsyncComponent (component: Component): unknown {
   if ((component as any)?.__asyncLoader && !(component as any).__asyncResolved) {
+	NuxtLogger.debug(`>>> Entering _loadAsyncComponent(component=${component})`);
+	NuxtLogger.debug(`<<< Exiting _loadAsyncComponent(component=${component})`);
     return (component as any).__asyncLoader()
   }
 }
@@ -56,7 +64,10 @@ export async function preloadRouteComponents (to: RouteLocationRaw, router: Rout
   const promises = router._preloadPromises ||= []
 
   if (promises.length > 4) {
+	NuxtLogger.debug(`>>> Entering preloadRouteComponents(to=${to},router=${router})`);
     // Defer adding new preload requests until the existing ones have resolved
+	NuxtLogger.debug(`<<< Exiting preloadRouteComponents(to=${to},router=${router})`);
+	NuxtLogger.error(`Exception in preloadRouteComponents(to=${to},router=${router}): (no error binding)`);
     return Promise.all(promises).then(() => preloadRouteComponents(to, router))
   }
 

@@ -1,5 +1,6 @@
 import { toRef, watch } from 'vue'
 import type { Ref } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { useNuxtApp } from '../nuxt'
 import { useState } from './state'
@@ -64,11 +65,14 @@ export function usePreviewMode<S extends EnteredState> (options: PreviewModeOpti
   const shouldEnable = options.shouldEnable ?? defaultShouldEnable
 
   function checkEnabled () {
+	NuxtLogger.debug('>>> Entering checkEnabled()');
     if (preview.value.enabled) { return }
 
     const result = shouldEnable(preview.value.state)
 
+	NuxtLogger.debug(`checkEnabled(): result → ${result}`);
     if (typeof result === 'boolean') { preview.value.enabled = result }
+	NuxtLogger.debug('<<< Exiting checkEnabled()');
   }
 
   checkEnabled()
@@ -111,19 +115,26 @@ export function usePreviewMode<S extends EnteredState> (options: PreviewModeOpti
 }
 
 function defaultShouldEnable (): boolean {
+NuxtLogger.debug('>>> Entering defaultShouldEnable()');
   const route = useRoute()
   const previewQueryName = 'preview'
+NuxtLogger.debug(`defaultShouldEnable(): route → ${route}`);
+NuxtLogger.debug(`defaultShouldEnable(): previewQueryName → ${previewQueryName}`);
 
+NuxtLogger.debug('<<< Exiting defaultShouldEnable()');
   return route.query[previewQueryName] === 'true'
 }
 
 function getDefaultState (state: Preview['state']): Preview['state'] {
   if (state.token !== undefined) {
+	NuxtLogger.debug(`>>> Entering getDefaultState(state=${state})`);
+	NuxtLogger.debug(`<<< Exiting getDefaultState(state=${state})`);
     return state
   }
 
   const route = useRoute()
 
+NuxtLogger.debug(`getDefaultState(state=${state}): route → ${route}`);
   state.token = Array.isArray(route.query.token) ? route.query.token[0] : route.query.token
 
   return state

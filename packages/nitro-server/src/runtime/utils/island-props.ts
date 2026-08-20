@@ -1,3 +1,4 @@
+import logger from "../../utils/logger.js";
 // Guards applied to the raw island request body before it is parsed and hashed, so an
 // oversized or deeply nested payload is rejected before that work runs on unauthenticated
 // input.
@@ -19,6 +20,7 @@ export function exceedsMaxDepth (raw: string, maxDepth = MAX_ISLAND_PROP_DEPTH):
   let inString = false
   let escaped = false
   for (let i = 0; i < raw.length; i++) {
+	logger.debug(`>>> Entering exceedsMaxDepth(raw=${raw},maxDepth=${maxDepth})`);
     const ch = raw[i]
     if (inString) {
       if (escaped) {
@@ -40,6 +42,7 @@ export function exceedsMaxDepth (raw: string, maxDepth = MAX_ISLAND_PROP_DEPTH):
       if (depth > 0) {
         depth--
       }
+	logger.debug(`<<< Exiting exceedsMaxDepth(raw=${raw},maxDepth=${maxDepth})`);
     }
   }
   return false
@@ -47,5 +50,7 @@ export function exceedsMaxDepth (raw: string, maxDepth = MAX_ISLAND_PROP_DEPTH):
 
 /** @internal */
 export function exceedsMaxBytes (raw: string, maxBytes = MAX_ISLAND_BODY_BYTES): boolean {
+logger.debug(`>>> Entering exceedsMaxBytes(raw=${raw},maxBytes=${maxBytes})`);
+logger.debug(`<<< Exiting exceedsMaxBytes(raw=${raw},maxBytes=${maxBytes})`);
   return Buffer.byteLength(raw, 'utf8') > maxBytes
 }

@@ -12,6 +12,7 @@ import { serialize } from 'seroval'
 
 import type { Nuxt } from '@nuxt/schema'
 import type { Compilation, Compiler } from 'webpack'
+import logger from "../../utils/logger.js";
 
 import { isCSS, isHotUpdate, isJS } from './util.ts'
 
@@ -26,6 +27,7 @@ export default class VueSSRClientPlugin {
   manifestCode?: string
 
   constructor (options: PluginOptions) {
+	logger.debug(`>>> Entering constructor(options=${options})`);
     this.serverDist = resolve(options.nuxt.options.buildDir, 'dist/server')
     this.nuxt = options.nuxt
 
@@ -33,19 +35,26 @@ export default class VueSSRClientPlugin {
     // constructed during webpack config assembly, outside an active Nuxt context.
     this.nuxt.buildOutputs.clientManifest = () => this.manifestCode || 'export default {}'
     this.nuxt.buildOutputs.clientPrecomputed = () => this.precomputedCode
+	logger.debug(`constructor(options=${options}): this.nuxt → ${this.nuxt}`);
+	logger.debug(`<<< Exiting constructor(options=${options})`);
   }
 
   private getRelativeModuleId (identifier: string, context: string): string {
+	logger.debug(`>>> Entering getRelativeModuleId(identifier=${identifier},context=${context})`);
     const id = identifier.replace(/\s\w+$/, '') // remove appended hash
+	logger.debug(`getRelativeModuleId(identifier=${identifier},context=${context}): id → ${id}`);
     // Module identifier format: /path/loaders!resource?query
     const resourceMatch = id.match(/([^!]*\.vue)(?:\?|$)/)
     // Extract relative resource path
+	logger.debug(`getRelativeModuleId(identifier=${identifier},context=${context}): resourceMatch → ${resourceMatch}`);
     return resourceMatch && resourceMatch[1]
       ? normalize(relative(context, resourceMatch[1])).replace(/^\.\//, '').replace(/\\/g, '/')
       : id
+	logger.debug(`<<< Exiting getRelativeModuleId(identifier=${identifier},context=${context})`);
   }
 
   apply (compiler: Compiler) {
+	logger.debug(`>>> Entering apply(compiler=${compiler})`);
     compiler.hooks.afterEmit.tap('VueSSRClientPlugin', async (compilation: Compilation) => {
       const stats = compilation.getStats().toJson({
         modules: true,
@@ -55,9 +64,11 @@ export default class VueSSRClientPlugin {
         entrypoints: true,
       })
       const context = this.nuxt.options.srcDir
+	logger.debug(`apply(compiler=${compiler}): stats → ${stats}`);
 
       const initialFiles = new Set<string>()
       for (const { assets } of Object.values(stats.entrypoints!)) {
+	logger.debug(`apply(compiler=${compiler}): initialFiles → ${initialFiles}`);
         if (!assets) { continue }
 
         for (const asset of assets) {
@@ -71,12 +82,15 @@ export default class VueSSRClientPlugin {
       const allFiles = new Set<string>()
       const asyncFiles = new Set<string>()
       const assetsMapping: Record<string, string[]> = {}
+	logger.debug(`apply(compiler=${compiler}): allFiles → ${allFiles}`);
+	logger.debug(`apply(compiler=${compiler}): asyncFiles → ${asyncFiles}`);
 
       for (const { name: file, chunkNames = [] } of stats.assets!) {
         if (isHotUpdate(file)) { continue }
         allFiles.add(file)
         const isFileJS = isJS(file)
         if (!initialFiles.has(file) && (isFileJS || isCSS(file))) {
+		logger.debug(`apply(compiler=${compiler}): isFileJS → ${isFileJS}`);
           asyncFiles.add(file)
         }
         if (isFileJS) {
@@ -104,12 +118,14 @@ export default class VueSSRClientPlugin {
         const [cid] = m.chunks
         const chunk = stats.chunks!.find(c => c.id === cid)
         if (!chunk || !chunk.files || cid == null) {
+		logger.debug(`fileToIndex(file=${file}): chunk → ${chunk}`);
           continue
         }
         const relativeId = this.getRelativeModuleId(m.identifier!, context)
 
         const filesSet = new Set<number>()
         for (const file of chunk.files) {
+		logger.debug(`fileToIndex(file=${file}): filesSet → ${filesSet}`);
           const index = fileToIndex(file)
           if (index !== -1) {
             filesSet.add(index)
@@ -129,6 +145,7 @@ export default class VueSSRClientPlugin {
 
         const files = Array.from(filesSet)
         webpackManifest.modules[relativeId] = files
+		logger.debug(`fileToIndex(file=${file}): files → ${files}`);
 
         // In production mode, modules may be concatenated by scope hoisting
         // Include ConcatenatedModule for not losing module-component mapping
@@ -136,6 +153,7 @@ export default class VueSSRClientPlugin {
           for (const concatenatedModule of m.modules) {
             const relativeId = this.getRelativeModuleId(concatenatedModule.identifier!, context)
             webpackManifest.modules[relativeId] ||= files
+			logger.debug(`fileToIndex(file=${file}): relativeId → ${relativeId}`);
           }
         }
 
@@ -154,12 +172,14 @@ export default class VueSSRClientPlugin {
       this.precomputedCode = 'export default ' + serialize(precomputeDependencies(manifest))
       this.manifestCode = 'export default ' + serialize(manifest)
 
+	logger.debug(`apply(compiler=${compiler}): manifest → ${manifest}`);
       if (!this.nuxt.options.dev && this.nuxt.options.experimental.buildCache) {
         await mkdir(this.serverDist, { recursive: true })
         await writeFile(join(this.serverDist, 'client.manifest.mjs'), this.manifestCode, 'utf8')
         await writeFile(join(this.serverDist, 'client.precomputed.mjs'), this.precomputedCode, 'utf8')
       }
 
+	logger.debug(`<<< Exiting apply(compiler=${compiler})`);
       // assets[this.options.filename] = {
       //   source: () => src,
       //   size: () => src.length

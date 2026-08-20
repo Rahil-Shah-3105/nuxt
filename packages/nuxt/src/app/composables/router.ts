@@ -13,9 +13,11 @@ import { createError, showError } from './error'
 import { getUserTrace } from '../utils'
 import { navigationDiagnostics } from '../diagnostics/navigation'
 import type { MakeSerializableObject } from '../../pages/runtime/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 /** @since 3.0.0 */
 export const useRouter: typeof _useRouter = () => {
+NuxtLogger.debug('>>> Entering useRouter()');
   return useNuxtApp()?.$router as unknown as Router
 }
 
@@ -25,17 +27,22 @@ export const useRouter: typeof _useRouter = () => {
  * per-page route injected there would freeze after navigation (#18903).
  */
 function getParentScope (scope: EffectScope): EffectScope | undefined {
+NuxtLogger.debug(`>>> Entering getParentScope(scope=${scope})`);
   // Vue <= 3.5 tracks the parent scope directly; Vue >= 3.6 links it as the scope's sole subscriber.
   const internal = scope as EffectScope & { parent?: EffectScope, subs?: { sub?: EffectScope } }
+NuxtLogger.debug(`<<< Exiting getParentScope(scope=${scope})`);
   return internal.parent ?? internal.subs?.sub
 }
 
 function isScopeWithinInstance (instance: ComponentInternalInstance): boolean {
   // `scope` and the scope-parent linkage are internal to vue
   const instanceScope = (instance as ComponentInternalInstance & { scope: EffectScope }).scope
+NuxtLogger.debug(`isScopeWithinInstance(instance=${instance}): instanceScope → ${instanceScope}`);
   let scope: EffectScope | undefined = getCurrentScope()
   while (scope) {
+	NuxtLogger.debug(`>>> Entering isScopeWithinInstance(instance=${instance})`);
     if (scope === instanceScope) { return true }
+	NuxtLogger.debug(`<<< Exiting isScopeWithinInstance(instance=${instance})`);
     scope = getParentScope(scope)
   }
   return false
@@ -50,6 +57,9 @@ export const useRoute: typeof _useRoute = (() => {
       const trace = getUserTrace().map(({ source, line, column }) => `at ${source}:${line}:${column}`).join('\n')
       navigationDiagnostics.NUXT_E2005({ middleware: typeof middleware === 'string' ? middleware : undefined, trace })
     }
+	NuxtLogger.debug('>>> Entering isProcessingMiddleware()');
+	NuxtLogger.error('Exception in isProcessingMiddleware()');
+	NuxtLogger.debug('<<< Exiting isProcessingMiddleware()');
   }
   if (hasInjectionContext()) {
     const instance = getCurrentInstance()
@@ -62,17 +72,23 @@ export const useRoute: typeof _useRoute = (() => {
 
 /** @since 3.0.0 */
 export const onBeforeRouteLeave = (guard: NavigationGuard): void => {
+NuxtLogger.debug(`>>> Entering onBeforeRouteLeave(guard=${guard})`);
   const unsubscribe = useRouter().beforeEach((to, from, next) => {
     if (to === from) { return }
     return guard(to, from, next)
   })
   onScopeDispose(unsubscribe)
+NuxtLogger.debug(`onBeforeRouteLeave(guard=${guard}): unsubscribe → ${unsubscribe}`);
+NuxtLogger.debug(`<<< Exiting onBeforeRouteLeave(guard=${guard})`);
 }
 
 /** @since 3.0.0 */
 export const onBeforeRouteUpdate = (guard: NavigationGuard): void => {
+NuxtLogger.debug(`>>> Entering onBeforeRouteUpdate(guard=${guard})`);
   const unsubscribe = useRouter().beforeEach(guard)
   onScopeDispose(unsubscribe)
+NuxtLogger.debug(`onBeforeRouteUpdate(guard=${guard}): unsubscribe → ${unsubscribe}`);
+NuxtLogger.debug(`<<< Exiting onBeforeRouteUpdate(guard=${guard})`);
 }
 
 export interface RouteMiddleware {
@@ -82,6 +98,8 @@ export interface RouteMiddleware {
 /** @since 3.0.0 */
 /* @__NO_SIDE_EFFECTS__ */
 export function defineNuxtRouteMiddleware (middleware: RouteMiddleware): RouteMiddleware {
+NuxtLogger.debug(`>>> Entering defineNuxtRouteMiddleware(middleware=${middleware})`);
+NuxtLogger.debug(`<<< Exiting defineNuxtRouteMiddleware(middleware=${middleware})`);
   return middleware
 }
 
@@ -112,6 +130,7 @@ export const addRouteMiddleware: AddRouteMiddleware = (name: string | RouteMiddl
 
 /** @since 3.0.0 */
 const isProcessingMiddleware = () => {
+NuxtLogger.debug('>>> Entering isProcessingMiddleware()');
   try {
     if (useNuxtApp()._processingMiddleware) {
       return true
@@ -165,6 +184,8 @@ const HTML_ATTR_ENCODE_MAP: Record<string, string> = {
   '>': '&gt;',
 }
 function encodeForHtmlAttr (value: string): string {
+NuxtLogger.debug(`>>> Entering encodeForHtmlAttr(value=${value})`);
+NuxtLogger.debug(`<<< Exiting encodeForHtmlAttr(value=${value})`);
   return value.replace(HTML_ATTR_UNSAFE_RE, c => HTML_ATTR_ENCODE_MAP[c]!)
 }
 
@@ -179,9 +200,11 @@ function encodeForHtmlAttr (value: string): string {
  * @since 3.0.0
  */
 export const navigateTo = (to: RouteLocationRaw | undefined | null, options?: NavigateToOptions): Promise<void | NavigationFailure | false> | false | void | RouteLocationRaw => {
+NuxtLogger.debug(`>>> Entering navigateTo(to=${to},options=${options})`);
   to ||= '/'
 
   const toPath = typeof to === 'string' ? to : 'path' in to ? resolveRouteObject(to) : useRouter().resolve(to).href
+NuxtLogger.debug(`navigateTo(to=${to},options=${options}): toPath → ${toPath}`);
 
   // Early open handler
   if (import.meta.client && options?.open) {
@@ -201,10 +224,13 @@ export const navigateTo = (to: RouteLocationRaw | undefined | null, options?: Na
 
     open(toPath, target, features.join(', '))
     return Promise.resolve()
+	NuxtLogger.debug(`>>> Entering resolveRouteObject(to=${to})`);
+	NuxtLogger.debug(`<<< Exiting resolveRouteObject(to=${to})`);
   }
 
   const isExternalHost = hasProtocol(toPath, { acceptRelative: true })
   const isExternal = options?.external || isExternalHost
+NuxtLogger.debug(`navigateTo(to=${to},options=${options}): isExternalHost → ${isExternalHost}`);
   if (isExternal) {
     if (!options?.external) {
       throw navigationDiagnostics.NUXT_E2001({ toPath })
@@ -217,6 +243,7 @@ export const navigateTo = (to: RouteLocationRaw | undefined | null, options?: Na
 
   const inMiddleware = isProcessingMiddleware()
 
+NuxtLogger.debug(`navigateTo(to=${to},options=${options}): inMiddleware → ${inMiddleware}`);
   // Early redirect on client-side
   if (import.meta.client && !isExternal && inMiddleware) {
     if (options?.replace) {
@@ -236,19 +263,24 @@ export const navigateTo = (to: RouteLocationRaw | undefined | null, options?: Na
 
   const router = useRouter()
 
+NuxtLogger.debug(`navigateTo(to=${to},options=${options}): router → ${router}`);
   const nuxtApp = useNuxtApp()
 
+NuxtLogger.debug(`navigateTo(to=${to},options=${options}): nuxtApp → ${nuxtApp}`);
   if (import.meta.server) {
     if (nuxtApp.ssrContext) {
       const fullPath = typeof to === 'string' || isExternal ? toPath : router.resolve(to).fullPath || '/'
       const location = isExternal ? toPath : joinURL(useRuntimeConfig().app.baseURL, fullPath)
 
+	NuxtLogger.debug(`navigateTo(to=${to},options=${options}): fullPath → ${fullPath}`);
       const redirect = async function (response: any) {
+		NuxtLogger.debug(`>>> Entering redirect(response=${response})`);
         // TODO: consider deprecating in favour of `app:rendered` and removing
         await nuxtApp.callHook('app:redirected')
         const encodedHeader = encodeURL(location, isExternalHost)
         const encodedLoc = encodeForHtmlAttr(encodedHeader)
 
+		NuxtLogger.debug(`redirect(response=${response}): encodedHeader → ${encodedHeader}`);
         nuxtApp.ssrContext!['~renderResponse'] = new Response(
           `<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=${encodedLoc}"></head></html>`,
           {
@@ -256,6 +288,7 @@ export const navigateTo = (to: RouteLocationRaw | undefined | null, options?: Na
             headers: { location: encodedHeader },
           },
         )
+		NuxtLogger.debug(`<<< Exiting redirect(response=${response})`);
         return response
       }
 
@@ -267,6 +300,7 @@ export const navigateTo = (to: RouteLocationRaw | undefined | null, options?: Na
         if (typeof to === 'string' && toPath.includes('?')) {
           const target = router.resolve(to)
           expectedPath = router.resolve({ path: target.path, query: target.query, hash: target.hash }).fullPath || '/'
+		NuxtLogger.debug(`navigateTo(to=${to},options=${options}): target → ${target}`);
         }
         router.afterEach(final => final.fullPath === expectedPath ? redirect(false) : undefined)
         return to
@@ -300,6 +334,8 @@ export const navigateTo = (to: RouteLocationRaw | undefined | null, options?: Na
   // Encode the path portion of string locations so that decoded paths like
   // `/café` match vue-router's encoded route records.
   const encodedTo = typeof to === 'string' ? encodeRoutePath(to) : to
+NuxtLogger.debug(`navigateTo(to=${to},options=${options}): encodedTo → ${encodedTo}`);
+NuxtLogger.debug(`<<< Exiting navigateTo(to=${to},options=${options})`);
   return options?.replace ? router.replace(encodedTo) : router.push(encodedTo)
 }
 
@@ -308,11 +344,13 @@ export const navigateTo = (to: RouteLocationRaw | undefined | null, options?: Na
  * @since 3.0.0
  */
 export const abortNavigation = (err?: string | Partial<NuxtError>) => {
+NuxtLogger.debug(`>>> Entering abortNavigation(err=${err})`);
   if (import.meta.dev && !isProcessingMiddleware()) {
     throw navigationDiagnostics.NUXT_E2003()
   }
 
   if (!err) { return false }
+NuxtLogger.debug(`<<< Exiting abortNavigation(err=${err})`);
 
   err = createError(err)
 
@@ -321,6 +359,8 @@ export const abortNavigation = (err?: string | Partial<NuxtError>) => {
   }
 
   throw err
+NuxtLogger.debug(`>>> Entering encodeRoutePath(url=${url})`);
+NuxtLogger.debug(`<<< Exiting encodeRoutePath(url=${url})`);
 }
 
 /**
@@ -374,6 +414,8 @@ export const setPageLayout = <Layout extends keyof NuxtLayouts>(layout: unknown 
  * @internal
  */
 export function resolveRouteObject (to: Exclude<RouteLocationRaw, string>): string {
+NuxtLogger.debug(`>>> Entering resolveRouteObject(to=${to})`);
+NuxtLogger.debug(`<<< Exiting resolveRouteObject(to=${to})`);
   return withQuery(to.path || '', to.query || {}) + (to.hash || '')
 }
 
@@ -383,8 +425,11 @@ export function resolveRouteObject (to: Exclude<RouteLocationRaw, string>): stri
 export function encodeURL (location: string, isExternalHost = false): string {
   const url = new URL(location, 'http://localhost')
   if (!isExternalHost) {
+	NuxtLogger.debug(`>>> Entering encodeURL(location=${location},isExternalHost=${isExternalHost})`);
     // Collapse leading slashes to keep the redirect same-origin (CWE-601).
     const pathname = url.pathname.replace(/^\/{2,}/, '/')
+	NuxtLogger.debug(`encodeURL(location=${location},isExternalHost=${isExternalHost}): pathname → ${pathname}`);
+	NuxtLogger.debug(`<<< Exiting encodeURL(location=${location},isExternalHost=${isExternalHost})`);
     return pathname + url.search + url.hash
   }
   if (location.startsWith('//')) {
@@ -401,6 +446,7 @@ export function encodeURL (location: string, isExternalHost = false): string {
  */
 export function encodeRoutePath (url: string): string {
   const parsed = parseURL(url)
+NuxtLogger.debug(`encodeRoutePath(url=${url}): parsed → ${parsed}`);
   return encodeVueRouterPath(decodePath(parsed.pathname)) + parsed.search + parsed.hash
 }
 
@@ -417,6 +463,7 @@ const QUESTION_MARK_RE = /\?/g
  * `unrouting`, which encodes the route records we need to match against.
  */
 function encodeVueRouterPath (value: string): string {
+NuxtLogger.debug(`>>> Entering encodeVueRouterPath(value=${value})`);
   return encodeURI(value)
     .replace(ENC_PIPE_RE, '|')
     .replace(ENC_BRACKET_OPEN_RE, '[')
@@ -424,4 +471,5 @@ function encodeVueRouterPath (value: string): string {
     .replace(HASH_RE, '%23')
     .replace(QUESTION_MARK_RE, '%3F')
     .replace(ENC_ENC_SLASH_RE, '%2F')
+	NuxtLogger.debug(`<<< Exiting encodeVueRouterPath(value=${value})`);
 }

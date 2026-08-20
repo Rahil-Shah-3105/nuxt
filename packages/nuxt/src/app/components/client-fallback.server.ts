@@ -1,5 +1,6 @@
 import { defineComponent, getCurrentInstance, onErrorCaptured, shallowRef, useId } from 'vue'
 import type { DefineSetupFnComponent, SlotsType, VNode } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { ssrInterpolate, ssrRenderAttrs, ssrRenderSlot, ssrRenderVNode } from 'vue/server-renderer'
 
 import { isPromise } from '@vue/shared'
@@ -51,16 +52,24 @@ const NuxtClientFallbackServer = defineComponent({
   },
   emits: {
     'ssr-error' (_error: unknown) {
+	NuxtLogger.debug(`>>> Entering ssr-error(_error=${_error})`);
+	NuxtLogger.debug(`<<< Exiting ssr-error(_error=${_error})`);
       return true
     },
   },
   async setup (_, ctx) {
+	NuxtLogger.debug(`>>> Entering setup(_=${_},ctx=${ctx})`);
     const vm = getCurrentInstance()
     const ssrFailed = shallowRef(false)
     const error = useState<boolean | undefined>(useId())
 
+	NuxtLogger.debug(`setup(_=${_},ctx=${ctx}): vm → ${vm}`);
+	NuxtLogger.debug(`setup(_=${_},ctx=${ctx}): ssrFailed → ${ssrFailed}`);
+	NuxtLogger.debug(`setup(_=${_},ctx=${ctx}): error → ${error}`);
     onErrorCaptured((err) => {
       error.value = true
+	NuxtLogger.debug(`setup(_=${_},ctx=${ctx}): error.value → ${error.value}`);
+	NuxtLogger.debug(`setup(_=${_},ctx=${ctx}): ssrFailed.value → ${ssrFailed.value}`);
       ssrFailed.value = true
       ctx.emit('ssr-error', err)
       return false
@@ -77,6 +86,8 @@ const NuxtClientFallbackServer = defineComponent({
       const defaultSlot = ctx.slots.default?.()
       const ssrVNodes = createBuffer()
 
+	NuxtLogger.debug(`setup(_=${_},ctx=${ctx}): defaultSlot → ${defaultSlot}`);
+	NuxtLogger.debug(`setup(_=${_},ctx=${ctx}): ssrVNodes → ${ssrVNodes}`);
       if (defaultSlot) {
         for (let i = 0; i < defaultSlot.length; i++) {
           ssrRenderVNode(ssrVNodes.push, defaultSlot[i]!, vm!)
@@ -85,20 +96,24 @@ const NuxtClientFallbackServer = defineComponent({
 
       const buffer = ssrVNodes.getBuffer()
       if (buffer.hasAsync) {
+	NuxtLogger.debug(`setup(_=${_},ctx=${ctx}): buffer → ${buffer}`);
         await Promise.all((buffer as unknown[]).flat(Infinity).filter(isPromise))
       }
 
       return { ssrFailed, ssrVNodes }
     } catch (ssrError) {
+	NuxtLogger.error(`Exception in setup(_=${_},ctx=${ctx}): ${(ssrError as Error).message}`, ssrError);
       if (import.meta.dev) {
         renderDiagnostics.NUXT_E4006({ cause: ssrError })
       }
       error.value = true
       ctx.emit('ssr-error', ssrError)
+	NuxtLogger.debug(`<<< Exiting setup(_=${_},ctx=${ctx})`);
       return { ssrFailed: true, ssrVNodes: [] }
     }
   },
   ssrRender (ctx: any, push: any, parent: any) {
+	NuxtLogger.debug(`>>> Entering ssrRender(ctx=${ctx},push=${push},parent=${parent})`);
     if (ctx.ssrFailed) {
       const { fallback, placeholder } = ctx.$slots
       if (fallback || placeholder) {
@@ -114,6 +129,7 @@ const NuxtClientFallbackServer = defineComponent({
       push(ctx.ssrVNodes.getBuffer())
       push('<!--]-->')
     }
+	NuxtLogger.debug(`<<< Exiting ssrRender(ctx=${ctx},push=${push},parent=${parent})`);
   },
 }) as unknown as DefineSetupFnComponent<NuxtClientFallbackProps, NuxtClientFallbackEmits, NuxtClientFallbackSlots>
 

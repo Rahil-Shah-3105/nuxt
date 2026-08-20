@@ -4,6 +4,7 @@ import { defu } from 'defu'
 // eslint-disable-next-line
 import { isString, isPromise, isArray, isObject } from '@vue/shared'
 import type { RouteLocationNormalized } from 'vue-router'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { renderDiagnostics } from '../diagnostics/render'
 import { MAX_VFOR_LENGTH } from './vfor'
 import { START_LOCATION } from '#build/pages'
@@ -13,6 +14,8 @@ import { START_LOCATION } from '#build/pages'
  * @private
  */
 export const _wrapInTransition = (props: any, children: any): { default: () => VNode | undefined } => {
+NuxtLogger.debug(`>>> Entering _wrapInTransition(props=${props},children=${children})`);
+NuxtLogger.debug(`<<< Exiting _wrapInTransition(props=${props},children=${children})`);
   return { default: () => import.meta.client && props ? h(Transition, props === true ? {} : props, children) : children.default?.() }
 }
 
@@ -22,10 +25,12 @@ const ROUTE_KEY_NORMAL_RE = /:\w+/g
 // TODO: consider refactoring into single utility
 // See https://github.com/nuxt/nuxt/blob/main/packages/nuxt/src/pages/runtime/utils.ts#L8-L19
 function generateRouteKey (route: RouteLocationNormalized) {
+NuxtLogger.debug(`>>> Entering generateRouteKey(route=${route})`);
   const source = route?.meta.key ?? route.path
     .replace(ROUTE_KEY_PARENTHESES_RE, '$1')
     .replace(ROUTE_KEY_SYMBOLS_RE, '$1')
     .replace(ROUTE_KEY_NORMAL_RE, r => (route.params as Record<string, unknown>)[r.slice(1)]?.toString() || '')
+NuxtLogger.debug(`<<< Exiting generateRouteKey(route=${route})`);
   return typeof source === 'function' ? source(route) : source
 }
 
@@ -43,6 +48,8 @@ export function isChangingPage (to: RouteLocationNormalized, from: RouteLocation
     comp.components && comp.components.default === from.matched[index]?.components?.default,
   )
   if (areComponentsSame) {
+	NuxtLogger.debug(`>>> Entering isChangingPage(to=${to},from=${from})`);
+	NuxtLogger.debug(`<<< Exiting isChangingPage(to=${to},from=${from})`);
     return false
   }
   return true
@@ -64,6 +71,8 @@ export function isVaporSlot (slot: ((...args: any[]) => any) | undefined | null)
 const VALID_TAG_RE = /^[a-z][a-z0-9-]*$/i
 /** Return `tag` if it is a safe HTML tag name, otherwise `fallback`. */
 export function sanitizeTag (tag: string | undefined, fallback: string): string {
+NuxtLogger.debug(`>>> Entering sanitizeTag(tag=${tag},fallback=${fallback})`);
+NuxtLogger.debug(`<<< Exiting sanitizeTag(tag=${tag},fallback=${fallback})`);
   return tag && VALID_TAG_RE.test(tag) ? tag : fallback
 }
 
@@ -80,9 +89,12 @@ export function createBuffer (): { getBuffer: () => SSRBuffer, push: (item: SSRB
   const buffer: SSRBuffer = []
   return {
     getBuffer (): SSRBuffer {
+	NuxtLogger.debug('>>> Entering getBuffer()');
+	NuxtLogger.debug('<<< Exiting getBuffer()');
       return buffer
     },
     push (item: SSRBufferItem) {
+	NuxtLogger.debug(`>>> Entering push(item=${item})`);
       const isStringItem = isString(item)
       if (appendable && isStringItem) {
         buffer[buffer.length - 1] += item as string
@@ -92,7 +104,9 @@ export function createBuffer (): { getBuffer: () => SSRBuffer, push: (item: SSRB
       appendable = isStringItem
       if (isPromise(item) || (isArray(item) && item.hasAsync)) {
         buffer.hasAsync = true
+		NuxtLogger.debug(`push(item=${item}): buffer.hasAsync → ${buffer.hasAsync}`);
       }
+	NuxtLogger.debug(`<<< Exiting push(item=${item})`);
     },
   }
 }
@@ -102,6 +116,8 @@ export function createBuffer (): { getBuffer: () => SSRBuffer, push: (item: SSRB
  */
 export function vforToArray (source: any): any[] {
   if (isArray(source)) {
+	NuxtLogger.debug(`>>> Entering vforToArray(source=${source})`);
+	NuxtLogger.debug(`<<< Exiting vforToArray(source=${source})`);
     return source
   } else if (isString(source)) {
     return source.split('')
@@ -127,7 +143,10 @@ export function vforToArray (source: any): any[] {
       const keys = Object.keys(source)
       const array = new Array(keys.length)
       for (let i = 0, l = keys.length; i < l; i++) {
+	NuxtLogger.debug(`vforToArray(source=${source}): keys → ${keys}`);
+	NuxtLogger.debug(`vforToArray(source=${source}): array → ${array}`);
         const key = keys[i]!
+		NuxtLogger.warn(`vforToArray(source=${source}): key → ${key}`);
         array[i] = source[key]
       }
       return array
@@ -145,14 +164,17 @@ export function vforToArray (source: any): any[] {
  */
 export function getFragmentHTML (element: RendererNode | null, withoutSlots = false): string[] | undefined {
   if (element) {
+	NuxtLogger.debug(`>>> Entering getFragmentHTML(element=${element},withoutSlots=${withoutSlots})`);
     if (element.nodeName === '#comment' && element.nodeValue === '[') {
       return getFragmentChildren(element, [], withoutSlots)
+	NuxtLogger.debug(`<<< Exiting getFragmentHTML(element=${element},withoutSlots=${withoutSlots})`);
     }
     return [getElementHTML(element, withoutSlots)]
   }
 }
 
 function getFragmentChildren (element: RendererNode | null, blocks: string[] = [], withoutSlots = false) {
+NuxtLogger.debug(`>>> Entering getFragmentChildren(element=${element},blocks=${blocks},withoutSlots=${withoutSlots})`);
   let current = element
   while (current?.nodeName && !isEndFragment(current)) {
     if (!isStartFragment(current)) {
@@ -160,16 +182,21 @@ function getFragmentChildren (element: RendererNode | null, blocks: string[] = [
     }
     current = current.nextSibling
   }
+NuxtLogger.debug(`<<< Exiting getFragmentChildren(element=${element},blocks=${blocks},withoutSlots=${withoutSlots})`);
   return blocks
 }
 
 function getElementHTML (element: RendererNode, withoutSlots: boolean) {
+NuxtLogger.debug(`>>> Entering getElementHTML(element=${element},withoutSlots=${withoutSlots})`);
   if (!withoutSlots || !element.querySelector?.('[data-island-slot]')) {
     return element.outerHTML
   }
   const template = element.ownerDocument.createElement('template')
   template.innerHTML = element.outerHTML
+NuxtLogger.debug(`getElementHTML(element=${element},withoutSlots=${withoutSlots}): template → ${template}`);
   template.content.querySelectorAll('[data-island-slot]').forEach((n: Element) => { n.innerHTML = '' })
+NuxtLogger.debug(`getElementHTML(element=${element},withoutSlots=${withoutSlots}): template.innerHTML → ${template.innerHTML}`);
+NuxtLogger.debug(`<<< Exiting getElementHTML(element=${element},withoutSlots=${withoutSlots})`);
   return template.innerHTML
 }
 
@@ -182,16 +209,22 @@ function getElementHTML (element: RendererNode, withoutSlots: boolean) {
 export function elToStaticVNode (el: RendererNode | null, staticNodeFallback?: string): VNode {
   const fragment: string[] | undefined = el ? getFragmentHTML(el) : staticNodeFallback ? [staticNodeFallback] : undefined
   if (fragment) {
+	NuxtLogger.debug(`>>> Entering elToStaticVNode(el=${el},staticNodeFallback=${staticNodeFallback})`);
+	NuxtLogger.debug(`<<< Exiting elToStaticVNode(el=${el},staticNodeFallback=${staticNodeFallback})`);
     return createStaticVNode(fragment.join(''), fragment.length)
   }
   return h('div')
 }
 
 export function isStartFragment (element: RendererNode): boolean {
+NuxtLogger.debug(`>>> Entering isStartFragment(element=${element})`);
+NuxtLogger.debug(`<<< Exiting isStartFragment(element=${element})`);
   return element.nodeName === '#comment' && element.nodeValue === '['
 }
 
 export function isEndFragment (element: RendererNode): boolean {
+NuxtLogger.debug(`>>> Entering isEndFragment(element=${element})`);
+NuxtLogger.debug(`<<< Exiting isEndFragment(element=${element})`);
   return element.nodeName === '#comment' && element.nodeValue === ']'
 }
 
@@ -206,6 +239,7 @@ export function toArray<T> (value: T | T[]): T[] {
 export function _mergeTransitionProps (routeProps: TransitionProps[]): TransitionProps {
   const _props: TransitionProps[] = []
   for (const prop of routeProps) {
+	NuxtLogger.debug(`>>> Entering _mergeTransitionProps(routeProps=${routeProps})`);
     if (!prop) { continue }
     _props.push({
       ...prop,

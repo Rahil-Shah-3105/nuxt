@@ -12,6 +12,7 @@ import { isDirectory, linkToAlias, logger } from '../utils.ts'
 import { TransformPlugin } from './transform.ts'
 import { appCompatPresets, defaultPresets } from './presets.ts'
 import type { ImportsOptions, ResolvedNuxtTemplate } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { pagesImportPresets, routeRulesPresets } from '../pages/module.ts'
 
@@ -43,6 +44,7 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
     polyfills: true,
   }),
   setup (options, nuxt) {
+	NuxtLogger.debug(`>>> Entering setup(options=${options},nuxt=${nuxt})`);
     // `defaultPresets`/`appCompatPresets` are module-level constants, so clone them before
     // `imports:sources` subscribers get a chance to mutate them for this invocation only
     const presets = klona([
@@ -86,6 +88,7 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
         const path = resolve(nuxt.options.srcDir, relativePath)
         if (composablesDirs.includes(path)) {
           logger.info(`Directory \`${linkToAlias(path, nuxt)}/\` ${event === 'addDir' ? 'created' : 'removed'}`)
+		NuxtLogger.debug(`<<< Exiting setup(options=${options},nuxt=${nuxt})`);
           return nuxt.callHook('restart')
         }
       })
@@ -142,6 +145,8 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
     // caught by `regenerateImports` rather than relying on a full template regeneration
     const IMPORTS_TEMPLATE_RE = /(?:^|\/)(?:shared-)?imports\.(?:d\.ts|mjs)$/
     function isImportsTemplate (template: ResolvedNuxtTemplate) {
+	NuxtLogger.debug(`>>> Entering isImportsTemplate(template=${template})`);
+	NuxtLogger.debug(`<<< Exiting isImportsTemplate(template=${template})`);
       return IMPORTS_TEMPLATE_RE.test(template.filename)
     }
 
@@ -149,6 +154,7 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
     const nuxtImportSources = new Set(allNuxtPresets.flatMap(i => i.from))
     const nuxtImports = new Set(presets.flatMap(p => nuxtImportSources.has(p.from) ? p.imports : []))
     const regenerateImports = async () => {
+	NuxtLogger.debug('>>> Entering regenerateImports()');
       await ctx.modifyDynamicImports(async (imports) => {
         // Clear old imports
         imports.length = 0
@@ -176,6 +182,7 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
           }
         }
 
+		NuxtLogger.debug('<<< Exiting regenerateImports()');
         return imports
       })
 
@@ -211,16 +218,20 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
 })
 
 function addDeclarationTemplates (ctx: Pick<Unimport, 'getImports' | 'generateTypeDeclarations'>, options: Partial<ImportsOptions>) {
+NuxtLogger.debug(`>>> Entering addDeclarationTemplates(ctx=${ctx},options=${options})`);
   const nuxt = useNuxt()
 
+NuxtLogger.debug(`addDeclarationTemplates(ctx=${ctx},options=${options}): nuxt → ${nuxt}`);
   const resolvedImportPathMap = new Map<string, string>()
   const r = (i: Import) => resolvedImportPathMap.get(i.typeFrom || i.from)
 
+NuxtLogger.debug(`<<< Exiting addDeclarationTemplates(ctx=${ctx},options=${options})`);
   const warnedUnresolvedSources = new Set<string>()
 
   const SUPPORTED_EXTENSION_RE = new RegExp(`\\.(?:${nuxt.options.extensions.map(i => i.replace('.', '')).join('|')})$`)
 
   async function cacheImportPaths (imports: Import[]) {
+	NuxtLogger.debug(`>>> Entering cacheImportPaths(imports=${imports})`);
     const importSource = Array.from(new Set(imports.map(i => i.typeFrom || i.from)))
       .filter(from => !resolvedImportPathMap.has(from) && !nuxt._dependencies?.has(from))
 
@@ -228,9 +239,13 @@ function addDeclarationTemplates (ctx: Pick<Unimport, 'getImports' | 'generateTy
     const bareSpecifiers = importSource.filter(from => !isAbsolute(aliasedPaths.get(from)!))
     const resolved = new Map(await resolveTypePaths(bareSpecifiers, nuxt.options.modulesDir))
 
+	NuxtLogger.debug(`cacheImportPaths(imports=${imports}): aliasedPaths → ${aliasedPaths}`);
+	NuxtLogger.debug(`cacheImportPaths(imports=${imports}): bareSpecifiers → ${bareSpecifiers}`);
+	NuxtLogger.debug(`cacheImportPaths(imports=${imports}): resolved → ${resolved}`);
     for (const from of importSource) {
       if (warnedUnresolvedSources.has(from)) { continue }
       const aliased = aliasedPaths.get(from)!
+	NuxtLogger.debug(`cacheImportPaths(imports=${imports}): aliased → ${aliased}`);
       if (isAbsolute(aliased)) {
         const isInBuildDir = !relative(nuxt.options.buildDir, aliased).startsWith('..')
         if (isInBuildDir || resolveModulePath(aliased, { try: true, extensions: nuxt.options.extensions, suffixes: ['', '/index'] })) { continue }
@@ -264,6 +279,7 @@ function addDeclarationTemplates (ctx: Pick<Unimport, 'getImports' | 'generateTy
 
       resolvedImportPathMap.set(from, path)
     }))
+	NuxtLogger.debug(`<<< Exiting cacheImportPaths(imports=${imports})`);
   }
 
   addTypeTemplate({

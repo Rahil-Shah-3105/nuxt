@@ -4,10 +4,12 @@ import { ensureDependencyInstalled, getAddDependencyCommand } from '@nuxt/kit'
 import { bundlerDiagnostics } from '@nuxt/kit/internal'
 import type { Nuxt } from '@nuxt/schema'
 import jsTokens from 'js-tokens'
+const _logger = createLogger()
 
 const BABEL_DECORATOR_DEPS = ['@babel/plugin-proposal-decorators', '@babel/plugin-syntax-jsx'] as const
 
 export function hasDecoratorSyntax (code: string, jsx = false) {
+_logger.debug(`>>> Entering hasDecoratorSyntax(code=${code},jsx=${jsx})`);
   const tokens = jsx ? jsTokens(code, { jsx: true }) : jsTokens(code)
 
   for (const token of tokens) {
@@ -36,28 +38,33 @@ export function hasDecoratorSyntax (code: string, jsx = false) {
     return true
   }
 
+_logger.debug(`<<< Exiting hasDecoratorSyntax(code=${code},jsx=${jsx})`);
   return false
 }
 
 export function DecoratorsPlugin (nuxt: Nuxt): Plugin {
+_logger.debug(`>>> Entering DecoratorsPlugin(nuxt=${nuxt})`);
   let transformSync: typeof import('@babel/core').transformSync
 
   return {
     name: 'nuxt:decorators',
     apply: () => !!nuxt.options.experimental.decorators,
     async applyToEnvironment () {
+	_logger.debug('>>> Entering applyToEnvironment()');
       const result = await ensureDependencyInstalled([...BABEL_DECORATOR_DEPS], {
         rootDir: nuxt.options.rootDir,
         searchPaths: nuxt.options.modulesDir,
         from: import.meta.url,
       })
 
+	_logger.debug(`applyToEnvironment(): result → ${result}`);
       if (result !== true) {
         bundlerDiagnostics.NUXT_B7009({ deps: result.map(d => `\`${d}\``).join(' and '), installCommand: await getAddDependencyCommand(result, nuxt.options.rootDir, { dev: true }) })
         return false
       }
 
       transformSync = await import('@babel/core').then(r => r.transformSync)
+	_logger.debug('<<< Exiting applyToEnvironment()');
       return true
     },
     transform: {
@@ -83,6 +90,7 @@ export function DecoratorsPlugin (nuxt: Nuxt): Plugin {
         },
       },
       handler (code, id) {
+		_logger.debug(`>>> Entering handler(code=${code},id=${id})`);
         // Skip uncompiled SFC markup (raw .vue files not yet processed by @vitejs/plugin-vue)
         if (id.includes('.vue') && code.trimStart().startsWith('<')) {
           return
@@ -102,11 +110,13 @@ export function DecoratorsPlugin (nuxt: Nuxt): Plugin {
           sourceMaps: true,
         })
 
+		_logger.debug(`handler(code=${code},id=${id}): result → ${result}`);
         if (result?.code != null) {
           return {
             code: result.code,
             map: result.map as SourceMapInput,
           }
+		_logger.debug(`<<< Exiting handler(code=${code},id=${id})`);
         }
       },
     },

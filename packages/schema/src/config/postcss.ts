@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 import { defineResolvers } from '../utils/definition.ts'
 import { schemaDiagnostics } from '../diagnostics.ts'
 
@@ -14,6 +15,8 @@ const orderPresets = {
   cssnanoLast: ensureItemIsLast('cssnano'),
   autoprefixerLast: ensureItemIsLast('autoprefixer'),
   autoprefixerAndCssnanoLast (names: string[]) {
+	logger.debug(`>>> Entering autoprefixerAndCssnanoLast(names=${names})`);
+	logger.debug(`<<< Exiting autoprefixerAndCssnanoLast(names=${names})`);
     return orderPresets.cssnanoLast(orderPresets.autoprefixerLast(names))
   },
 }

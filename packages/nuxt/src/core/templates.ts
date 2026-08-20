@@ -15,6 +15,7 @@ import { setPluginDependenciesForMode } from './plugins/plugin-metadata.ts'
 import { EXTENSION_RE } from './utils/index.ts'
 import type { NuxtApp, NuxtOptions, NuxtTemplate } from 'nuxt/schema'
 import type { Nitro } from 'nitro/types'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const defuPath = resolveModulePath('defu', { try: true, from: import.meta.url }) ?? 'defu'
 const ufoPath = resolveModulePath('ufo', { try: true, from: import.meta.url }) ?? 'ufo'
@@ -27,6 +28,7 @@ export const vueShim: NuxtTemplate = {
       return ''
     }
 
+	NuxtLogger.debug(`<<< Exiting getContents(ctx=${ctx})`);
     return [
       'declare module \'*.vue\' {',
       '  import { DefineComponent } from \'vue\'',
@@ -61,11 +63,13 @@ export const islandRendererTemplate: NuxtTemplate = {
   filename: 'island-renderer.mjs',
   dependsOn: [],
   getContents (ctx) {
+	NuxtLogger.debug(`>>> Entering getContents(ctx=${ctx})`);
     if (!shouldEnableComponentIslands(ctx.nuxt, ctx.app)) {
       return 'const IslandRenderer = () => null\nexport default IslandRenderer'
     }
 
     const islandRenderer = resolve(ctx.nuxt.options.appDir, 'components/island-renderer')
+	NuxtLogger.debug(`getContents(ctx=${ctx}): islandRenderer → ${islandRenderer}`);
     return [
       'import { defineAsyncComponent } from \'vue\'',
       `const IslandRenderer = import.meta.server ? defineAsyncComponent(() => ${genDynamicImport(islandRenderer, { wrapper: false })}.then(r => r.default || r)) : () => null`,
@@ -115,6 +119,8 @@ export const clientPluginTemplate: NuxtTemplate = {
     setPluginDependenciesForMode(ctx.nuxt, 'client', clientPlugins)
     checkForCircularDependencies(clientPlugins)
     const exports: string[] = []
+	NuxtLogger.debug(`getContents(ctx=${ctx}): allPlugins → ${allPlugins}`);
+	NuxtLogger.debug(`getContents(ctx=${ctx}): clientPlugins → ${clientPlugins}`);
     const imports: string[] = []
     for (const plugin of clientPlugins) {
       const path = relative(ctx.nuxt.options.rootDir, plugin.src)
@@ -138,6 +144,7 @@ export const serverPluginTemplate: NuxtTemplate = {
     setPluginDependenciesForMode(ctx.nuxt, 'server', serverPlugins)
     checkForCircularDependencies(serverPlugins)
     const exports: string[] = []
+	NuxtLogger.debug(`getContents(ctx=${ctx}): serverPlugins → ${serverPlugins}`);
     const imports: string[] = []
     for (const plugin of serverPlugins) {
       const path = relative(ctx.nuxt.options.rootDir, plugin.src)

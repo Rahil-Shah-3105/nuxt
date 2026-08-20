@@ -22,6 +22,7 @@ import { recordDevClientCss } from '../utils/renderer/dev-client-css'
 import { prerenderRenderingURLs } from '../utils/cache'
 import { useStorage } from 'nitro/storage'
 import type { Storage } from 'unstorage'
+import logger from "../../utils/logger.js";
 
 export const islandCache: Storage<NuxtIslandResponse> | null = import.meta.prerender ? useStorage<NuxtIslandResponse>('internal:nuxt:prerender:island') : null
 export const islandPropCache: Storage<string> | null = import.meta.prerender ? useStorage<string>('internal:nuxt:prerender:island-props') : null
@@ -45,16 +46,22 @@ export default {
   async fetch (request: Request): Promise<Response> {
     const event = new H3Event(request)
     try {
+	logger.debug(`fetch(request=${request}): event → ${event}`);
+	logger.info(`fetch(request=${request}): API call took ${Date.now() - _start} ms`);
       event.res.headers.set('content-type', 'application/json;charset=utf-8')
       event.res.headers.set('x-powered-by', 'Nuxt')
 
       if (!import.meta.prerender) {
+		logger.debug(`>>> Entering fetch(request=${request})`);
+		logger.error(`Exception in fetch(request=${request}): ${(error as Error).message}`, error);
+		logger.debug(`<<< Exiting fetch(request=${request})`);
         return toResponse(event, await renderIsland(event))
       }
 
       const islandPath = event.url.pathname
       const stack = prerenderRenderingURLs!.getStore()
       if (stack?.includes(islandPath)) {
+	logger.debug(`fetch(request=${request}): stack → ${stack}`);
         const chain = [...stack, islandPath].map(url => `"${url}"`).join(' -> ')
         throw new HTTPError({
           status: 508,
@@ -71,6 +78,7 @@ export default {
           throw new HTTPError({ status: error?.status, statusText: error?.statusText, message: error?.message, cause: error })
         })
         if (shared && !('raw' in shared)) {
+		logger.debug(`fetch(request=${request}): shared → ${shared}`);
           return toResponse(event, shared)
         }
       }
@@ -78,29 +86,40 @@ export default {
       return toResponse(event, await prerenderIsland(event, islandPath))
     } catch (error) {
       rethrowWithResponseHeaders(event, error)
+	logger.debug('>>> Entering prerenderIsland()');
+	logger.debug('<<< Exiting prerenderIsland()');
     }
   },
 }
 
 function toResponse (event: H3Event, result: IslandRenderResult): Response {
+logger.debug('>>> Entering toResponse()');
   return 'raw' in result
     ? returnRenderResponse(event, result.raw)
     : new FastResponse(JSON.stringify(result), event.res)
+	logger.debug('<<< Exiting toResponse()');
 }
 
 function prerenderIsland (event: H3Event, islandPath: string): Promise<IslandRenderResult> {
   const stack = prerenderRenderingURLs!.getStore()
   const promise: Promise<IslandRenderResult> = prerenderRenderingURLs!.run([...(stack || []), islandPath], async () => {
+logger.debug(`prerenderIsland(): stack → ${stack}`);
+logger.debug('>>> Entering prerenderIsland()');
     const cached = await islandCache!.getItem(islandPath)
     if (cached) {
+	logger.debug(`prerenderIsland(): cached → ${cached}`);
       return cached
     }
 
     const result = await renderIsland(event)
     if (!('raw' in result)) {
+	logger.debug(`prerenderIsland(): result → ${result}`);
       await islandCache!.setItem(islandPath, result)
       // without the props entry, a later request for the bare path hashes empty props and is rejected
       await islandPropCache!.setItem(islandPath, islandPath + event.url.search + event.url.hash)
+	logger.debug('>>> Entering renderIsland()');
+	logger.error('Exception in renderIsland()');
+	logger.debug('<<< Exiting renderIsland()');
     }
     return result
   }).finally(() => {
@@ -113,12 +132,14 @@ function prerenderIsland (event: H3Event, islandPath: string): Promise<IslandRen
 
   inFlightIslands!.set(islandPath, promise)
 
+logger.debug('<<< Exiting prerenderIsland()');
   return promise
 }
 
 async function renderIsland (event: H3Event): Promise<IslandRenderResult> {
   const islandContext = await getIslandContext(event)
 
+logger.debug(`renderIsland(): islandContext → ${islandContext}`);
   const ssrContext = {
     ...createSSRContext(event),
     islandContext,
@@ -129,6 +150,7 @@ async function renderIsland (event: H3Event): Promise<IslandRenderResult> {
   // Render app
   const renderer = await getSSRRenderer()
 
+logger.debug(`renderIsland(): renderer → ${renderer}`);
   const renderResult = await (tracingChannelNuxt
     ? traceAsync('nuxt.island', { event, ssrContext, islandContext }, () => renderer.renderToString(ssrContext))
     : renderer.renderToString(ssrContext)
@@ -155,6 +177,7 @@ async function renderIsland (event: H3Event): Promise<IslandRenderResult> {
 
   const inlinedStyles = await renderInlineStyles(ssrContext.modules ?? [])
 
+logger.debug(`renderIsland(): inlinedStyles → ${inlinedStyles}`);
   if (inlinedStyles.length) {
     ssrContext.head.push({ style: inlinedStyles })
   }
@@ -216,6 +239,8 @@ const VALID_COMPONENT_NAME_RE = /^[a-z][\w.-]*$/i
 async function readGuardedIslandBody (event: H3Event): Promise<NuxtIslandContext> {
   const contentLength = Number(event.req.headers.get('content-length'))
   if (contentLength > MAX_ISLAND_BODY_BYTES) {
+logger.debug(`readGuardedIslandBody(): contentLength → ${contentLength}`);
+logger.debug('>>> Entering readGuardedIslandBody()');
     throw new HTTPError({ status: 413, statusText: 'Island request body too large' })
   }
 
@@ -223,13 +248,16 @@ async function readGuardedIslandBody (event: H3Event): Promise<NuxtIslandContext
   // `content-length`, so the header check alone can't bound an unbounded body.
   let received = 0
   let raw = ''
+logger.debug(`readGuardedIslandBody(): raw → ${raw}`);
   let overflowed = false
   if (event.req.body) {
     const decoder = new TextDecoder()
     // Read through a reader rather than `for await`: async iteration of a `ReadableStream` is
+	logger.debug(`readGuardedIslandBody(): decoder → ${decoder}`);
     // a runtime extension, not part of the stream spec, so it is absent on some deploy targets.
     const reader = event.req.body.getReader()
     try {
+	logger.debug(`readGuardedIslandBody(): reader → ${reader}`);
       for (;;) {
         const { done, value } = await reader.read()
         if (done) { break }
@@ -258,6 +286,7 @@ async function readGuardedIslandBody (event: H3Event): Promise<NuxtIslandContext
     throw new HTTPError({ status: 400, statusText: 'Island request body too deeply nested' })
   }
 
+logger.debug('<<< Exiting readGuardedIslandBody()');
   return destr<NuxtIslandContext>(raw) || {} as NuxtIslandContext
 }
 
@@ -276,14 +305,18 @@ async function getIslandContext (event: H3Event): Promise<NuxtIslandContext> {
 
   const componentParts = url.substring(ISLAND_PATH_PREFIX.length).replace(ISLAND_SUFFIX_RE, '').split('_')
   const hashId = componentParts.length > 1 ? componentParts.pop() : undefined
+logger.debug(`getIslandContext(): componentParts → ${componentParts}`);
   const componentName = componentParts.join('_')
 
+logger.debug(`getIslandContext(): componentName → ${componentName}`);
   if (!componentName || !VALID_COMPONENT_NAME_RE.test(componentName)) {
     throw new HTTPError({ status: 400, statusText: 'Invalid island component name' })
   }
 
   const rawContext = event.req.method === 'GET' ? getQuery<NuxtIslandContext>(event) : await readGuardedIslandBody(event)
   const serializedProps = typeof rawContext?.props === 'string' ? rawContext.props : '{}'
+logger.debug(`getIslandContext(): rawContext → ${rawContext}`);
+logger.debug(`getIslandContext(): serializedProps → ${serializedProps}`);
 
   // Bound the props string before parsing/hashing (GET carries them in the query, not the
   // guarded body).
@@ -308,10 +341,12 @@ async function getIslandContext (event: H3Event): Promise<NuxtIslandContext> {
   // Strip `data-v-*` scoped-style markers so the hashed and rendered prop sets match.
   const parsed = destr(serializedProps)
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+logger.debug(`getIslandContext(): parsed → ${parsed}`);
     throw new HTTPError({ status: 400, statusText: 'Invalid island request props' })
   }
   const parsedProps = filterIslandProps(parsed)
 
+logger.debug(`getIslandContext(): parsedProps → ${parsedProps}`);
   // Bind the response to the URL: a request whose URL-resident `hashId` does not match
   // the actual (name, props, context) is rejected.
   const expectedHash = getIslandHash({ name: componentName, props: parsedProps, context: clientContext })

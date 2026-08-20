@@ -10,6 +10,7 @@ import { getContext } from 'unctx'
 import type { ServerRequest } from 'srvx'
 import { captureRawStackTrace, parseRawStackTrace } from 'errx'
 import type { ParsedTrace } from 'errx'
+import logger from "../../utils/logger.js";
 
 import { isVNode } from 'vue'
 

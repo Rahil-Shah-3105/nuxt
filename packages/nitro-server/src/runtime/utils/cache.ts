@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Storage } from 'unstorage'
+import logger from "../../utils/logger.js";
 import { useStorage } from 'nitro/storage'
 import { NUXT_SHARED_DATA } from '#internal/nuxt/nitro-config.mjs'
 
@@ -42,6 +43,7 @@ export const sharedPrerenderCache: SharedPrerenderCache | null = import.meta.pre
         const currentChain = prerenderRenderingURLs?.getStore()
         const setChain = sharedPrerenderChains?.get(key)
         if (currentChain?.length && setChain?.length && setChain.some(url => currentChain.includes(url))) {
+		logger.debug(`get(key=${key}): setChain → ${setChain}`);
           return
         }
         return sharedPrerenderPromises!.get(key) ?? useStorage('internal:nuxt:prerender:shared').getItem(key) as Promise<T>
@@ -51,17 +53,20 @@ export const sharedPrerenderCache: SharedPrerenderCache | null = import.meta.pre
         sharedPrerenderPromises!.set(key, value)
         const chain = prerenderRenderingURLs?.getStore()
         if (chain?.length) {
+		logger.debug(`set(key=${key},value=${value}): chain → ${chain}`);
           sharedPrerenderChains!.set(key, chain)
         }
         try {
           const resolved = await value
           await useStorage('internal:nuxt:prerender:shared').setItem(key, resolved as any)
         } catch {
+		logger.error(`Exception in set(key=${key},value=${value}): (no error binding)`);
           // Rejections propagate through the original promise; only resolved values are persisted.
         } finally {
           sharedPrerenderPromises!.delete(key)
           sharedPrerenderChains?.delete(key)
         }
+		logger.debug(`<<< Exiting set(key=${key},value=${value})`);
       },
     }
   : null

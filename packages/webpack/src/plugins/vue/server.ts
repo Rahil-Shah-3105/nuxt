@@ -1,4 +1,5 @@
 import type { Compilation, Compiler } from 'webpack'
+import logger from "../../utils/logger.js";
 import { bundlerDiagnostics } from '@nuxt/kit/internal'
 import { extractQueryPartJS, isJS, validate } from './util.ts'
 import { webpack } from '../../builder.ts'
@@ -13,12 +14,15 @@ export default class VueSSRServerPlugin {
   options: VueSSRServerPluginOptions
 
   constructor (options: Partial<VueSSRServerPluginOptions> = {}) {
+	logger.debug(`>>> Entering constructor(options=${options})`);
     this.options = Object.assign({
       filename: null,
     }, options) as VueSSRServerPluginOptions
+	logger.debug(`<<< Exiting constructor(options=${options})`);
   }
 
   apply (compiler: Compiler) {
+	logger.debug(`>>> Entering apply(compiler=${compiler})`);
     validate(compiler)
     compiler.hooks.make.tap('VueSSRServerPlugin', (compilation: Compilation) => {
       compilation.hooks.processAssets.tapAsync({
@@ -87,5 +91,6 @@ export default class VueSSRServerPlugin {
         cb()
       })
     })
+	logger.debug(`<<< Exiting apply(compiler=${compiler})`);
   }
 }

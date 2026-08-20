@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 /**
  * Return the `default` export of a module namespace, with the module's other named exports
  * grafted onto it, so consumers can use a CJS-transpiled module as if it were ESM.
@@ -24,6 +25,8 @@ export function interopDefault<T> (sourceModule: T, opts: { preferNamespace?: bo
           enumerable: key !== 'default',
           configurable: key !== 'default',
           get () {
+			logger.debug('>>> Entering get()');
+			logger.debug('<<< Exiting get()');
             return sourceModule[key as keyof T]
           },
         })

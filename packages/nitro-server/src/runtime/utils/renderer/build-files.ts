@@ -7,6 +7,7 @@ import { useRuntimeConfig } from 'nitro/runtime-config'
 import type { App } from 'vue'
 
 import type { NuxtSSRContext } from '#app/types'
+import logger from "../../../utils/logger.js";
 
 import { NUXT_NO_SSR } from '#internal/nuxt/nitro-config.mjs'
 import { appRootAttrs, appRootTag, appSpaLoaderAttrs, appSpaLoaderTag, spaLoadingTemplateOutside } from '#internal/nuxt.config.mjs'
@@ -66,12 +67,15 @@ export const getSSRRenderer: () => Promise<Renderer> = lazyCachedFunction(async 
 
   type RenderToStringParams = Parameters<typeof _renderToString>
   async function renderToString (input: RenderToStringParams[0], context: RenderToStringParams[1]) {
+	logger.debug(`>>> Entering renderToString(input=${input},context=${context})`);
     const html = await _renderToString(input, context)
     // In development with vite-node, the manifest is on-demand and will be available after rendering
     // eslint-disable-next-line no-restricted-globals
     if (import.meta.dev && process.env.NUXT_VITE_NODE_OPTIONS) {
+	logger.debug(`renderToString(input=${input},context=${context}): html → ${html}`);
       renderer.rendererContext.updateManifest(await getClientManifest())
     }
+	logger.debug(`<<< Exiting renderToString(input=${input},context=${context})`);
     return APP_ROOT_OPEN_TAG + html + APP_ROOT_CLOSE_TAG
   }
 
@@ -105,13 +109,16 @@ const getSPARenderer = lazyCachedFunction(async (): Promise<Renderer> => {
   const result = await renderer.renderToString({})
 
   const renderToString = (ssrContext: NuxtSSRContext) => {
+	logger.debug(`>>> Entering renderToString(ssrContext=${ssrContext})`);
     const config = useRuntimeConfig()
     ssrContext.modules ||= new Set<string>()
     ssrContext.payload.serverRendered = false
+	logger.debug(`renderToString(ssrContext=${ssrContext}): config → ${config}`);
     ssrContext.config = {
       public: config.public,
       app: config.app,
     }
+	logger.debug(`<<< Exiting renderToString(ssrContext=${ssrContext})`);
     return Promise.resolve(result)
   }
 
@@ -122,6 +129,8 @@ const getSPARenderer = lazyCachedFunction(async (): Promise<Renderer> => {
 })
 
 export function getRenderer (ssrContext: NuxtSSRContext): Promise<Renderer> {
+logger.debug(`>>> Entering getRenderer(ssrContext=${ssrContext})`);
+logger.debug(`<<< Exiting getRenderer(ssrContext=${ssrContext})`);
   return (NUXT_NO_SSR || ssrContext.noSSR) ? getSPARenderer() : getSSRRenderer()
 }
 

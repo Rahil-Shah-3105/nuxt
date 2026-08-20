@@ -1,3 +1,4 @@
+import logger from "../../utils/logger.js";
 const iframeStorageBridge = (nonce: string) => /* js */ `
 (function () {
   const NONCE = ${JSON.stringify(nonce)};
@@ -330,6 +331,7 @@ const errorCSS = /* css */ `
 `
 
 function webComponentScript (base64HTML: string, startMinimized: boolean) {
+logger.debug(`>>> Entering webComponentScript(base64HTML=${base64HTML},startMinimized=${startMinimized})`);
   return /* js */ `
 (function () {
   try {
@@ -975,9 +977,11 @@ function webComponentScript (base64HTML: string, startMinimized: boolean) {
   }
 })();
 `
+logger.debug(`<<< Exiting webComponentScript(base64HTML=${base64HTML},startMinimized=${startMinimized})`);
 }
 
 export function generateErrorOverlayHTML (html: string, options?: { startMinimized?: boolean }) {
+logger.debug(`>>> Entering generateErrorOverlayHTML(html=${html},options=${options})`);
   const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')
   const errorPage = html.replace('<head>', `<head><script>${iframeStorageBridge(nonce)}</script>`)
   const base64HTML = Buffer.from(errorPage, 'utf8').toString('base64')
@@ -986,4 +990,5 @@ export function generateErrorOverlayHTML (html: string, options?: { startMinimiz
     <nuxt-error-overlay></nuxt-error-overlay>
     <script>${webComponentScript(base64HTML, options?.startMinimized ?? false)}</script>
   `
+logger.debug(`<<< Exiting generateErrorOverlayHTML(html=${html},options=${options})`);
 }

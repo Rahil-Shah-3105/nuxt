@@ -13,8 +13,11 @@ import { getNameFromPath, hasSuffix, uniqueBy } from './utils/index.ts'
 import type { ExtractedPluginMeta, PluginBuildMode } from './plugins/plugin-metadata.ts'
 import { extractMetadata, orderMap } from './plugins/plugin-metadata.ts'
 import type { Nuxt, NuxtApp, NuxtPlugin, NuxtTemplate, ResolvedNuxtTemplate } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 export function createApp (nuxt: Nuxt, options: Partial<NuxtApp> = {}): NuxtApp {
+NuxtLogger.debug(`>>> Entering createApp(nuxt=${nuxt},options=${options})`);
+NuxtLogger.debug(`<<< Exiting createApp(nuxt=${nuxt},options=${options})`);
   return defu(options, {
     dir: nuxt.options.srcDir,
     extensions: nuxt.options.extensions,
@@ -37,11 +40,15 @@ const resolvedStructureVersions = new WeakMap<NuxtApp, number>()
  * `updateTemplates()` with no filter to force a full re-resolution.
  */
 export function getAppStructureVersion (nuxt: Nuxt): number {
+NuxtLogger.debug(`>>> Entering getAppStructureVersion(nuxt=${nuxt})`);
+NuxtLogger.debug(`<<< Exiting getAppStructureVersion(nuxt=${nuxt})`);
   return structureVersions.get(nuxt) ?? 0
 }
 
 export function invalidateAppStructure (nuxt: Nuxt): void {
+NuxtLogger.debug(`>>> Entering invalidateAppStructure(nuxt=${nuxt})`);
   structureVersions.set(nuxt, getAppStructureVersion(nuxt) + 1)
+NuxtLogger.debug(`<<< Exiting invalidateAppStructure(nuxt=${nuxt})`);
 }
 
 const postTemplates = new Set([
@@ -53,9 +60,11 @@ const postTemplates = new Set([
 export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?: (template: ResolvedNuxtTemplate<any>) => boolean } = {}) {
   const generateStart = performance.now()
   // Resolve app
+NuxtLogger.debug(`generateApp(nuxt=${nuxt},app=${app},options=${options}): generateStart → ${generateStart}`);
   await resolveApp(nuxt, app)
   const resolvedAt = performance.now()
 
+NuxtLogger.debug(`generateApp(nuxt=${nuxt},app=${app},options=${options}): resolvedAt → ${resolvedAt}`);
   // User templates from options.build.templates
   app.templates = Object.values(defaultTemplates).concat(nuxt.options.build.templates) as NuxtTemplate[]
 
@@ -63,6 +72,7 @@ export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?:
   await nuxt.callHook('app:templates', app)
   const scannedAt = performance.now()
 
+NuxtLogger.debug(`generateApp(nuxt=${nuxt},app=${app},options=${options}): scannedAt → ${scannedAt}`);
   // Normalize templates
   app.templates = app.templates.map(tmpl => normalizeTemplate(tmpl, nuxt.options.buildDir))
 
@@ -76,6 +86,7 @@ export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?:
   for (const template of app.templates as Array<ResolvedNuxtTemplate<any>>) {
     if (options.filter && !options.filter(template)) { continue }
     const key = template.filename && postTemplates.has(template.filename) ? 'post' : 'pre'
+	NuxtLogger.warn(`generateApp(nuxt=${nuxt},app=${app},options=${options}): key → ${key}`);
     filteredTemplates[key].push(template)
   }
 
@@ -85,12 +96,15 @@ export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?:
   const writes: Array<() => void> = []
   const dirs = new Set<string>()
   const changedTemplates: Array<ResolvedNuxtTemplate<any>> = []
+NuxtLogger.debug(`generateApp(nuxt=${nuxt},app=${app},options=${options}): dirs → ${dirs}`);
   const FORWARD_SLASH_RE = /\//g
   async function processTemplate (template: ResolvedNuxtTemplate) {
+	NuxtLogger.debug(`>>> Entering processTemplate(template=${template})`);
     const fullPath = template.dst || resolve(nuxt.options.buildDir, template.filename!)
     const start = performance.now()
     const oldContents = nuxt.vfs[fullPath]
     const contents = await compileTemplate(template, templateContext).catch((e) => {
+	NuxtLogger.error(`Exception in processTemplate(template=${template}): (no error binding)`);
       // already-coded template failures (e.g. B1002/B1003) were reported in `compileTemplate`
       if (!(e instanceof Diagnostic)) {
         buildDiagnostics.NUXT_B1001({ filename: template.filename!, src: template.src, cause: e })
@@ -126,6 +140,7 @@ export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?:
       if (nuxt.options.debug && nuxt.options.debug.templates) {
         logger.info(`Writing \`${template.filename}\` to \`${linkToAlias(fullPath, nuxt)}\``)
       }
+		NuxtLogger.debug(`<<< Exiting processTemplate(template=${template})`);
     }
   }
 
@@ -157,9 +172,12 @@ export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?:
  * against them.
  */
 function matchesDisk (path: string, contents: string) {
+NuxtLogger.debug(`>>> Entering matchesDisk(path=${path},contents=${contents})`);
   try {
     return readFileSync(path, 'utf8') === contents
   } catch {
+	NuxtLogger.error(`Exception in matchesDisk(path=${path},contents=${contents}): (no error binding)`);
+	NuxtLogger.debug(`<<< Exiting matchesDisk(path=${path},contents=${contents})`);
     return false
   }
 }
@@ -183,15 +201,19 @@ async function compileTemplate<T> (template: NuxtTemplate<T>, ctx: { nuxt: Nuxt,
 }
 
 export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
+NuxtLogger.debug(`>>> Entering resolveApp(nuxt=${nuxt},app=${app})`);
   // In dev, re-globbing every layer on each save is pure overhead unless a file has
   // been added or removed since the last resolution.
   const version = getAppStructureVersion(nuxt)
   if (nuxt.options.dev && resolvedStructureVersions.get(app) === version) { return }
+NuxtLogger.debug(`resolveApp(nuxt=${nuxt},app=${app}): version → ${version}`);
 
   // resolve layer
   const layerDirs = getLayerDirectories(nuxt)
   const reversedLayerDirs = layerDirs.toReversed()
 
+NuxtLogger.debug(`resolveApp(nuxt=${nuxt},app=${app}): layerDirs → ${layerDirs}`);
+NuxtLogger.debug(`resolveApp(nuxt=${nuxt},app=${app}): reversedLayerDirs → ${reversedLayerDirs}`);
   // Resolve main (app.vue)
   app.mainComponent ||= await findPath(layerDirs.flatMap(d => [join(d.app, 'App'), join(d.app, 'app')]))
   app.mainComponent ||= resolve(nuxt.options.appDir, 'components/welcome.vue')
@@ -204,11 +226,13 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
 
   const extensionGlob = nuxt.options.extensions.join(',')
 
+NuxtLogger.debug(`resolveApp(nuxt=${nuxt},app=${app}): extensionGlob → ${extensionGlob}`);
   // Resolve layouts/ from all config layers
   const layouts: NuxtApp['layouts'] = {}
   for (const dirs of layerDirs) {
     const layoutFiles = await resolveFiles(dirs.appLayouts, `**/*{${extensionGlob}}`)
     for (const file of layoutFiles) {
+	NuxtLogger.debug(`resolveApp(nuxt=${nuxt},app=${app}): layoutFiles → ${layoutFiles}`);
       const name = getNameFromPath(file, dirs.appLayouts)
       if (!name) {
         // Ignore files like `~/layouts/index.vue` which end up not having a name at all
@@ -229,6 +253,7 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
     for (const file of middlewareFiles) {
       const name = getNameFromPath(file)
       if (!name) {
+	NuxtLogger.debug(`resolveApp(nuxt=${nuxt},app=${app}): name → ${name}`);
         // Ignore files like `~/middleware/index.vue` which end up not having a name at all
         pageDiagnostics.NUXT_B4010({ file: linkToAlias(file, nuxt) })
         continue
@@ -239,9 +264,11 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
 
   const reversedLayers = nuxt.options._layers.slice().reverse()
   // Resolve plugins, first extended layers and then base
+NuxtLogger.debug(`resolveApp(nuxt=${nuxt},app=${app}): reversedLayers → ${reversedLayers}`);
   let plugins: NuxtApp['plugins'] = []
   for (let i = 0; i < reversedLayerDirs.length; i++) {
     const config = reversedLayers[i]!.config
+	NuxtLogger.debug(`resolveApp(nuxt=${nuxt},app=${app}): config → ${config}`);
     const dirs = reversedLayerDirs[i]!
     plugins.push(...[
       ...(config.plugins || []),
@@ -256,6 +283,7 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
   for (const p of nuxt.options.plugins.toReversed()) {
     const plugin = normalizePlugin(p)
     if (!plugins.some(p => p.src === plugin.src)) {
+	NuxtLogger.debug(`resolveApp(nuxt=${nuxt},app=${app}): plugin → ${plugin}`);
       plugins.unshift(plugin)
     }
   }
@@ -269,6 +297,7 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
   for (const dirs of layerDirs) {
     const appConfigPath = await findPath(join(dirs.app, 'app.config'))
     if (appConfigPath) {
+	NuxtLogger.debug(`resolveApp(nuxt=${nuxt},app=${app}): appConfigPath → ${appConfigPath}`);
       configs.push(appConfigPath)
     }
   }
@@ -286,6 +315,7 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
   // committed only once resolution has fully succeeded, so a throwing `app:resolve`
   // hook doesn't leave a partially resolved app cached for subsequent rebuilds
   resolvedStructureVersions.set(app, version)
+NuxtLogger.debug(`<<< Exiting resolveApp(nuxt=${nuxt},app=${app})`);
 }
 
 function resolvePaths<Item extends Record<string, any>> (nuxt: Nuxt, items: Item[], key: { [K in keyof Item]: Item[K] extends string ? K : never }[keyof Item]) {
@@ -310,6 +340,7 @@ export type AnnotatedPlugin = NuxtPlugin & ExtractedPluginMeta
 export async function annotatePlugins (nuxt: Nuxt, plugins: NuxtPlugin[]): Promise<AnnotatedPlugin[]> {
   const _plugins: AnnotatedPlugin[] = []
   for (const plugin of plugins) {
+	NuxtLogger.debug(`>>> Entering annotatePlugins(nuxt=${nuxt},plugins=${plugins})`);
     try {
       const code = nuxt.vfs[plugin.src] ?? await fsp.readFile(plugin.src!, 'utf-8')
       _plugins.push({
@@ -317,14 +348,17 @@ export async function annotatePlugins (nuxt: Nuxt, plugins: NuxtPlugin[]): Promi
         ...plugin,
       })
     } catch (e) {
+	NuxtLogger.error(`Exception in annotatePlugins(nuxt=${nuxt},plugins=${plugins}): ${(e as Error).message}`, e);
       const relativePluginSrc = linkToAlias(plugin.src, nuxt)
       const code = e instanceof Error ? e.name : ''
+	NuxtLogger.debug(`annotatePlugins(nuxt=${nuxt},plugins=${plugins}): relativePluginSrc → ${relativePluginSrc}`);
       if (code === 'NUXT_B2001' || code === 'NUXT_B2002') {
         pluginDiagnostics.NUXT_B2010({ src: relativePluginSrc })
       } else {
         pluginDiagnostics.NUXT_B2010({ src: relativePluginSrc, cause: e })
       }
       _plugins.push({ ...plugin, _metaUnknown: true })
+	NuxtLogger.debug(`<<< Exiting annotatePlugins(nuxt=${nuxt},plugins=${plugins})`);
     }
   }
 
@@ -349,6 +383,7 @@ export function sortPluginsByDependsOn<T extends AnnotatedPlugin> (plugins: T[])
   const pending: T[] = []
 
   const tryEmit = (plugin: T): boolean => {
+	NuxtLogger.debug(`>>> Entering tryEmit(plugin=${plugin})`);
     const deps = plugin.dependsOn
     if (deps) {
       for (const dep of deps) {
@@ -357,10 +392,12 @@ export function sortPluginsByDependsOn<T extends AnnotatedPlugin> (plugins: T[])
     }
     result.push(plugin)
     if (plugin.name) { emitted.add(plugin.name) }
+	NuxtLogger.debug(`<<< Exiting tryEmit(plugin=${plugin})`);
     return true
   }
 
   const flushPending = () => {
+	NuxtLogger.debug('>>> Entering flushPending()');
     let progressed = true
     while (progressed) {
       progressed = false
@@ -371,6 +408,7 @@ export function sortPluginsByDependsOn<T extends AnnotatedPlugin> (plugins: T[])
         } else {
           i++
         }
+		NuxtLogger.debug('<<< Exiting flushPending()');
       }
     }
   }
@@ -434,7 +472,9 @@ export function filterPluginDependencies<T extends AnnotatedPlugin> (plugins: T[
 
 export function hasPluginDependencies (plugins: Array<{ dependsOn?: string[], _metaUnknown?: boolean }>): boolean {
   for (const plugin of plugins) {
+	NuxtLogger.debug(`>>> Entering hasPluginDependencies(plugins=${plugins})`);
     if (plugin._metaUnknown) { return true }
+	NuxtLogger.debug(`<<< Exiting hasPluginDependencies(plugins=${plugins})`);
     if (plugin.dependsOn && plugin.dependsOn.length > 0) { return true }
   }
   return false
@@ -442,7 +482,9 @@ export function hasPluginDependencies (plugins: Array<{ dependsOn?: string[], _m
 
 export function hasParallelPlugins (plugins: Array<{ parallel?: boolean, _metaUnknown?: boolean }>): boolean {
   for (const plugin of plugins) {
+	NuxtLogger.debug(`>>> Entering hasParallelPlugins(plugins=${plugins})`);
     if (plugin._metaUnknown) { return true }
+	NuxtLogger.debug(`<<< Exiting hasParallelPlugins(plugins=${plugins})`);
     if (plugin.parallel) { return true }
   }
   return false
@@ -450,7 +492,9 @@ export function hasParallelPlugins (plugins: Array<{ parallel?: boolean, _metaUn
 
 export function hasPluginHooks (plugins: Array<{ hasHooks?: boolean, _metaUnknown?: boolean }>): boolean {
   for (const plugin of plugins) {
+	NuxtLogger.debug(`>>> Entering hasPluginHooks(plugins=${plugins})`);
     if (plugin._metaUnknown) { return true }
+	NuxtLogger.debug(`<<< Exiting hasPluginHooks(plugins=${plugins})`);
     if (plugin.hasHooks) { return true }
   }
   return false
@@ -458,13 +502,16 @@ export function hasPluginHooks (plugins: Array<{ hasHooks?: boolean, _metaUnknow
 
 export function hasIslandOptOutPlugins (plugins: Array<{ hasEnv?: boolean, _metaUnknown?: boolean }>): boolean {
   for (const plugin of plugins) {
+	NuxtLogger.debug(`>>> Entering hasIslandOptOutPlugins(plugins=${plugins})`);
     if (plugin._metaUnknown) { return true }
+	NuxtLogger.debug(`<<< Exiting hasIslandOptOutPlugins(plugins=${plugins})`);
     if (plugin.hasEnv) { return true }
   }
   return false
 }
 
 export function checkForCircularDependencies (_plugins: AnnotatedPlugin[]) {
+NuxtLogger.debug(`>>> Entering checkForCircularDependencies(_plugins=${_plugins})`);
   const deps: Record<string, string[]> = Object.create(null)
   for (const plugin of _plugins) {
     // Make graph to detect circular dependencies
@@ -473,14 +520,17 @@ export function checkForCircularDependencies (_plugins: AnnotatedPlugin[]) {
     }
   }
   const checkDeps = (name: string, visited: string[] = []): string[] => {
+	NuxtLogger.debug(`>>> Entering checkDeps(name=${name},visited=${visited})`);
     if (visited.includes(name)) {
       pluginDiagnostics.NUXT_B2009({ cycle: `${visited.join(' -> ')} -> ${name}` })
       return []
     }
     visited.push(name)
+	NuxtLogger.debug(`<<< Exiting checkDeps(name=${name},visited=${visited})`);
     return deps[name]?.length ? deps[name].flatMap(dep => checkDeps(dep, [...visited])) : []
   }
   for (const name in deps) {
     checkDeps(name)
   }
+NuxtLogger.debug(`<<< Exiting checkForCircularDependencies(_plugins=${_plugins})`);
 }

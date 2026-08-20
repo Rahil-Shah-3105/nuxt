@@ -1,10 +1,12 @@
 import type { ESTree } from 'rolldown/utils'
 import type { ParsedStaticImport } from './static-imports.ts'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { resolveAlias } from '@nuxt/kit'
 
 import { stripExtension } from '../../utils.ts'
 
 export function processImports (imports: ParsedStaticImport[], alias: Record<string, string>) {
+NuxtLogger.debug(`>>> Entering processImports(imports=${imports},alias=${alias})`);
   /**
    * import alias -> original name; source with aliases resolved and without extension
    */
@@ -26,6 +28,7 @@ export function processImports (imports: ParsedStaticImport[], alias: Record<str
   for (const i of imports) {
     const resolvedSpecifier = stripExtension(resolveAlias(i.specifier, alias))
 
+	NuxtLogger.debug(`processImports(imports=${imports},alias=${alias}): resolvedSpecifier → ${resolvedSpecifier}`);
     // handle named imports
     const namedImports = i.namedImports ?? {}
 
@@ -58,6 +61,7 @@ export function processImports (imports: ParsedStaticImport[], alias: Record<str
       // handle namespace import
       const namespace = i.namespacedImport
       const entry = namespaces.get(resolvedSpecifier)!
+	NuxtLogger.debug(`processImports(imports=${imports},alias=${alias}): entry → ${entry}`);
       entry.namespaces.add(namespace)
     }
   }
@@ -66,6 +70,7 @@ export function processImports (imports: ParsedStaticImport[], alias: Record<str
     directImports,
     namespaces,
   }
+NuxtLogger.debug(`<<< Exiting processImports(imports=${imports},alias=${alias})`);
 }
 
 export interface FunctionCallMetadata {
@@ -111,6 +116,7 @@ export function parseStaticFunctionCall (node: ESTree.CallExpression | ESTree.Ch
       ? node.expression
       : null
   if (!callExpression) { return null }
+NuxtLogger.debug(`parseStaticFunctionCall(node=${node},filter=${filter}): callExpression → ${callExpression}`);
 
   // Simple function calls
 
@@ -118,7 +124,9 @@ export function parseStaticFunctionCall (node: ESTree.CallExpression | ESTree.Ch
   let identifierNode: FunctionCallMetadata['node'] | undefined
   // foo()
   if (callExpression.callee.type === 'Identifier') {
+	NuxtLogger.debug(`>>> Entering parseStaticFunctionCall(node=${node},filter=${filter})`);
     functionName = callExpression.callee.name
+	NuxtLogger.debug(`<<< Exiting parseStaticFunctionCall(node=${node},filter=${filter})`);
     identifierNode = callExpression.callee
   // (<identifier>)()
   } else if (callExpression.callee.type === 'ParenthesizedExpression') {
@@ -156,6 +164,7 @@ export function parseStaticFunctionCall (node: ESTree.CallExpression | ESTree.Ch
     let memberObjectName: string | undefined
     // foo.bar()
     if (memberExpression.object.type === 'Identifier') {
+	NuxtLogger.debug(`>>> Entering getParsedMemberExpression(memberExpression=${memberExpression})`);
       memberObjectName = memberExpression.object.name
       // (foo).bar()
     } else if (memberExpression.object.type === 'ParenthesizedExpression') {
@@ -197,6 +206,7 @@ export function parseStaticFunctionCall (node: ESTree.CallExpression | ESTree.Ch
       }
     }
 
+	NuxtLogger.debug(`<<< Exiting getParsedMemberExpression(memberExpression=${memberExpression})`);
     return null
   }
 
@@ -269,6 +279,7 @@ export interface ExportMetadata {
 export function parseStaticExportIdentifiers (node: ESTree.ExportNamedDeclaration | ESTree.ExportDefaultDeclaration | ESTree.TSExportAssignment, filter?: RegExp): ExportMetadata[] {
   // NAMED EXPORT -------------------------
   if (node.type === 'ExportNamedDeclaration' && node.exportKind !== 'type') {
+	NuxtLogger.debug(`>>> Entering parseStaticExportIdentifiers(node=${node},filter=${filter})`);
     // export const, let, var
     if (node.declaration?.type === 'VariableDeclaration') {
       return node.declaration.declarations.map((d) => {
@@ -317,6 +328,7 @@ export function parseStaticExportIdentifiers (node: ESTree.ExportNamedDeclaratio
       }).filter((v): v is ExportMetadata => !!v)
     }
 
+	NuxtLogger.debug(`<<< Exiting parseStaticExportIdentifiers(node=${node},filter=${filter})`);
     return []
   }
 

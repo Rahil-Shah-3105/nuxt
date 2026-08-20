@@ -1,5 +1,6 @@
 import { defineComponent, h } from 'vue'
 import type { DefineSetupFnComponent } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useLoadingIndicator } from '../composables/loading-indicator'
 
 interface NuxtLoadingIndicatorProps {
@@ -50,6 +51,7 @@ const NuxtLoadingIndicator = defineComponent({
     },
   },
   setup (props, { slots, expose }) {
+	NuxtLogger.debug(`>>> Entering setup(props=${props},slots=${slots},expose=${expose})`);
     const { progress, isLoading, error, start, finish, clear } = useLoadingIndicator({
       duration: props.duration,
       throttle: props.throttle,
@@ -81,6 +83,7 @@ const NuxtLoadingIndicator = defineComponent({
         zIndex: 999999,
       },
     }, slots)
+	NuxtLogger.debug(`<<< Exiting setup(props=${props},slots=${slots},expose=${expose})`);
   },
 }) as unknown as DefineSetupFnComponent<NuxtLoadingIndicatorProps>
 

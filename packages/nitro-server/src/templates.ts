@@ -1,10 +1,12 @@
 import type { NuxtTemplate, TSReference } from 'nuxt/schema'
+import logger from "./utils/logger.js";
 import { isAbsolute, join, relative } from 'pathe'
 
 export const nitroSchemaTemplate: NuxtTemplate = {
   filename: 'types/nitro-nuxt.d.ts',
   dependsOn: [],
   async getContents ({ nuxt }) {
+	logger.debug(`>>> Entering getContents(nuxt=${nuxt})`);
     const references = [] as TSReference[]
     const declarations = [] as string[]
     await nuxt.callHook('nitro:prepare:types', { references, declarations })
@@ -14,7 +16,9 @@ export const nitroSchemaTemplate: NuxtTemplate = {
       ...references.map(ref => renderReference(ref, typesDir)),
       ...declarations,
     ]
+	logger.debug(`getContents(nuxt=${nuxt}): typesDir → ${typesDir}`);
 
+	logger.debug(`<<< Exiting getContents(nuxt=${nuxt})`);
     return /* typescript */`
 ${lines.join('\n')}
 
@@ -60,8 +64,10 @@ declare module 'nitro/types' {
 }
 
 function renderReference (ref: TSReference, baseDir: string) {
+logger.debug(`>>> Entering renderReference(ref=${ref},baseDir=${baseDir})`);
   const stuff = 'path' in ref
     ? `path="${isAbsolute(ref.path) ? relative(baseDir, ref.path) : ref.path}"`
     : `types="${ref.types}"`
+logger.debug(`<<< Exiting renderReference(ref=${ref},baseDir=${baseDir})`);
   return `/// <reference ${stuff} />`
 }

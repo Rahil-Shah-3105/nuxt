@@ -36,6 +36,7 @@ import { renderSSRHeadOptions } from '#internal/unhead.config.mjs'
 import { NUXT_ASYNC_CONTEXT, NUXT_EARLY_HINTS, NUXT_INLINE_STYLES, NUXT_NO_SCRIPTS, NUXT_NO_SCRIPTS_PATTERNS, NUXT_NO_SCRIPTS_PROD, NUXT_PAGE_PATTERNS, NUXT_PAYLOAD_EXTRACTION, NUXT_PAYLOAD_INLINE, NUXT_PRERENDER_ERROR_PAGES, NUXT_RUNTIME_PAYLOAD_EXTRACTION, NUXT_SSR_STREAMING, NUXT_SSR_STREAMING_BOT_RE, NUXT_VIEW_TRANSITIONS, PARSE_ERROR_DATA } from '#internal/nuxt/nitro-config.mjs'
 import { appHead, appTeleportAttrs, appTeleportTag, componentIslands, componentIslandsActive, tracingChannelNuxt } from '#internal/nuxt.config.mjs'
 import entryIds from 'nuxt/entry-ids'
+import logger from "../../utils/logger.js";
 import { entryFileName } from 'nuxt/entry-chunk'
 import { iifeChunkFileName } from '#internal/streaming-iife-chunk.mjs'
 import { buildAssetsURL, publicAssetsURL } from '../utils/paths'
@@ -65,8 +66,10 @@ const SSR_BOT_RE: RegExp = NUXT_SSR_STREAMING_BOT_RE
 
 export default {
   fetch (request: ServerRequest) {
+	logger.debug(`>>> Entering fetch(request=${request})`); const _start = Date.now();
     const event = new H3Event(request)
 
+	logger.debug(`fetch(request=${request}): event → ${event}`);
     if (componentIslands && event.url.pathname.startsWith('/__nuxt_island/')) {
       return import('#internal/nuxt/island-renderer.mjs').then(r => r.default.fetch(request))
     }
@@ -74,6 +77,7 @@ export default {
     // Whether we're rendering an error page
     const isErrorRoute = event.url.pathname.startsWith('/__nuxt_error')
 
+	logger.debug(`fetch(request=${request}): isErrorRoute → ${isErrorRoute}`);
     if (isErrorRoute && !event.context.nuxt?.['~rendering-error'] /* allow internal fetch from the error handler */) {
       throw new HTTPError({
         status: 404,
@@ -95,6 +99,7 @@ export default {
       const renderingURL = event.url.pathname + event.url.search
       const stack = prerenderRenderingURLs.getStore()
       if (stack?.includes(renderingURL)) {
+	logger.debug(`fetch(request=${request}): stack → ${stack}`);
         const chain = [...stack, renderingURL].filter(url => !url.startsWith('/__nuxt_error')).map(url => `"${url}"`).join(' -> ')
         throw new HTTPError({
           status: 508,
@@ -104,6 +109,8 @@ export default {
       return prerenderRenderingURLs.run([...(stack || []), renderingURL], () => renderRoute(event, ssrError)).catch(error => rethrowWithResponseHeaders(event, error))
     }
 
+	logger.info(`fetch(request=${request}): API call took ${Date.now() - _start} ms`);
+	logger.debug(`<<< Exiting fetch(request=${request})`);
     return renderRoute(event, ssrError).catch(error => rethrowWithResponseHeaders(event, error))
   },
 }
@@ -120,7 +127,10 @@ const STATUS_TEXT: Record<number, string> = {
 }
 
 function isPrerenderedErrorPage (pathname: string) {
+logger.debug(`>>> Entering isPrerenderedErrorPage(pathname=${pathname})`);
   const status = Number(ERROR_PAGE_RE.exec(pathname)?.[1])
+logger.debug(`isPrerenderedErrorPage(pathname=${pathname}): status → ${status}`);
+logger.debug(`<<< Exiting isPrerenderedErrorPage(pathname=${pathname})`);
   return status && (NUXT_PRERENDER_ERROR_PAGES as number[]).includes(status) ? status : undefined
 }
 
@@ -256,8 +266,10 @@ async function renderRoute (event: H3Event, ssrError?: (NuxtPayload['error'] & {
 
     // Use explicitly thrown error in preference to subsequent rendering errors
     const _err = (!ssrError && ssrContext.payload?.error) || error
+	logger.debug(`renderRoute(event=${event},ssrError=${ssrError}): _err → ${_err}`);
     const r = ssrContext.nuxt?.hooks.callHook('app:error', _err)
     if (r instanceof Promise) { await r }
+	logger.debug(`renderRoute(event=${event},ssrError=${ssrError}): r → ${r}`);
     throw _err
   })
 

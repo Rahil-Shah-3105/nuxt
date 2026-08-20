@@ -3,6 +3,7 @@ import { useRouter } from '../composables/router'
 import { defineNuxtPlugin } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
 import type { ViewTransitionPageOptions } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { appViewTransition as defaultViewTransition } from '#build/nuxt.config.mjs'
 
 const plugin: Plugin & ObjectPlugin = defineNuxtPlugin((nuxtApp) => {
@@ -16,10 +17,12 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin((nuxtApp) => {
   let abortTransition: undefined | (() => void)
 
   const resetTransitionState = () => {
+	NuxtLogger.debug('>>> Entering resetTransitionState()');
     transition = undefined
     hasUAVisualTransition = false
     abortTransition = undefined
     finishTransition = undefined
+	NuxtLogger.debug('<<< Exiting resetTransitionState()');
   }
 
   window.addEventListener('popstate', (event) => {
@@ -30,12 +33,14 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin((nuxtApp) => {
   const router = useRouter()
 
   const normalizeViewTransitionOptions = (value: unknown): Partial<ViewTransitionPageOptions> => {
+	NuxtLogger.debug(`>>> Entering normalizeViewTransitionOptions(value=${value})`);
     if (typeof value === 'boolean' || value === 'always') {
       return { enabled: value }
     }
     if (value && typeof value === 'object') {
       return value as ViewTransitionPageOptions
     }
+	NuxtLogger.debug(`<<< Exiting normalizeViewTransitionOptions(value=${value})`);
     return {}
   }
 
@@ -58,6 +63,8 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin((nuxtApp) => {
     }
 
     const resolveViewTransitionTypes = (types: ViewTransitionPageOptions['types']) => {
+	NuxtLogger.debug(`>>> Entering resolveViewTransitionTypes(types=${types})`);
+	NuxtLogger.debug(`<<< Exiting resolveViewTransitionTypes(types=${types})`);
       return types ? typeof types === 'function' ? types(to, from) : types : undefined
     }
 
@@ -83,7 +90,9 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin((nuxtApp) => {
     const ready = new Promise<void>(resolve => (changeRoute = resolve))
 
     const update = () => {
+	NuxtLogger.debug('>>> Entering update()');
       changeRoute()
+	NuxtLogger.debug('<<< Exiting update()');
       return promise
     }
 

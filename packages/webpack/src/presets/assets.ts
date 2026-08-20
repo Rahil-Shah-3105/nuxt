@@ -1,7 +1,9 @@
 import type { WebpackConfigContext } from '../utils/config.ts'
+import logger from "../utils/logger.js";
 import { fileName } from '../utils/config.ts'
 
 export function assets (ctx: WebpackConfigContext) {
+logger.debug(`>>> Entering assets(ctx=${ctx})`);
   ctx.config.module!.rules!.push(
     {
       test: /\.(png|jpe?g|gif|svg|webp)$/i,
@@ -34,4 +36,5 @@ export function assets (ctx: WebpackConfigContext) {
       }],
     },
   )
+logger.debug(`<<< Exiting assets(ctx=${ctx})`);
 }

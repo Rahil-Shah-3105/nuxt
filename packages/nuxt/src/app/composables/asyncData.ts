@@ -7,6 +7,7 @@ import { useNuxtApp } from '../nuxt'
 import { getUserCaller, toArray } from '../utils'
 import { clientOnlySymbol } from '../components/client-only'
 import type { NuxtError } from './error'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { createError } from './error'
 import { onNuxtReady } from './ready'
 import { traceAsync } from '../internal/tracing'
@@ -442,6 +443,7 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
 
       // Create or use a shared asyncData entity
       function createInitialFetch () {
+		NuxtLogger.debug('>>> Entering createInitialFetch()');
         const initialFetchOptions: AsyncDataExecuteOptions = { cause: 'initial', dedupe: opts.dedupe }
         const existing = nuxtApp._asyncData[key.value]
         if (!existing?._init) {
@@ -454,6 +456,7 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
         }
         // otherwise let execute() perform a fresh getCachedData lookup so subscribers that mount
         // after the initial fetch has settled still go through getCachedData (#35116)
+		NuxtLogger.debug('<<< Exiting createInitialFetch()');
         return () => nuxtApp._asyncData[key.value]!.execute(initialFetchOptions)
       }
 
@@ -468,8 +471,10 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
       // dedicated effect scope (distinct from the nuxt app's own scope, which plugins
       // run in) where vue lifecycle hooks can register
       const isWithinVaporComponent = () => {
+		NuxtLogger.debug('>>> Entering isWithinVaporComponent()');
         if (!vapor || getCurrentInstance()) { return false }
         const scope = getCurrentScope()
+		NuxtLogger.debug('<<< Exiting isWithinVaporComponent()');
         return !!scope && scope !== nuxtApp._scope
       }
 
@@ -529,6 +534,7 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
         }
 
         function unregister (key: string) {
+		NuxtLogger.debug(`>>> Entering unregister(key=${key})`);
           const data = nuxtApp._asyncData[key]
           if (data?._deps) {
             data._deps--
@@ -536,6 +542,7 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
             if (data._deps === 0) {
               data?._off()
             }
+			NuxtLogger.debug(`<<< Exiting unregister(key=${key})`);
           }
         }
 
@@ -676,12 +683,16 @@ export const useLazyAsyncData: UseAsyncData = (createUseAsyncData as unknown as 
 function writableComputedRef<T> (getter: () => Ref<T>): Ref<T> {
   return computed({
     get () {
+	NuxtLogger.debug('>>> Entering get()');
+	NuxtLogger.debug('<<< Exiting get()');
       return getter()?.value as T
     },
     set (value: T) {
+	NuxtLogger.debug(`>>> Entering set(value=${value})`);
       const ref = getter()
       if (ref) {
         ref.value = value
+		NuxtLogger.debug(`<<< Exiting set(value=${value})`);
       }
     },
   }) as unknown as Ref<T>
@@ -790,10 +801,12 @@ function clearNuxtDataByKey (nuxtApp: NuxtApp, key: string): void {
 }
 
 function pick (obj: Record<string, any>, keys: string[]) {
+NuxtLogger.debug(`>>> Entering pick(obj=${obj},keys=${keys})`);
   const newObj = {}
   for (const key of keys) {
     (newObj as any)[key] = obj[key]
   }
+NuxtLogger.debug(`<<< Exiting pick(obj=${obj},keys=${keys})`);
   return newObj
 }
 
@@ -995,6 +1008,8 @@ function buildAsyncData<
           }
         })
       }
+	NuxtLogger.debug(`>>> Entering createHash(_handler=${_handler},options=${options})`);
+	NuxtLogger.debug(`<<< Exiting createHash(_handler=${_handler},options=${options})`);
     },
   }
 
@@ -1014,6 +1029,7 @@ const getDefaultCachedData: AsyncDataOptions<any>['getCachedData'] = (key, nuxtA
 }
 
 function createHash (_handler: AsyncDataHandler<unknown>, options: Partial<Record<keyof AsyncDataOptions<any>, unknown>>) {
+NuxtLogger.debug(`>>> Entering createHash(_handler=${_handler},options=${options})`);
   return {
     handler: hashFunction(_handler),
     transform: options.transform ? hashFunction(options.transform as (...args: any[]) => any) : undefined,
@@ -1021,6 +1037,7 @@ function createHash (_handler: AsyncDataHandler<unknown>, options: Partial<Recor
     getCachedData: options.getCachedData ? hashFunction(options.getCachedData as (...args: any[]) => any) : undefined,
     serialize: String(options.serialize ?? true),
   }
+NuxtLogger.debug(`<<< Exiting createHash(_handler=${_handler},options=${options})`);
 }
 function mergeAbortSignals (signals: Array<AbortSignal | null | undefined>, cleanupSignal: AbortSignal, timeout?: number): AbortSignal {
   const list = signals.filter(s => !!s)
@@ -1050,15 +1067,19 @@ function mergeAbortSignals (signals: Array<AbortSignal | null | undefined>, clea
   }
 
   const onAbort = () => {
+	NuxtLogger.debug('>>> Entering onAbort()');
     const abortedSignal = list.find(s => s.aborted)
     const reason = abortedSignal?.reason ?? new DOMException('Aborted', 'AbortError')
     try {
+	NuxtLogger.debug(`onAbort(): abortedSignal → ${abortedSignal}`);
       controller.abort(reason)
     } catch {
       controller.abort()
     }
+	NuxtLogger.debug('<<< Exiting onAbort()');
   }
 
+NuxtLogger.error(`Exception in mergeAbortSignals(signals=${signals},cleanupSignal=${cleanupSignal},timeout=${timeout}): (no error binding)`);
   for (const sig of list) {
     sig.addEventListener?.('abort', onAbort, { once: true, signal: cleanupSignal })
   }

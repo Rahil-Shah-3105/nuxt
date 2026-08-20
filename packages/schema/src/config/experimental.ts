@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 import { schemaDiagnostics } from '../diagnostics.ts'
 import { defineResolvers } from '../utils/definition.ts'
 
@@ -9,13 +10,17 @@ export default defineResolvers({
     multiApp: false,
     typescriptBundlerResolution: {
       async $resolve (val, get) {
+		logger.debug(`>>> Entering resolve(val=${val},get=${get})`);
         // @ts-expect-error TODO: remove in v3.10
+		logger.debug(`>>> Entering resolve(_val=${_val},get=${get})`);
         val = typeof val === 'boolean' ? val : await (get('experimental')).then(e => e?.typescriptBundlerResolution as string | undefined)
         if (typeof val === 'boolean') { return val }
         const setting = await get('typescript.tsConfig').then(r => r?.compilerOptions?.moduleResolution)
         if (setting) {
+		logger.debug(`resolve(val=${val},get=${get}): setting → ${setting}`);
           return setting.toLowerCase() === 'bundler'
         }
+		logger.debug(`<<< Exiting resolve(val=${val},get=${get})`);
         return true
       },
     },
@@ -177,6 +182,8 @@ export default defineResolvers({
         if (srcDir === rootDir) {
           return 'chokidar-granular' as const
         }
+		logger.debug(`>>> Entering resolve(val=${val})`);
+		logger.debug(`<<< Exiting resolve(val=${val})`);
         return 'chokidar' as const
       },
     },
@@ -311,8 +318,11 @@ export default defineResolvers({
         // so audit tools measure the same streamed response real users get.
         const defaultBotRegex = /bot\b|crawl|spider|slurp|facebookexternalhit|google\b|bing\b|yandex\b|baidu\b|duckduck/i
         const obj = (val !== null && typeof val === 'object') ? val as { enabled?: boolean, botRegex?: RegExp } : null
+		logger.debug(`resolve(val=${val}): obj → ${obj}`);
         const isEnabled = val === true || (obj !== null && obj.enabled !== false)
         if (!isEnabled) {
+		logger.debug(`resolve(_val=${_val},get=${get}): val → ${val}`);
+		logger.debug(`resolve(val=${val}): isEnabled → ${isEnabled}`);
           return { enabled: false as const, botRegex: defaultBotRegex }
         }
         const botRegex = obj?.botRegex instanceof RegExp ? obj.botRegex : defaultBotRegex

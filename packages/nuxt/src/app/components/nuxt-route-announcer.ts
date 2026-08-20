@@ -1,6 +1,7 @@
 import { computed, defineComponent, h } from 'vue'
 import type { DefineSetupFnComponent, SlotsType, VNode } from 'vue'
 import type { Politeness } from '../composables/route-announcer'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useRouteAnnouncer } from '../composables/route-announcer'
 
 interface NuxtRouteAnnouncerProps {
@@ -25,6 +26,7 @@ const NuxtRouteAnnouncer = defineComponent({
     },
   },
   setup (props, { slots, expose }) {
+	NuxtLogger.debug(`>>> Entering setup(props=${props},slots=${slots},expose=${expose})`);
     const { set, polite, assertive, message, politeness } = useRouteAnnouncer({ politeness: props.politeness })
 
     const role = computed(() => {
@@ -64,6 +66,7 @@ const NuxtRouteAnnouncer = defineComponent({
         'padding': '0',
       },
     }, slots.default ? slots.default({ message: message.value }) : message.value))
+	NuxtLogger.debug(`<<< Exiting setup(props=${props},slots=${slots},expose=${expose})`);
   },
 }) as unknown as DefineSetupFnComponent<NuxtRouteAnnouncerProps, {}, NuxtRouteAnnouncerSlots>
 

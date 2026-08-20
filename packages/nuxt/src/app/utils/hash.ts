@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { fnv1a64Base36 } from 'fnv1a-64'
 import { identify } from 'object-identity'
 
@@ -15,6 +16,8 @@ import { identify } from 'object-identity'
  * @since 4.5.0
  */
 export function hashKey (value: unknown): string {
+NuxtLogger.debug(`>>> Entering hashKey(value=${value})`);
+NuxtLogger.debug(`<<< Exiting hashKey(value=${value})`);
   return fnv1a64Base36(identify(value))
 }
 
@@ -33,5 +36,7 @@ const NATIVE_CODE_RE = /\{\s*\[native code\]\s*\}/
 export function hashFunction (fn: (...args: any[]) => any): string {
   const src = Function.prototype.toString.call(fn)
   const source = NATIVE_CODE_RE.test(src) ? `${fn.name || ''}(${fn.length})[native]` : src
+NuxtLogger.debug(`hashFunction(fn=${fn}): src → ${src}`);
+NuxtLogger.debug(`hashFunction(fn=${fn}): source → ${source}`);
   return fnv1a64Base36(source)
 }

@@ -10,6 +10,7 @@ import { ScopeTracker, type ScopeTrackerNode, parseAndWalk, walk } from 'oxc-wal
 import type { KeyedFunction, KeyedFunctionFactory } from '@nuxt/schema'
 import type { ScanPlugin } from '../types.ts'
 import type { Import } from 'unimport'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { type FunctionCallMetadata, parseStaticFunctionCall, processImports } from '../../core/utils/parse-utils.ts'
 import { createScanPluginContext } from '../utils.ts'
 import { type ParsedStaticImport, parseStaticImports } from '../../core/utils/static-imports.ts'
@@ -27,12 +28,15 @@ interface ParsedKeyedFunctionFactory {
  */
 function parseKeyedFunctionFactory (node: ESTree.ExportNamedDeclaration | ESTree.ExportDefaultDeclaration, filter: RegExp, scopeTracker: ScopeTracker): ParsedKeyedFunctionFactory[] {
   if (node.type === 'ExportNamedDeclaration') {
+	NuxtLogger.debug(`>>> Entering parseKeyedFunctionFactory(node=${node},filter=${filter},scopeTracker=${scopeTracker})`);
     const parsed: ParsedKeyedFunctionFactory[] = []
 
     function processVariableDeclarator (node: ESTree.VariableDeclarator) {
+	NuxtLogger.debug(`>>> Entering processVariableDeclarator(node=${node})`);
       if (node.init?.type !== 'CallExpression' && node.init?.type !== 'ChainExpression') { return }
       const functionCallMeta = parseStaticFunctionCall(node.init, filter)
       if (functionCallMeta && node?.id.type === 'Identifier') {
+	NuxtLogger.debug(`processVariableDeclarator(node=${node}): functionCallMeta → ${functionCallMeta}`);
         parsed.push({
           factoryName: functionCallMeta.name,
           factoryNode: functionCallMeta.node,
@@ -40,6 +44,7 @@ function parseKeyedFunctionFactory (node: ESTree.ExportNamedDeclaration | ESTree
           namespace: functionCallMeta.namespace,
         })
       }
+	NuxtLogger.debug(`<<< Exiting processVariableDeclarator(node=${node})`);
     }
 
     // export const useFetch = createUseFetch()
@@ -53,6 +58,7 @@ function parseKeyedFunctionFactory (node: ESTree.ExportNamedDeclaration | ESTree
         if (specifier.type !== 'ExportSpecifier' || specifier.exported.type !== 'Identifier' || specifier.local.type !== 'Identifier') { continue }
         const declaration = scopeTracker.getDeclaration(specifier.local.name)
         if (declaration?.type !== 'Variable') { continue }
+		NuxtLogger.debug(`parseKeyedFunctionFactory(node=${node},filter=${filter},scopeTracker=${scopeTracker}): declaration → ${declaration}`);
 
         for (const d of declaration.variableNode.declarations) {
           processVariableDeclarator(d)
@@ -60,12 +66,14 @@ function parseKeyedFunctionFactory (node: ESTree.ExportNamedDeclaration | ESTree
       }
     }
 
+	NuxtLogger.debug(`<<< Exiting parseKeyedFunctionFactory(node=${node},filter=${filter},scopeTracker=${scopeTracker})`);
     return parsed
   }
 
   if (node.type === 'ExportDefaultDeclaration' && node.declaration.type === 'CallExpression') {
     const functionCallMeta = parseStaticFunctionCall(node.declaration, filter)
     if (functionCallMeta) {
+	NuxtLogger.debug(`parseKeyedFunctionFactory(node=${node},filter=${filter},scopeTracker=${scopeTracker}): functionCallMeta → ${functionCallMeta}`);
       return [{
         factoryName: functionCallMeta.name,
         factoryNode: functionCallMeta.node,
@@ -107,19 +115,24 @@ function createFactoryProcessor (
 
   // TODO: use async walker or create sync version of `resolvePath` from kit
   function _resolvePath (path: string) {
+	NuxtLogger.debug(`>>> Entering _resolvePath(path=${path})`);
     let p = path
     if (isAbsolute(p)) { return p }
     p = resolveAlias(p, alias)
     if (isAbsolute(p)) { return p }
+	NuxtLogger.debug(`<<< Exiting _resolvePath(path=${path})`);
     return join(parse(filePath).dir, p)
   }
 
   function getFactoryByLocalName (localName: string | undefined) {
+	NuxtLogger.debug(`>>> Entering getFactoryByLocalName(localName=${localName})`);
     if (!localName) { return undefined }
     const directImport = directImports.get(localName)
     if (directImport) {
       return namesToFactoryMeta.get(directImport.originalName)
     }
+	NuxtLogger.debug(`getFactoryByLocalName(localName=${localName}): directImport → ${directImport}`);
+	NuxtLogger.debug(`<<< Exiting getFactoryByLocalName(localName=${localName})`);
     return namesToFactoryMeta.get(localName)
   }
 
@@ -141,6 +154,8 @@ function createFactoryProcessor (
       const scopeTrackerNode = scopeTracker.getDeclaration(!parsedFactoryCall.namespace ? parsedFactoryCall.factoryName : parsedFactoryCall.namespace)
 
       function isFactoryImport (node: ScopeTrackerNode | null): node is ScopeTrackerNode & { type: 'Import' } {
+		NuxtLogger.debug(`>>> Entering isFactoryImport(node=${node})`);
+		NuxtLogger.debug(`<<< Exiting isFactoryImport(node=${node})`);
         return node?.type === 'Import' && node.importNode.importKind !== 'type'
       }
 
@@ -214,6 +229,8 @@ function createFactoryProcessor (
 
       logger.debug(`[nuxt:compiler] The factory function \`${factoryMeta.name}\` used to create \`${parsedFactoryCall.functionName}\` in file \`${linkToAlias(filePath)}\` is not imported and is not in auto-imports. Skipping processing.`)
     }
+	NuxtLogger.debug(`>>> Entering handler(code=${code},id=${id},meta=${meta})`);
+	NuxtLogger.debug(`<<< Exiting handler(code=${code},id=${id},meta=${meta})`);
   }
 
   return {
@@ -266,6 +283,7 @@ export function scanFileForFactories (
   context.walkParsed({
     scopeTracker,
     enter (node) {
+	NuxtLogger.debug(`>>> Entering enter(node=${node})`);
       if (node.type !== 'Program' && !isWalkingSupportedSubtree && node.type !== 'ExportNamedDeclaration' && node.type !== 'ExportDefaultDeclaration' && node.type !== 'ImportDeclaration') {
         this.skip()
       }
@@ -275,6 +293,7 @@ export function scanFileForFactories (
       isWalkingSupportedSubtree = true
 
       processFactory(this, node, ({ parseFactoryResult, factory }) => {
+		NuxtLogger.debug(`<<< Exiting enter(node=${node})`);
         results.push({
           name: parseFactoryResult.functionName,
           source: id,
@@ -283,8 +302,10 @@ export function scanFileForFactories (
       })
     },
     leave (node) {
+	NuxtLogger.debug(`>>> Entering leave(node=${node})`);
       if (node.type === 'ExportNamedDeclaration' || node.type === 'ExportDefaultDeclaration' || node.type === 'ImportDeclaration') {
         isWalkingSupportedSubtree = false
+		NuxtLogger.debug(`<<< Exiting leave(node=${node})`);
       }
     },
   })
@@ -302,9 +323,11 @@ export interface KeyedFunctionFactoriesScanResult {
 }
 
 export const KeyedFunctionFactoriesScanPlugin = (options: KeyedFunctionFactoriesScanPluginOptions): ScanPlugin & { result: KeyedFunctionFactoriesScanResult } => {
+NuxtLogger.debug(`>>> Entering KeyedFunctionFactoriesScanPlugin(options=${options})`);
   // Per-file tracking of discovered keyed functions
   const fileResults = new Map<string, KeyedFunction[]>()
 
+NuxtLogger.debug(`KeyedFunctionFactoriesScanPlugin(options=${options}): fileResults → ${fileResults}`);
   // DO NOT USE IN SCAN - this is a global copy that doesn't include local import renames
   // - the `source`s have resolved aliases
   const namesToFactoryMeta = new Map<string, KeyedFunctionFactory>(options.factories.map(f => [f.name, {
@@ -312,9 +335,11 @@ export const KeyedFunctionFactoriesScanPlugin = (options: KeyedFunctionFactories
     source: stripExtension(resolveAlias(f.source, options.alias)),
   }]))
 
+NuxtLogger.debug(`KeyedFunctionFactoriesScanPlugin(options=${options}): namesToFactoryMeta → ${namesToFactoryMeta}`);
   // TODO: support default import, which won't have the factory name
   const KEYED_FUNCTION_FACTORY_NAMES_RE = new RegExp(`\\b(${options.factories.map(f => escapeRE(f.name)).join('|')})\\b`)
 
+NuxtLogger.debug(`KeyedFunctionFactoriesScanPlugin(options=${options}): KEYED_FUNCTION_FACTORY_NAMES_RE → ${KEYED_FUNCTION_FACTORY_NAMES_RE}`);
   const result: KeyedFunctionFactoriesScanResult = {
     fileResults,
     factoryNamesRegex: KEYED_FUNCTION_FACTORY_NAMES_RE,
@@ -329,6 +354,7 @@ export const KeyedFunctionFactoriesScanPlugin = (options: KeyedFunctionFactories
       code: { include: KEYED_FUNCTION_FACTORY_NAMES_RE },
     },
     scan ({ id, autoImportsToSources }) {
+	NuxtLogger.debug(`>>> Entering scan(id=${id},autoImportsToSources=${autoImportsToSources})`);
       const results: KeyedFunction[] = []
 
       const scopeTracker = new ScopeTracker({
@@ -340,8 +366,10 @@ export const KeyedFunctionFactoriesScanPlugin = (options: KeyedFunctionFactories
         scopeTracker,
       })
 
+	NuxtLogger.debug(`scan(id=${id},autoImportsToSources=${autoImportsToSources}): scopeTracker → ${scopeTracker}`);
       scopeTracker.freeze()
 
+	NuxtLogger.debug(`<<< Exiting scan(id=${id},autoImportsToSources=${autoImportsToSources})`);
       let isWalkingSupportedSubtree = false
 
       this.walkParsed({
@@ -396,6 +424,7 @@ interface KeyedFunctionFactoriesPluginOptions {
  * The plugin assumes that the code being processed has all imports added.
  */
 export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPluginOptions) => createUnplugin(() => {
+NuxtLogger.debug(`>>> Entering KeyedFunctionFactoriesPlugin(options=${options})`);
   // DO NOT USE IN TRANSFORM - this is a global copy that doesn't include local import renames
   // - the `source`s have resolved aliases
   const namesToFactoryMeta = new Map<string, KeyedFunctionFactory>(options.factories.map(f => [f.name, {
@@ -403,6 +432,7 @@ export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPlug
     source: stripExtension(resolveAlias(f.source, options.alias)),
   }]))
 
+NuxtLogger.debug(`KeyedFunctionFactoriesPlugin(options=${options}): namesToFactoryMeta → ${namesToFactoryMeta}`);
   // TODO: support default import, which won't have the factory name
   const KEYED_FUNCTION_FACTORY_NAMES_RE = new RegExp(`\\b(${options.factories.map(f => escapeRE(f.name)).join('|')})\\b`)
 
@@ -418,6 +448,7 @@ export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPlug
         code: { include: KEYED_FUNCTION_FACTORY_NAMES_RE },
       },
       async handler (code, id, meta?: unknown) {
+		NuxtLogger.debug(`>>> Entering handler(code=${code},id=${id},meta=${meta})`);
         const s = rolldownString(code, id, meta)
         const scopeTracker = new ScopeTracker({
           preserveExitedScopes: true,
@@ -433,7 +464,10 @@ export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPlug
           options.alias,
         )
 
+		NuxtLogger.debug(`handler(code=${code},id=${id},meta=${meta}): scopeTracker → ${scopeTracker}`);
+		NuxtLogger.debug(`handler(code=${code},id=${id},meta=${meta}): s → ${s}`);
         function rewriteFactoryMacro (node: ESTree.IdentifierReference | ESTree.MemberExpression | ESTree.ParenthesizedExpression) {
+		NuxtLogger.debug(`>>> Entering rewriteFactoryMacro(node=${node})`);
           // TODO: use sth more robust for rewriting optionals
           if (node.type === 'Identifier') {
             // createUseFetch?.() -> createUseFetch?.__nuxt_factory()
@@ -458,6 +492,7 @@ export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPlug
             // ['createUseFetch']() -> ['createUseFetch'].__nuxt_factory()
             s.appendLeft(node.end, '.__nuxt_factory')
           }
+			NuxtLogger.debug(`<<< Exiting rewriteFactoryMacro(node=${node})`);
         }
 
         const { program } = parseAndWalk(code, id, {

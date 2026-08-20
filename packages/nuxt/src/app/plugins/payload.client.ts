@@ -2,6 +2,7 @@ import { withoutFragment } from 'ufo'
 
 import { defineNuxtPlugin } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { isCachedPayloadRoute, loadPayload } from '../composables/payload'
 import { onNuxtReady } from '../composables/ready'
 import { useRouter } from '../composables/router'
@@ -18,10 +19,13 @@ const forwardedPrefetchEntries = new Map<string, ActiveHeadEntryLike>()
 const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
   name: 'nuxt:payload',
   setup (nuxtApp) {
+	NuxtLogger.debug(`>>> Entering setup(nuxtApp=${nuxtApp})`);
     // Load payload after middleware & once final route is resolved
     const staticKeysToRemove = new Set<string>()
     const router = useRouter()
     if (prefetchPreloadTags) {
+	NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): staticKeysToRemove → ${staticKeysToRemove}`);
+	NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): router → ${router}`);
       // drop forwarded `rel="prefetch" hints so they don't linger indefinitely.
       router.afterEach(() => {
         for (const entry of forwardedPrefetchEntries.values()) {
@@ -79,6 +83,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
         setTimeout(getAppManifest, 1000)
       }
     })
+	NuxtLogger.debug(`<<< Exiting setup(nuxtApp=${nuxtApp})`);
   },
 })
 
