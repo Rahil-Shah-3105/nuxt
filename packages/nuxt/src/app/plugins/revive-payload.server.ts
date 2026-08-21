@@ -3,6 +3,7 @@ import { definePayloadReducer } from '../composables/payload'
 import { isNuxtError } from '../composables/error'
 import { defineNuxtPlugin } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { componentIslands } from '#build/nuxt.config.mjs'
 import { isValidIslandKey } from './utils'
@@ -36,9 +37,11 @@ if (componentIslands) {
 const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
   name: 'nuxt:revive-payload:server',
   setup () {
+	NuxtLogger.debug('>>> Entering setup()');
     for (const [reducer, fn] of reducers) {
       definePayloadReducer(reducer, fn)
     }
+	NuxtLogger.debug('<<< Exiting setup()');
   },
 })
 

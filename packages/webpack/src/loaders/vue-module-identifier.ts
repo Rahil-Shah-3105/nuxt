@@ -1,4 +1,5 @@
 import type { LoaderDefinitionFunction } from 'webpack'
+import logger from "../utils/logger.js";
 import { normalize, relative } from 'pathe'
 
 interface LoaderOptions {
@@ -6,6 +7,7 @@ interface LoaderOptions {
 }
 
 const vueModuleIdentifierLoader: LoaderDefinitionFunction<LoaderOptions> = function (source) {
+logger.debug(`>>> Entering vueModuleIdentifierLoader(source=${source})`);
   this.cacheable?.()
 
   const { srcDir } = this.getOptions() || {}
@@ -17,6 +19,7 @@ const vueModuleIdentifierLoader: LoaderDefinitionFunction<LoaderOptions> = funct
 
   const context = srcDir || this.rootContext || this.context || this._compiler?.options?.context
   const relativePath = context ? relative(context, resourcePath) : resourcePath
+logger.debug(`vueModuleIdentifierLoader(source=${source}): relativePath → ${relativePath}`);
   const moduleId = normalize(relativePath).replace(/^\.\//, '').replace(/\\/g, '/')
 
   const snippet = `\n;__exports__.__moduleIdentifier = ${JSON.stringify(moduleId)};`
@@ -24,3 +27,4 @@ const vueModuleIdentifierLoader: LoaderDefinitionFunction<LoaderOptions> = funct
 }
 
 export default vueModuleIdentifierLoader
+logger.debug(`<<< Exiting vueModuleIdentifierLoader(source=${source})`);

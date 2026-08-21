@@ -5,17 +5,22 @@ import type { H3Event } from 'nitro/h3'
 import { serverFetch } from 'nitro'
 
 import type { SSRErrorInput } from '../utils/error'
+import logger from "../../utils/logger.js";
 import { SSR_ERROR_PARAM, encodeSSRError, isJsonRequest } from '../utils/error'
 import { generateErrorOverlayHTML } from '../utils/dev'
 
 export default <NitroErrorHandler> async function errorhandler (error, event, { defaultHandler }) {
+logger.debug(`>>> Entering errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler})`);
   // invoke default Nitro error handler (which will log appropriately if required)
   const defaultRes = await defaultHandler(error, event, { json: true })
 
+logger.debug(`errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): defaultRes → ${defaultRes}`);
   // return Nitro response + our headers for redirects and JSON responses
   const status = error.status || 500
+logger.debug(`errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): status → ${status}`);
   const headers = new Headers(error.headers)
   if (isJsonRequest(event) || (status === 404 && defaultRes.status === 302)) {
+logger.debug(`errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): headers → ${headers}`);
     const setCookies = new Set(headers.getSetCookie())
     const headerEntries = [
       new Headers(defaultRes.headers),
@@ -38,12 +43,15 @@ export default <NitroErrorHandler> async function errorhandler (error, event, { 
   }
 
   const errorObject = (defaultRes.body || {}) as SSRErrorInput
+logger.debug(`errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): errorObject → ${errorObject}`);
   // we will be rendering this error internally so we pass along the error.data safely
   errorObject.data ??= error.data
   errorObject.url = event.req.url
+logger.debug(`errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): errorObject.url → ${errorObject.url}`);
   // `fatal` is Nuxt-only, so Nitro's error body does not carry it
   errorObject.fatal = (error as { fatal?: boolean }).fatal ?? false
   const errorCause = import.meta.dev ? serializeErrorCause(error.cause) : undefined
+logger.debug(`errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): errorCause → ${errorCause}`);
 
   // Merge defaultRes headers, skipping content-type (would be application/json)
   // and content-security-policy (would disable JS execution in the error page)
@@ -51,9 +59,11 @@ export default <NitroErrorHandler> async function errorhandler (error, event, { 
 
   // Skip SSR error rendering if we're already inside one, to avoid recursion.
   const isRenderingError = (event as H3Event).url?.pathname.startsWith('/__nuxt_error') || !!(event as H3Event).context.nuxt?.['~rendering-error']
+logger.debug(`errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): isRenderingError → ${isRenderingError}`);
 
   if (!isRenderingError) {
     const eventContext = (event as H3Event).context
+	logger.debug(`errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): eventContext → ${eventContext}`);
     eventContext.nuxt ||= {}
     eventContext.nuxt['~rendering-error'] = true
   }
@@ -74,6 +84,7 @@ export default <NitroErrorHandler> async function errorhandler (error, event, { 
     },
   ).catch(() => null)
 
+logger.error(`Exception in errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): (no error binding)`);
   // Fallback to static rendered error page
   if (!res) {
     const { template } = await import('../templates/error-500')
@@ -92,9 +103,11 @@ export default <NitroErrorHandler> async function errorhandler (error, event, { 
 
   let html = await res.text()
 
+logger.debug(`errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): html → ${html}`);
   if (import.meta.dev && !import.meta.test && typeof html === 'string') {
     const prettyResponse = await defaultHandler(error, event, { json: false })
     if (typeof prettyResponse.body === 'string') {
+	logger.debug(`errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler}): prettyResponse → ${prettyResponse}`);
       html = html.replace('</body>', `${generateErrorOverlayHTML(prettyResponse.body, { startMinimized: 300 <= error.status && error.status < 500 })}</body>`)
     }
   }
@@ -104,6 +117,7 @@ export default <NitroErrorHandler> async function errorhandler (error, event, { 
   if ('res' in event) {
     mergeHeaders(headers, (event as H3Event).res.headers, setCookies)
   }
+	logger.debug(`<<< Exiting errorhandler(error=${error},event=${event},defaultHandler=${defaultHandler})`);
 
   return new Response(html, {
     headers,
@@ -132,6 +146,7 @@ function mergeHeaders (target: Headers, overrides: Headers | [string, string][] 
 function serializeErrorCause (cause: unknown, depth = 0, seen = new WeakSet<Error>()): SerializedErrorCause | undefined {
   if (depth >= 10 || (cause instanceof Error && seen.has(cause))) { return }
   if (cause instanceof Error) {
+	logger.debug(`>>> Entering serializeErrorCause(cause=${cause},depth=${depth},seen=${seen})`);
     seen.add(cause)
     const nestedCause = serializeErrorCause(cause.cause, depth + 1, seen)
     return {

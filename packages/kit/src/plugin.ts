@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
 import { normalize } from 'pathe'
 import type { NuxtPlugin, NuxtPluginTemplate } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 import { resolveModulePath } from 'exsolve'
 import { MODE_RE, filterInPlace } from './utils.ts'
 import { pluginDiagnostics } from './diagnostics/plugins.ts'
@@ -17,6 +18,9 @@ const pluginSymbol = Symbol.for('nuxt plugin')
 export function normalizePlugin (plugin: NuxtPlugin | string): NuxtPlugin {
   // Normalize src
   if (typeof plugin === 'string') {
+	logger.debug(`>>> Entering normalizePlugin(plugin=${plugin})`);
+	logger.error(`Exception in normalizePlugin(plugin=${plugin}): (no error binding)`);
+	logger.debug(`<<< Exiting normalizePlugin(plugin=${plugin})`);
     plugin = { src: plugin }
   } else {
     plugin = { ...plugin }
@@ -47,6 +51,7 @@ export function normalizePlugin (plugin: NuxtPlugin | string): NuxtPlugin {
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   if (plugin.ssr) {
     plugin.mode = 'server'
+	logger.debug(`normalizePlugin(plugin=${plugin}): plugin.mode → ${plugin.mode}`);
   }
   if (!plugin.mode) {
     const [, mode = 'all'] = plugin.src.match(MODE_RE) || []
@@ -79,17 +84,21 @@ export function normalizePlugin (plugin: NuxtPlugin | string): NuxtPlugin {
  */
 export interface AddPluginOptions { append?: boolean }
 export function addPlugin (_plugin: NuxtPlugin | string, opts: AddPluginOptions = {}): NuxtPlugin {
+logger.debug(`>>> Entering addPlugin(_plugin=${_plugin},opts=${opts})`);
   const nuxt = useNuxt()
 
+logger.debug(`addPlugin(_plugin=${_plugin},opts=${opts}): nuxt → ${nuxt}`);
   // Normalize plugin
   const plugin = normalizePlugin(_plugin)
 
+logger.debug(`addPlugin(_plugin=${_plugin},opts=${opts}): plugin → ${plugin}`);
   // Remove any existing plugin with the same src
   filterInPlace(nuxt.options.plugins, p => normalizePlugin(p).src !== plugin.src)
 
   // Prepend to array by default to be before user provided plugins since is usually used by modules
   nuxt.options.plugins[opts.append ? 'push' : 'unshift'](plugin)
 
+logger.debug(`<<< Exiting addPlugin(_plugin=${_plugin},opts=${opts})`);
   return plugin
 }
 
@@ -97,10 +106,12 @@ export function addPlugin (_plugin: NuxtPlugin | string, opts: AddPluginOptions 
  * Adds a template and registers as a nuxt plugin.
  */
 export function addPluginTemplate (plugin: NuxtPluginTemplate | string, opts: AddPluginOptions = {}): NuxtPlugin {
+logger.debug(`>>> Entering addPluginTemplate(plugin=${plugin},opts=${opts})`);
   const normalizedPlugin: NuxtPlugin = typeof plugin === 'string'
     ? { src: plugin }
     // Update plugin src to template destination
     : { ...plugin, src: addTemplate(plugin).dst! }
 
+logger.debug(`<<< Exiting addPluginTemplate(plugin=${plugin},opts=${opts})`);
   return addPlugin(normalizedPlugin, opts)
 }

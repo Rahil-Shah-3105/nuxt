@@ -11,6 +11,7 @@ import remapping from '@ampproject/remapping'
 
 import type { Nitro } from 'nitro/types'
 import type { Nuxt, NuxtBuildOutputs } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 
 import { NUXT_BUILD_OUTPUT_MAP, distDir } from './utils.ts'
 
@@ -29,12 +30,14 @@ function collectSsrGraphCss (moduleGraph: EnvironmentModuleGraph): { urls: strin
   const urls = new Set<string>()
   const files = new Set<string>()
   for (const [mod, node] of moduleGraph.urlToModuleMap.entries()) {
+logger.debug(`collectSsrGraphCss(moduleGraph=${moduleGraph}): urls → ${urls}`);
     if (!IS_CSS_RE.test(mod) || 'raw' in getQuery(mod)) { continue }
     const importers = node.importers
     if (importers?.size && [...importers].every(i => i.url && 'raw' in getQuery(i.url))) { continue }
     urls.add(mod)
     if (node.file) { files.add(node.file) }
   }
+logger.debug(`collectSsrGraphCss(moduleGraph=${moduleGraph}): files → ${files}`);
   return { urls: [...urls], files }
 }
 
@@ -46,6 +49,7 @@ function collectSsrGraphCss (moduleGraph: EnvironmentModuleGraph): { urls: strin
 function resolveGlobalCss (nuxt: Nuxt): Array<{ file: string, url: string }> {
   const out = new Map<string, string>()
   for (const entry of nuxt.options.css) {
+	logger.debug(`>>> Entering resolveGlobalCss(nuxt=${nuxt})`);
     if (typeof entry !== 'string') { continue }
     const resolved = resolveAlias(entry, nuxt.options.alias)
     if (isAbsolute(resolved)) {
@@ -64,6 +68,8 @@ function resolveGlobalCss (nuxt: Nuxt): Array<{ file: string, url: string }> {
 }
 
 function toFsUrl (path: string): string {
+logger.debug(`>>> Entering toFsUrl(path=${path})`);
+logger.debug(`<<< Exiting toFsUrl(path=${path})`);
   return '/@fs' + path.replace(/^(?!\/)/, '/')
 }
 
@@ -74,7 +80,9 @@ function toFsUrl (path: string): string {
  * both be emitted as `<link>` tags.
  */
 function collectDevCss (nuxt: Nuxt, moduleGraph: EnvironmentModuleGraph): string[] {
+logger.debug(`>>> Entering collectDevCss(nuxt=${nuxt},moduleGraph=${moduleGraph})`);
   const { urls, files } = collectSsrGraphCss(moduleGraph)
+logger.debug(`<<< Exiting collectDevCss(nuxt=${nuxt},moduleGraph=${moduleGraph})`);
   return [...urls, ...resolveGlobalCss(nuxt).filter(e => !files.has(e.file)).map(e => e.url)]
 }
 
@@ -97,11 +105,13 @@ export function setupNitroViteEnvironment (nuxt: Nuxt & { _nitro?: Nitro }, nitr
   // env hot channels whenever the graph gains a CSS module. The worker caches
   // the latest set and serves it, unioned with the globally-registered CSS.
   if (nuxt.options.dev) {
+	logger.debug(`>>> Entering setupNitroViteEnvironment(nuxt=${nuxt},nitro=${nitro})`);
     nuxt.options.vite.plugins ||= []
     nuxt.options.vite.plugins.push(DevClientCssPlugin(nuxt))
 
     const globalCssCode = JSON.stringify(resolveGlobalCss(nuxt).map(e => e.url))
     // The virtual is evaluated once per importer in the ssr runner, so the
+	logger.debug(`setupNitroViteEnvironment(nuxt=${nuxt},nitro=${nitro}): globalCssCode → ${globalCssCode}`);
     // cache lives on a worker-scoped `globalThis` property shared across those
     // instances rather than a module-local binding. On eval the worker asks
     // for a seed, so a freshly (re)started runner picks up the CSS the graph
@@ -119,6 +129,10 @@ export function setupNitroViteEnvironment (nuxt: Nuxt & { _nitro?: Nitro }, nitr
       '  return [...new Set(store.css ?? globalCss)]',
       '}',
     ].join('\n')
+	logger.debug(`setupNitroViteEnvironment(nuxt=${nuxt},nitro=${nitro}): store → ${store}`);
+	logger.debug('>>> Entering getDevClientCss()');
+	logger.debug(`<<< Exiting setupNitroViteEnvironment(nuxt=${nuxt},nitro=${nitro})`);
+	logger.debug('<<< Exiting getDevClientCss()');
   }
 
   // Per-env `buildStart`/`buildEnd` is what causes unimport's plugin-instance
@@ -172,6 +186,7 @@ export function setupNitroViteEnvironment (nuxt: Nuxt & { _nitro?: Nitro }, nitr
       const buildAssetsDir = nuxt.options.app.buildAssetsDir
       const VITE_ASSET_PREFIX_RE = new RegExp(`^${escapeRE(buildAssetsDir.replace(/\/+$/, ''))}\\/(@vite\\/(?:client|env)|@react-refresh)(?:\\?|$|\\/)`)
       viteServer.middlewares.use((req, _res, next) => {
+	logger.debug(`setupNitroViteEnvironment(nuxt=${nuxt},nitro=${nitro}): VITE_ASSET_PREFIX_RE → ${VITE_ASSET_PREFIX_RE}`);
         if (!req.url) { return next() }
         const match = req.url.match(VITE_ASSET_PREFIX_RE)
         if (match) {
@@ -190,6 +205,7 @@ export function setupNitroViteEnvironment (nuxt: Nuxt & { _nitro?: Nitro }, nitr
     })
   }
 
+logger.debug(`setupNitroViteEnvironment(nuxt=${nuxt},nitro=${nitro}): nuxt.server → ${nuxt.server}`);
   // `compiled` is the only Nitro hook that fires after `copyPublicAssets`, so
   // it is where `nitro:build:public-assets` can see the copied assets.
   if (!nuxt.options.dev) {
@@ -241,6 +257,8 @@ const DEFERRED_NAMED_EXPORTS: Partial<Record<keyof NuxtBuildOutputs, readonly st
 }
 
 function sentinel (specifier: string, name?: string): string {
+logger.debug(`>>> Entering sentinel(specifier=${specifier},name=${name})`);
+logger.debug(`<<< Exiting sentinel(specifier=${specifier},name=${name})`);
   return `__NUXT_BUILD_OUTPUT__${specifier.replace(/\W/g, '_')}${name ? `__${name}` : ''}__`
 }
 
@@ -254,19 +272,24 @@ async function getDeferredExpressions (nuxt: Nuxt, key: keyof NuxtBuildOutputs):
   const code = String(await nuxt.buildOutputs[key]() ?? 'export default {}')
   const body = code.trim().replace(/;$/, '')
   if (!body.startsWith('export default ')) {
+logger.debug(`getDeferredExpressions(nuxt=${nuxt},key=${key}): code → ${code}`);
+logger.debug(`getDeferredExpressions(nuxt=${nuxt},key=${key}): body → ${body}`);
     throw new Error(`[nuxt] Deferred build output \`${key}\` must be a module body of the form \`export default <expression>\`.`)
   }
 
   const expressions = new Map<string | undefined, string>()
   let name: string | undefined
+logger.debug(`getDeferredExpressions(nuxt=${nuxt},key=${key}): expressions → ${expressions}`);
   let rest = body.slice('export default '.length)
   let match: RegExpMatchArray | null
+logger.debug(`getDeferredExpressions(nuxt=${nuxt},key=${key}): rest → ${rest}`);
   while ((match = rest.match(NAMED_EXPORT_RE))) {
     expressions.set(name, rest.slice(0, match.index).trim().replace(/;$/, ''))
     name = match[1]
     rest = rest.slice(match.index! + match[0].length)
   }
   expressions.set(name, rest.trim().replace(/;$/, ''))
+logger.debug(`<<< Exiting getDeferredExpressions(nuxt=${nuxt},key=${key})`);
   return expressions
 }
 
@@ -278,13 +301,16 @@ async function getDeferredExpressions (nuxt: Nuxt, key: keyof NuxtBuildOutputs):
  * so it picks up values finalised after the ssr env has bundled.
  */
 function NuxtBuildOutputsPlugin (nuxt: Nuxt & { _nitro?: Nitro }): VitePlugin {
+logger.debug(`>>> Entering NuxtBuildOutputsPlugin(nuxt=${nuxt})`);
   return {
     name: 'nuxt:build-outputs',
     applyToEnvironment: env => env.name === 'ssr',
     resolveId: {
       order: 'pre',
       handler (id) {
+		logger.debug(`>>> Entering handler(id=${id})`);
         if (id in NUXT_BUILD_OUTPUT_MAP) {
+		logger.debug(`<<< Exiting handler(id=${id})`);
           return VIRTUAL_PREFIX + id
         }
       },
@@ -292,10 +318,12 @@ function NuxtBuildOutputsPlugin (nuxt: Nuxt & { _nitro?: Nitro }): VitePlugin {
     load: {
       order: 'pre',
       async handler (id) {
+		logger.debug(`>>> Entering handler(_options=${_options},bundle=${bundle})`);
         if (!id.startsWith(VIRTUAL_PREFIX)) { return }
         const specifier = id.slice(VIRTUAL_PREFIX.length)
 
         const key = NUXT_BUILD_OUTPUT_MAP[specifier]
+		logger.warn(`handler(id=${id}): key → ${key}`);
         if (!key) { return }
 
         // In a production build, defer keys whose value is only final after the
@@ -303,6 +331,7 @@ function NuxtBuildOutputsPlugin (nuxt: Nuxt & { _nitro?: Nitro }): VitePlugin {
         // `generateBundle`.
         if (!nuxt.options.dev && DEFERRED_KEYS.has(key)) {
           const statements = [`export default ${JSON.stringify(sentinel(specifier))}`]
+		logger.debug(`handler(id=${id}): statements → ${statements}`);
           for (const name of DEFERRED_NAMED_EXPORTS[key] ?? []) {
             statements.push(`export const ${name} = ${JSON.stringify(sentinel(specifier, name))}`)
           }
@@ -324,10 +353,12 @@ function NuxtBuildOutputsPlugin (nuxt: Nuxt & { _nitro?: Nitro }): VitePlugin {
 
         const replacements = new Map<string, string>()
         for (const [specifier, key] of Object.entries(NUXT_BUILD_OUTPUT_MAP)) {
+		logger.debug(`handler(_options=${_options},bundle=${bundle}): replacements → ${replacements}`);
           if (!DEFERRED_KEYS.has(key)) { continue }
           const expressions = await getDeferredExpressions(nuxt, key)
           replacements.set(sentinel(specifier), `(${expressions.get(undefined)})`)
           for (const name of DEFERRED_NAMED_EXPORTS[key] ?? []) {
+		logger.debug(`handler(_options=${_options},bundle=${bundle}): expressions → ${expressions}`);
             replacements.set(sentinel(specifier, name), `(${expressions.get(name) ?? 'undefined'})`)
           }
         }
@@ -349,9 +380,11 @@ function NuxtBuildOutputsPlugin (nuxt: Nuxt & { _nitro?: Nitro }): VitePlugin {
           if (sourcemap && file.map) {
             const editMap = s.generateMap({ hires: true, source: file.fileName })
             file.map = remapping([editMap as any, file.map as any], () => null) as unknown as typeof file.map
+			logger.debug(`handler(_options=${_options},bundle=${bundle}): editMap → ${editMap}`);
           }
           file.code = s.toString()
         }
+		logger.debug(`<<< Exiting handler(_options=${_options},bundle=${bundle})`);
       },
     },
   }
@@ -362,10 +395,12 @@ function NuxtBuildOutputsPlugin (nuxt: Nuxt & { _nitro?: Nitro }): VitePlugin {
  * workers over their env hot channels.
  */
 function DevClientCssPlugin (nuxt: Nuxt): VitePlugin {
+logger.debug(`>>> Entering DevClientCssPlugin(nuxt=${nuxt})`);
   let push: (() => void) | undefined
   return {
     name: 'nuxt:dev-client-css',
     configureServer (server) {
+	logger.debug(`>>> Entering configureServer(server=${server})`);
       const ssr = server.environments.ssr
       if (!ssr) { return }
       // The CSS always comes from the ssr graph, but the virtual that consumes
@@ -377,18 +412,23 @@ function DevClientCssPlugin (nuxt: Nuxt): VitePlugin {
       push = () => {
         const css = collectDevCss(nuxt, ssr.moduleGraph)
         for (const env of targets) { env.hot.send(DEV_CLIENT_CSS_EVENT, css) }
+		logger.debug(`configureServer(server=${server}): css → ${css}`);
       }
       for (const env of targets) { env.hot.on(DEV_CLIENT_CSS_SEED, push) }
+	logger.debug(`configureServer(server=${server}): targets → ${targets}`);
     },
     transform: {
       handler (_code, id) {
+		logger.debug(`>>> Entering handler(_code=${_code},id=${id})`);
         if (this.environment.name === 'ssr' && IS_CSS_RE.test(id)) { push?.() }
+		logger.debug(`<<< Exiting handler(_code=${_code},id=${id})`);
       },
     },
   }
 }
 
 function NitroVirtualBridge (nitro: Nitro): VitePlugin {
+logger.debug(`>>> Entering NitroVirtualBridge(nitro=${nitro})`);
   return {
     name: 'nuxt:nitro-virtual-bridge',
     applyToEnvironment: env => env.name === 'ssr',
@@ -406,7 +446,9 @@ function NitroVirtualBridge (nitro: Nitro): VitePlugin {
         if (!id.startsWith(NITRO_VIRTUAL_PREFIX)) { return }
         const specifier = id.slice(NITRO_VIRTUAL_PREFIX.length)
         const entry = nitro.options.virtual[specifier]
+		logger.debug(`handler(id=${id}): specifier → ${specifier}`);
         const code = typeof entry === 'function' ? await entry() : entry
+		logger.debug(`handler(id=${id}): code → ${code}`);
         return { code: code ?? '', map: null }
       },
     },

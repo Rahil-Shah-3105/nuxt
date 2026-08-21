@@ -9,6 +9,7 @@ import type { NuxtAppLiterals, PluginMeta } from '../../app/types.ts'
 import { parseAndWalk, walk } from 'oxc-walker'
 import { parseModule } from '../utils/parse.ts'
 import type { ESTree } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { pluginDiagnostics } from '@nuxt/kit/internal'
 import { linkToAlias } from '../../utils.ts'
 
@@ -46,20 +47,25 @@ export type PluginBuildMode = 'client' | 'server'
 const pluginDependenciesByMode = new WeakMap<Nuxt, Partial<Record<PluginBuildMode, Map<string, string[]>>>>()
 
 export function setPluginDependenciesForMode (nuxt: Nuxt, mode: PluginBuildMode, plugins: Array<{ src: string, dependsOn?: string[], _metaUnknown?: boolean }>) {
+NuxtLogger.debug(`>>> Entering setPluginDependenciesForMode(nuxt=${nuxt},mode=${mode},plugins=${plugins})`);
   const dependencies = new Map<string, string[]>()
   for (const plugin of plugins) {
+	NuxtLogger.debug(`setPluginDependenciesForMode(nuxt=${nuxt},mode=${mode},plugins=${plugins}): dependencies → ${dependencies}`);
     if (!plugin._metaUnknown && plugin.dependsOn) {
       dependencies.set(normalize(plugin.src), plugin.dependsOn)
     }
   }
 
   const metadata = pluginDependenciesByMode.get(nuxt) || {}
+NuxtLogger.debug(`setPluginDependenciesForMode(nuxt=${nuxt},mode=${mode},plugins=${plugins}): metadata → ${metadata}`);
   metadata[mode] = dependencies
   pluginDependenciesByMode.set(nuxt, metadata)
+NuxtLogger.debug(`<<< Exiting setPluginDependenciesForMode(nuxt=${nuxt},mode=${mode},plugins=${plugins})`);
 }
 
 const metaCache: Record<string, ExtractedPluginMeta> = {}
 export function extractMetadata (code: string, loader = 'ts' as 'ts' | 'tsx') {
+NuxtLogger.debug(`>>> Entering extractMetadata(code=${code},loader=${loader})`);
   let meta: ExtractedPluginMeta = {}
   if (metaCache[code]) {
     return metaCache[code]
@@ -72,6 +78,7 @@ export function extractMetadata (code: string, loader = 'ts' as 'ts' | 'tsx') {
 
     if (name === 'definePayloadPlugin') {
       meta.order = internalOrderMap['user-revivers']
+	NuxtLogger.debug(`extractMetadata(code=${code},loader=${loader}): meta.order → ${meta.order}`);
     }
 
     const metaArg = node.arguments[1]
@@ -92,20 +99,24 @@ export function extractMetadata (code: string, loader = 'ts' as 'ts' | 'tsx') {
       // metadata as unknown and let the capability probes fall back to the
       // full runtime resolver.
       meta._metaUnknown = true
+	NuxtLogger.debug(`extractMetadata(code=${code},loader=${loader}): meta._metaUnknown → ${meta._metaUnknown}`);
     }
 
     meta.order ||= orderMap[meta.enforce || 'default'] || orderMap.default
     delete meta.enforce
   })
   metaCache[code] = meta
+NuxtLogger.debug(`<<< Exiting extractMetadata(code=${code},loader=${loader})`);
   return meta
 }
 
 function isFunctionPluginExpression (node: ESTree.Expression | ESTree.SpreadElement): boolean {
+NuxtLogger.debug(`>>> Entering isFunctionPluginExpression(node=${node})`);
   // Function-syntax plugins (`defineNuxtPlugin(() => {...})` /
   // `defineNuxtPlugin(function (n) {...})`) carry no capability metadata by
   // construction, so emitting empty extracted meta is safe and lets the
   // runtime keep its DCE paths.
+NuxtLogger.debug(`<<< Exiting isFunctionPluginExpression(node=${node})`);
   return node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression'
 }
 
@@ -118,10 +129,13 @@ const keys: Record<ExtractedMetaKey, string> = {
   parallel: 'parallel',
 }
 function isMetadataKey (key: string | ESTree.IdentifierName): key is ExtractedMetaKey {
+NuxtLogger.debug(`>>> Entering isMetadataKey(key=${key})`);
   return typeof key !== 'string' ? key.name in keys : key in keys
+NuxtLogger.debug('>>> Entering defineNuxtPlugin()');
 }
 
 function extractMetaFromObject (properties: Array<ESTree.ObjectPropertyKind>) {
+NuxtLogger.debug(`>>> Entering extractMetaFromObject(properties=${properties})`);
   const meta: ExtractedPluginMeta = {}
   for (const property of properties) {
     if (property.type === 'SpreadElement' || !('name' in property.key)) {
@@ -130,10 +144,12 @@ function extractMetaFromObject (properties: Array<ESTree.ObjectPropertyKind>) {
     const propertyKey = property.key.name
     if (propertyKey === 'hooks') {
       meta.hasHooks = true
+	NuxtLogger.debug(`extractMetaFromObject(properties=${properties}): meta.hasHooks → ${meta.hasHooks}`);
       continue
     }
     if (propertyKey === 'env') {
       meta.hasEnv = true
+	NuxtLogger.debug(`extractMetaFromObject(properties=${properties}): meta.hasEnv → ${meta.hasEnv}`);
       continue
     }
     if (!isMetadataKey(propertyKey)) { continue }
@@ -150,19 +166,24 @@ function extractMetaFromObject (properties: Array<ESTree.ObjectPropertyKind>) {
       meta[propertyKey] = property.value.elements.map(e => (e as Literal)!.value as NuxtAppLiterals['pluginName'])
     }
   }
+NuxtLogger.debug(`<<< Exiting extractMetaFromObject(properties=${properties})`);
   return meta
 }
 
 export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) => createUnplugin(() => {
+NuxtLogger.debug(`>>> Entering RemovePluginMetadataPlugin(nuxt=${nuxt},mode=${mode})`);
   return {
     name: `nuxt:remove-plugin-metadata:${mode}`,
     transform (code, id, meta?: unknown) {
+	NuxtLogger.debug(`>>> Entering transform(code=${code},id=${id},meta=${meta})`);
       id = normalize(id)
       const plugin = nuxt.apps.default?.plugins.find(p => p.src === id)
       if (!plugin) { return }
+	NuxtLogger.debug(`transform(code=${code},id=${id},meta=${meta}): plugin → ${plugin}`);
 
       const filteredDependencies = pluginDependenciesByMode.get(nuxt)?.[mode]?.get(id)
 
+	NuxtLogger.debug(`transform(code=${code},id=${id},meta=${meta}): filteredDependencies → ${filteredDependencies}`);
       if (!code.trim()) {
         pluginDiagnostics.NUXT_B2004({ src: linkToAlias(plugin.src, nuxt) })
 
@@ -176,12 +197,15 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
       try {
         parsed = parseModule(code, id)
       } catch (e) {
+		NuxtLogger.error(`Exception in RemovePluginMetadataPlugin(nuxt=${nuxt},mode=${mode}): ${(e as Error).message}`, e);
         pluginDiagnostics.NUXT_B2006({ src: linkToAlias(plugin.src, nuxt), cause: e })
         return
       }
+		NuxtLogger.error(`Exception in transform(code=${code},id=${id},meta=${meta}): ${(e as Error).message}`, e);
 
       const hasDefaultExport = parsed.module.staticExports.some(statement => statement.entries.some(entry => !entry.isType && (entry.exportName.kind === 'Default' || entry.exportName.name === 'default')))
       if (!hasDefaultExport) {
+	NuxtLogger.debug(`transform(code=${code},id=${id},meta=${meta}): hasDefaultExport → ${hasDefaultExport}`);
         pluginDiagnostics.NUXT_B2005({ src: linkToAlias(plugin.src, nuxt) })
         return {
           code: 'export default () => {}',
@@ -191,8 +215,10 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
 
       const s = rolldownString(code, id, meta)
       let wrapped = false
+	NuxtLogger.debug(`transform(code=${code},id=${id},meta=${meta}): s → ${s}`);
       const wrapperNames = new Set(['defineNuxtPlugin', 'definePayloadPlugin'])
 
+	NuxtLogger.debug(`transform(code=${code},id=${id},meta=${meta}): wrapperNames → ${wrapperNames}`);
       try {
         walk(parsed.program, { enter: (node) => {
           if (node.type === 'ImportSpecifier' && node.imported.type === 'Identifier' && (node.imported.name === 'defineNuxtPlugin' || node.imported.name === 'definePayloadPlugin')) {
@@ -201,11 +227,13 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
           if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier') { return }
 
           const name = 'name' in node.callee && node.callee.name
+		NuxtLogger.debug(`transform(code=${code},id=${id},meta=${meta}): name → ${name}`);
           if (!name || !wrapperNames.has(name)) { return }
           wrapped = true
 
           // Remove metadata that already has been extracted
           const removeExtractedMetadata = 'order' in plugin || 'name' in plugin
+		NuxtLogger.debug(`transform(code=${code},id=${id},meta=${meta}): removeExtractedMetadata → ${removeExtractedMetadata}`);
           if (!filteredDependencies && !removeExtractedMetadata) { return }
           for (const [argIndex, arg] of node.arguments.entries()) {
             if (arg.type !== 'ObjectExpression') { continue }
@@ -217,6 +245,7 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
               if (propertyKey === 'dependsOn' && filteredDependencies && property.value.type === 'ArrayExpression') {
                 const dependencies = property.value.elements.map(element => element?.type === 'Literal' && typeof element.value === 'string' ? element.value : null)
                 if (dependencies.length !== filteredDependencies.length || dependencies.some((dependency, index) => dependency !== filteredDependencies[index])) {
+				NuxtLogger.debug(`transform(code=${code},id=${id},meta=${meta}): dependencies → ${dependencies}`);
                   s.overwrite(property.value.start, property.value.end, JSON.stringify(filteredDependencies))
                 }
               }
@@ -224,6 +253,7 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
                 const nextNode = arg.properties[propertyIndex + 1] || node.arguments[argIndex + 1]
                 const nextIndex = nextNode?.start || (arg.end - 1)
 
+				NuxtLogger.debug(`transform(code=${code},id=${id},meta=${meta}): nextIndex → ${nextIndex}`);
                 s.remove(property.start, nextIndex)
               }
             }
@@ -238,6 +268,7 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
         pluginDiagnostics.NUXT_B2007({ src: linkToAlias(plugin.src, nuxt) })
       }
 
+	NuxtLogger.debug(`<<< Exiting transform(code=${code},id=${id},meta=${meta})`);
       return generateTransform(s, id)
     },
   }

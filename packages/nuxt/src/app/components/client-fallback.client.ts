@@ -1,5 +1,6 @@
 import { Fragment, createElementBlock, defineComponent, h, onMounted, shallowRef, useId } from 'vue'
 import type { DefineSetupFnComponent, SlotsType, VNode } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useState } from '../composables/state'
 import { sanitizeTag } from './utils'
 
@@ -46,13 +47,16 @@ const NuxtClientFallbackClient = defineComponent({
   },
   emits: ['ssr-error'],
   setup (props, ctx) {
+	NuxtLogger.debug(`>>> Entering setup(props=${props},ctx=${ctx})`);
     const mounted = shallowRef(false)
     const ssrFailed = useState(useId())
 
+	NuxtLogger.debug(`setup: ssrFailed → ${ssrFailed}`);
     if (ssrFailed.value) {
       onMounted(() => { mounted.value = true })
     }
 
+	NuxtLogger.debug(`<<< Exiting setup(props=${props},ctx=${ctx})`);
     return () => {
       if (ssrFailed.value) {
         if (!mounted.value || props.keepFallback) {

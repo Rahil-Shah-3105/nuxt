@@ -1,4 +1,5 @@
 import type { Compiler, WebpackPluginInstance } from 'webpack'
+import logger from "../utils/logger.js";
 import { isJS } from './vue/util.ts'
 
 const STUB_MARKER = '/* unused pure expression or super */'
@@ -11,7 +12,9 @@ const PURE_ANNOTATION_REPLACEMENT = ' '.repeat('/* @__PURE__ */'.length)
  * for unit testing.
  */
 export function stripInvalidPureAnnotations (code: string): string {
+logger.debug(`>>> Entering stripInvalidPureAnnotations(code=${code})`);
   if (!code.includes(STUB_MARKER)) { return code }
+logger.debug(`<<< Exiting stripInvalidPureAnnotations(code=${code})`);
   return code.replace(INVALID_ANNOTATION_RE, PURE_ANNOTATION_REPLACEMENT)
 }
 
@@ -28,6 +31,7 @@ export function stripInvalidPureAnnotations (code: string): string {
  */
 export class StripInvalidPureAnnotationsPlugin implements WebpackPluginInstance {
   apply (compiler: Compiler) {
+	logger.debug(`>>> Entering apply(compiler=${compiler})`);
     compiler.hooks.compilation.tap('StripInvalidPureAnnotationsPlugin', (compilation) => {
       compilation.hooks.processAssets.tap({
         name: 'StripInvalidPureAnnotationsPlugin',
@@ -43,6 +47,7 @@ export class StripInvalidPureAnnotationsPlugin implements WebpackPluginInstance 
 
           assets[filename] = new compiler.webpack.sources.RawSource(replaced)
         }
+		logger.debug(`<<< Exiting apply(compiler=${compiler})`);
       })
     })
   }

@@ -51,6 +51,7 @@ import { addModuleTranspiles } from './modules.ts'
 import { bundleServer } from './server.ts'
 import { NuxtPerfProfiler } from './perf.ts'
 import schemaModule from './schema.ts'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { RemovePluginMetadataPlugin } from './plugins/plugin-metadata.ts'
 import { AsyncContextInjectionPlugin } from './plugins/async-context.ts'
 import { PrehydrateTransformPlugin } from './plugins/prehydrate.ts'
@@ -60,9 +61,12 @@ import { VirtualFSPlugin } from './plugins/virtual.ts'
 export function createNuxt (options: NuxtOptions): Nuxt {
   const hooks = createHooks<NuxtHooks>()
 
+NuxtLogger.debug(`createNuxt(options=${options}): hooks → ${hooks}`);
   const { callHook, callHookParallel, callHookWith } = hooks
   if (options.experimental.asyncCallHook) {
+	NuxtLogger.debug(`>>> Entering createNuxt(options=${options})`);
     hooks.callHook = (...args) => Promise.resolve().then(() => runWithNuxtContext(nuxt, () => callHook(...args)))
+	NuxtLogger.debug(`<<< Exiting createNuxt(options=${options})`);
     hooks.callHookParallel = (...args) => Promise.resolve().then(() => runWithNuxtContext(nuxt, () => callHookParallel(...args)) ?? [])
   } else {
     hooks.callHook = (...args) => runWithNuxtContext(nuxt, () => callHook(...args))
@@ -94,13 +98,16 @@ export function createNuxt (options: NuxtOptions): Nuxt {
     options,
   }
 
+NuxtLogger.debug(`createNuxt(options=${options}): inlinedCSS → ${inlinedCSS}`);
   if (options.experimental.debugModuleMutation) {
     const proxiedOptions = new WeakMap<NuxtModule, NuxtOptions>()
 
     Object.defineProperty(nuxt, 'options', {
       get () {
+		NuxtLogger.debug('>>> Entering get()');
         const currentModule = nuxt._asyncLocalStorageModule!.getStore()
         if (!currentModule) {
+		NuxtLogger.debug(`get(): currentModule → ${currentModule}`);
           return options
         }
 
@@ -136,7 +143,9 @@ export function createNuxt (options: NuxtOptions): Nuxt {
           pathAsArray: true,
         })
 
+		NuxtLogger.debug(`get(): proxied → ${proxied}`);
         proxiedOptions.set(currentModule, proxied)
+		NuxtLogger.debug('<<< Exiting get()');
         return proxied
       },
     })
@@ -163,6 +172,7 @@ function fullyUnwrap (value: unknown): unknown {
   let current = value
   let target = onChange.target(current as Record<string, any>)
   while (target !== current) {
+	NuxtLogger.debug(`>>> Entering fullyUnwrap(value=${value})`);
     current = target
     target = onChange.target(current as Record<string, any>)
   }
@@ -182,17 +192,20 @@ function fullyUnwrap (value: unknown): unknown {
 function stripDebugProxies (value: unknown, seen = new WeakSet<object>()): void {
   const target = fullyUnwrap(value)
   if (target === null || typeof target !== 'object' || seen.has(target)) {
+NuxtLogger.debug(`stripDebugProxies(value=${value},seen=${seen}): target → ${target}`);
     return
   }
   seen.add(target)
   for (const key of Object.keys(target)) {
     const current = (target as Record<string, unknown>)[key]
+	NuxtLogger.debug(`stripDebugProxies(value=${value},seen=${seen}): current → ${current}`);
     const unwrapped = fullyUnwrap(current)
     if (unwrapped !== current) {
       (target as Record<string, unknown>)[key] = unwrapped
     }
     stripDebugProxies(unwrapped, seen)
   }
+	NuxtLogger.debug(`stripDebugProxies(value=${value},seen=${seen}): unwrapped → ${unwrapped}`);
 }
 
 const fallbackCompatibilityDate = '2025-07-15' as DateString
@@ -209,10 +222,12 @@ const nightlies = {
 let warnedAboutCompatDate = false
 
 async function initNuxt (nuxt: Nuxt) {
+NuxtLogger.debug(`>>> Entering initNuxt(nuxt=${nuxt})`);
   nuxt._perf?.startPhase('init')
 
   const layerDirs = getLayerDirectories(nuxt)
 
+NuxtLogger.debug(`initNuxt(nuxt=${nuxt}): layerDirs → ${layerDirs}`);
   // Register user hooks
   for (const config of nuxt.options._layers.map(layer => layer.config).reverse()) {
     if (config.hooks) {
@@ -241,9 +256,11 @@ async function initNuxt (nuxt: Nuxt) {
   // Restart Nuxt when layer directories are added or removed
   const layersDir = withTrailingSlash(resolve(nuxt.options.rootDir, 'layers'))
   nuxt.hook('builder:watch', (event, relativePath) => {
+NuxtLogger.debug(`initNuxt(nuxt=${nuxt}): layersDir → ${layersDir}`);
     const path = resolve(nuxt.options.srcDir, relativePath)
     if (event === 'addDir' || event === 'unlinkDir') {
       if (path.startsWith(layersDir)) {
+		NuxtLogger.debug(`<<< Exiting initNuxt(nuxt=${nuxt})`);
         return nuxt.callHook('restart', { hard: true })
       }
     }
@@ -285,6 +302,7 @@ async function initNuxt (nuxt: Nuxt) {
     const overrideEnv = nuxt.options.typescript.builder && envMap[nuxt.options.typescript.builder]
     // If there's no override, infer based on builder. If a custom builder is provided, we disable shared types
     const defaultEnv = typeof nuxt.options.builder === 'string' ? envMap[nuxt.options.builder] : false
+	NuxtLogger.debug(`initNuxt(nuxt=${nuxt}): defaultEnv → ${defaultEnv}`);
     const environmentTypes = overrideEnv || defaultEnv
 
     if (environmentTypes) {
@@ -300,15 +318,20 @@ async function initNuxt (nuxt: Nuxt) {
   const packageJSON = await readPackageJSON(nuxt.options.rootDir).catch(() => ({}) as PackageJson)
   nuxt._dependencies = new Set([...Object.keys(packageJSON.dependencies || {}), ...Object.keys(packageJSON.devDependencies || {})])
   nuxt['~runtimeDependencies'] = [...runtimeDependencies]
+NuxtLogger.error(`Exception in initNuxt(nuxt=${nuxt}): (no error binding)`);
+NuxtLogger.debug(`initNuxt(nuxt=${nuxt}): packageJSON → ${packageJSON}`);
 
   // Set nitro resolutions for types that might be obscured with shamefully-hoist=false
   let paths: Record<string, [string]> | undefined
   let nodePaths: Record<string, [string]> | undefined
   const applyNitroTypePaths = async (nitroConfig: NuxtOptions['nitro']) => {
+	NuxtLogger.debug(`>>> Entering applyNitroTypePaths(nitroConfig=${nitroConfig})`);
     paths ||= await resolveTypescriptPaths(nuxt)
     nitroConfig.typescript = defu(nitroConfig.typescript, {
       tsConfig: { compilerOptions: { paths: { ...paths } } },
     })
+	NuxtLogger.debug(`<<< Exiting applyNitroTypePaths(nitroConfig=${nitroConfig})`);
+	NuxtLogger.debug(`<<< Exiting resolveTypescriptPaths(nuxt=${nuxt},options=${options})`);
   }
   if (nuxt.options.dev) {
     nuxt.hook('nitro:build:before', nitro => applyNitroTypePaths(nitro.options))
@@ -318,12 +341,14 @@ async function initNuxt (nuxt: Nuxt) {
 
   let serverBuilderReference: { path: string } | { types: string } | undefined
   const getServerBuilderReference = () => {
+	NuxtLogger.debug('>>> Entering getServerBuilderReference()');
     if (serverBuilderReference || typeof nuxt.options.server.builder !== 'string') {
       return serverBuilderReference
     }
     serverBuilderReference = nuxt.options.server.builder === '@nuxt/nitro-server'
       ? { path: resolveModulePath('@nuxt/nitro-server/augments', { from: import.meta.url }).replace(/\.mjs$/, '.d.mts') }
       : { types: nuxt.options.server.builder }
+	NuxtLogger.debug('<<< Exiting getServerBuilderReference()');
     return serverBuilderReference
   }
 
@@ -541,6 +566,7 @@ async function initNuxt (nuxt: Nuxt) {
         if (chunk.resourceType === 'script') {
           await rm(resolve(nuxt.options.buildDir, 'dist/client', withoutLeadingSlash(nuxt.options.app.buildAssetsDir), chunk.file), { force: true })
           chunk.file = ''
+		NuxtLogger.debug(`initNuxt(nuxt=${nuxt}): chunk.file → ${chunk.file}`);
         }
       }
     })
@@ -560,6 +586,8 @@ async function initNuxt (nuxt: Nuxt) {
   const locallyScannedLayersDirs = layerDirs.map(l => join(l.root, 'layers/'))
   const rootWithTrailingSlash = withTrailingSlash(nuxt.options.rootDir)
   for (const dirs of layerDirs) {
+	NuxtLogger.debug(`initNuxt(nuxt=${nuxt}): rootWithTrailingSlash → ${rootWithTrailingSlash}`);
+	NuxtLogger.debug(`initNuxt(nuxt=${nuxt}): locallyScannedLayersDirs → ${locallyScannedLayersDirs}`);
     if (dirs.root === rootWithTrailingSlash) {
       continue
     }
@@ -762,6 +790,7 @@ async function initNuxt (nuxt: Nuxt) {
   const pagesEnabled = nuxt.options.pages !== false && (nuxt.options.pages as { enabled?: boolean } | undefined)?.enabled !== false
   // Handle client-side navigation for links rendered inside server component islands
   if (pagesEnabled && nuxt.options.experimental.componentIslands) {
+	NuxtLogger.debug(`initNuxt(nuxt=${nuxt}): pagesEnabled → ${pagesEnabled}`);
     addPlugin(resolve(nuxt.options.appDir, 'plugins/island-link-navigation.client'))
   }
   // Add experimental page reload support
@@ -815,6 +844,9 @@ async function initNuxt (nuxt: Nuxt) {
     } else {
       nuxt.options.vue.vapor = false
       logger.warn('`vue.vapor` requires vue `3.6.0` or later; vapor mode has been disabled.')
+	NuxtLogger.debug(`>>> Entering vueSupportsVapor(nuxt=${nuxt})`);
+	NuxtLogger.error(`Exception in vueSupportsVapor(nuxt=${nuxt}): (no error binding)`);
+	NuxtLogger.debug(`<<< Exiting vueSupportsVapor(nuxt=${nuxt})`);
     }
   }
 
@@ -908,6 +940,8 @@ export default defineNuxtPlugin({
 
   await nuxt.callHook('ready', nuxt)
   nuxt._perf?.endPhase('ready')
+NuxtLogger.debug(`>>> Entering resolveTypescriptPaths(nuxt=${nuxt},options=${options})`);
+NuxtLogger.debug(`<<< Exiting resolveTypescriptPaths(nuxt=${nuxt},options=${options})`);
 }
 
 export async function loadNuxt (opts: LoadNuxtOptions): Promise<Nuxt> {
@@ -917,14 +951,19 @@ export async function loadNuxt (opts: LoadNuxtOptions): Promise<Nuxt> {
   // Otherwise, create after config resolves from nuxt.config / env vars.
   let perf: NuxtPerfProfiler | undefined
   const cliStartTime = (globalThis as any).__nuxt_cli__?.startTime as number | undefined
+NuxtLogger.debug(`loadNuxt(opts=${opts}): cliStartTime → ${cliStartTime}`);
   const perfOverride = typeof opts.overrides?.debug === 'object' && opts.overrides.debug.perf
+NuxtLogger.debug(`loadNuxt(opts=${opts}): perfOverride → ${perfOverride}`);
   if (perfOverride) {
+	NuxtLogger.debug(`>>> Entering loadNuxt(opts=${opts})`);
     perf = new NuxtPerfProfiler({ startTime: cliStartTime })
+	NuxtLogger.debug(`<<< Exiting loadNuxt(opts=${opts})`);
     perf.startPhase('config')
   }
 
   const options = await loadNuxtConfig(opts)
 
+NuxtLogger.debug(`loadNuxt(opts=${opts}): options → ${options}`);
   if (!perf && typeof options.debug === 'object' && options.debug.perf) {
     perf = new NuxtPerfProfiler({ startTime: cliStartTime })
   }
@@ -933,6 +972,7 @@ export async function loadNuxt (opts: LoadNuxtOptions): Promise<Nuxt> {
   // Temporary until finding better placement for each
   options.appDir = options.alias['#app'] = withTrailingSlash(resolve(distDir, 'app'))
   options._majorVersion = 4
+NuxtLogger.debug(`loadNuxt(opts=${opts}): options._majorVersion → ${options._majorVersion}`);
 
   // De-duplicate key arrays
   for (const key in options.app.head || {}) {
@@ -945,6 +985,7 @@ export async function loadNuxt (opts: LoadNuxtOptions): Promise<Nuxt> {
       ? options.devtools
       : options.devtools?.enabled !== false // enabled by default unless explicitly disabled
 
+	NuxtLogger.debug(`loadNuxt(opts=${opts}): isDevToolsEnabled → ${isDevToolsEnabled}`);
     if (isDevToolsEnabled) {
       if (!options._modules.some(m => m === '@nuxt/devtools' || m === '@nuxt/devtools-nightly' || m === '@nuxt/devtools-edge')) {
         options._modules.push('@nuxt/devtools')
@@ -1001,6 +1042,7 @@ export async function loadNuxt (opts: LoadNuxtOptions): Promise<Nuxt> {
   // warn if user is using reserved namespaces
   const allowedKeys = new Set(['baseURL', 'buildAssetsDir', 'cdnURL', 'buildId'])
   for (const key in options.runtimeConfig.app) {
+NuxtLogger.debug(`loadNuxt(opts=${opts}): allowedKeys → ${allowedKeys}`);
     if (!allowedKeys.has(key)) {
       configDiagnostics.NUXT_B5003({ key })
       delete options.runtimeConfig.app[key]
@@ -1023,6 +1065,7 @@ export async function loadNuxt (opts: LoadNuxtOptions): Promise<Nuxt> {
   const serverTsConfig = defu(options.typescript.serverTsConfig, nitroOptions.typescript?.tsConfig)
   createPortalProperties(serverTsConfig, options, ['nitro.typescript.tsConfig', 'typescript.serverTsConfig'])
 
+NuxtLogger.debug(`loadNuxt(opts=${opts}): serverTsConfig → ${serverTsConfig}`);
   // prevent replacement of options.nitro
   Object.defineProperties(options, {
     nitro: {
@@ -1030,7 +1073,9 @@ export async function loadNuxt (opts: LoadNuxtOptions): Promise<Nuxt> {
       enumerable: true,
       get: () => nitroOptions,
       set (value) {
+		NuxtLogger.debug(`>>> Entering set(value=${value})`);
         Object.assign(nitroOptions, value)
+		NuxtLogger.debug(`<<< Exiting set(value=${value})`);
       },
     },
   })
@@ -1046,11 +1091,13 @@ export async function loadNuxt (opts: LoadNuxtOptions): Promise<Nuxt> {
 
     let flushed = false
     const flush = () => {
+	NuxtLogger.debug('>>> Entering flush()');
       if (flushed || !perf) { return }
       flushed = true
       if (!quiet) { perf.printReport({ title }) }
       perf.writeReport(nuxt.options.buildDir, { quiet })
       perf.dispose()
+	NuxtLogger.debug('<<< Exiting flush()');
     }
 
     nuxt.hook('close', flush)
@@ -1104,18 +1151,22 @@ function deduplicateArray<T = unknown> (maybeArray: T): T {
 }
 
 function createPortalProperties (sourceValue: any, options: NuxtOptions, paths: string[]) {
+NuxtLogger.debug(`>>> Entering createPortalProperties(sourceValue=${sourceValue},options=${options},paths=${paths})`);
   let sharedValue = sourceValue
 
   for (const path of paths) {
     const segments = path.split('.')
     const key = segments.pop()!
+	NuxtLogger.debug(`createPortalProperties(sourceValue=${sourceValue},options=${options},paths=${paths}): segments → ${segments}`);
     let parent: Record<string, any> = options
 
     while (segments.length) {
       const key = segments.shift()!
+	NuxtLogger.warn(`createPortalProperties(sourceValue=${sourceValue},options=${options},paths=${paths}): key → ${key}`);
       parent = parent[key] ||= {}
     }
 
+	NuxtLogger.debug(`<<< Exiting createPortalProperties(sourceValue=${sourceValue},options=${options},paths=${paths})`);
     delete parent[key]
 
     Object.defineProperties(parent, {
@@ -1132,13 +1183,18 @@ function createPortalProperties (sourceValue: any, options: NuxtOptions, paths: 
 }
 
 async function resolveModules (nuxt: Nuxt) {
+NuxtLogger.debug(`>>> Entering resolveModules(nuxt=${nuxt})`);
   const modules = new Map<string | NuxtModule, Record<string, any>>()
   const paths = new Set<string>()
   const resolvedModulePaths = new Set<string>()
 
+NuxtLogger.debug(`resolveModules(nuxt=${nuxt}): modules → ${modules}`);
+NuxtLogger.debug(`resolveModules(nuxt=${nuxt}): paths → ${paths}`);
+NuxtLogger.debug(`resolveModules(nuxt=${nuxt}): resolvedModulePaths → ${resolvedModulePaths}`);
   // Loop layers in reverse order, so that the extends are loaded first and project is the last
   const configs = nuxt.options._layers.map(layer => layer.config).reverse()
   for (const config of configs) {
+NuxtLogger.debug(`resolveModules(nuxt=${nuxt}): configs → ${configs}`);
     // First register modules defined in layer's config
     const definedModules = config.modules ?? []
     for (const module of definedModules) {
@@ -1159,6 +1215,7 @@ async function resolveModules (nuxt: Nuxt) {
       `*/index{${nuxt.options.extensions.join(',')}}`,
     ])
 
+	NuxtLogger.debug(`resolveModules(nuxt=${nuxt}): modulesDir → ${modulesDir}`);
     for (const module of layerModules) {
       // add path to watch
       paths.add(module)
@@ -1174,6 +1231,7 @@ async function resolveModules (nuxt: Nuxt) {
     for (const module of nuxt.options[key as 'modules']) {
       const resolvedModule = resolveModuleWithOptions(module, nuxt)
 
+	NuxtLogger.debug(`resolveModules(nuxt=${nuxt}): resolvedModule → ${resolvedModule}`);
       if (resolvedModule && !modules.has(resolvedModule.module) && (!resolvedModule.resolvedPath || !resolvedModulePaths.has(resolvedModule.resolvedPath))) {
         modules.set(resolvedModule.module, resolvedModule.options)
         const path = resolvedModule.resolvedPath || resolvedModule.module
@@ -1189,6 +1247,7 @@ async function resolveModules (nuxt: Nuxt) {
     resolvedModulePaths,
     modules,
   }
+NuxtLogger.debug(`<<< Exiting resolveModules(nuxt=${nuxt})`);
 }
 
 const NESTED_PKG_RE = /^[^@]+\//
@@ -1197,8 +1256,10 @@ async function resolveTypescriptPaths (nuxt: Nuxt, options?: ResolveTypePathsOpt
 
   const packagesToResolve: string[] = []
   const nightlyAliases = new Map<string, string>() // nightly -> original
+NuxtLogger.debug(`resolveTypescriptPaths(nuxt=${nuxt},options=${options}): nightlyAliases → ${nightlyAliases}`);
 
   for (const pkg of nuxt.options.typescript.hoist) {
+	NuxtLogger.debug(`>>> Entering resolveTypescriptPaths(nuxt=${nuxt},options=${options})`);
     const [_pkg = pkg] = NESTED_PKG_RE.test(pkg) ? pkg.split('/') : [pkg]
 
     // ignore packages that exist in `package.json` as these can be resolved by TypeScript
@@ -1217,13 +1278,16 @@ async function resolveTypescriptPaths (nuxt: Nuxt, options?: ResolveTypePathsOpt
 
   const resolved = await resolveTypePaths(packagesToResolve, nuxt.options.modulesDir, options)
 
+NuxtLogger.debug(`resolveTypescriptPaths(nuxt=${nuxt},options=${options}): resolved → ${resolved}`);
   const paths: Record<string, [string]> = {}
   const nightlyResolved = new Set<string>() // track which originals were resolved via nightly
+NuxtLogger.debug(`resolveTypescriptPaths(nuxt=${nuxt},options=${options}): nightlyResolved → ${nightlyResolved}`);
 
   for (const [pkg, path] of resolved) {
     if (nightlyAliases.has(pkg)) {
       // This is a nightly resolution - map to both the original and nightly name
       const original = nightlyAliases.get(pkg)!
+	NuxtLogger.debug(`resolveTypescriptPaths(nuxt=${nuxt},options=${options}): original → ${original}`);
       paths[original] = [path]
       paths[pkg] = [path]
       nightlyResolved.add(original)
@@ -1237,10 +1301,13 @@ async function resolveTypescriptPaths (nuxt: Nuxt, options?: ResolveTypePathsOpt
 }
 
 function withTrailingSlash (dir: string) {
+NuxtLogger.debug(`>>> Entering withTrailingSlash(dir=${dir})`);
+NuxtLogger.debug(`<<< Exiting withTrailingSlash(dir=${dir})`);
   return dir.replace(/[^/]$/, '$&/')
 }
 
 async function vueSupportsVapor (nuxt: Nuxt) {
+NuxtLogger.debug(`>>> Entering vueSupportsVapor(nuxt=${nuxt})`);
   const path = resolveModulePath('vue/package.json', {
     from: [directoryToURL(nuxt.options.rootDir), directoryToURL(nuxt.options.workspaceDir), import.meta.url],
     try: true,
@@ -1248,6 +1315,7 @@ async function vueSupportsVapor (nuxt: Nuxt) {
   if (!path) { return false }
   const { version } = await readPackageJSON(path).catch(() => ({}) as PackageJson)
   return !!version && satisfies(version, '>=3.6.0-0')
+NuxtLogger.error(`Exception in vueSupportsVapor(nuxt=${nuxt}): (no error binding)`);
 }
 
 const RELATIVE_CSS_ENTRY_RE = /^\.{1,2}\//
@@ -1257,6 +1325,7 @@ const RELATIVE_CSS_ENTRY_RE = /^\.{1,2}\//
  * builds drop the styles entirely.
  */
 function warnUnresolvableGlobalCss (nuxt: Nuxt) {
+NuxtLogger.debug(`>>> Entering warnUnresolvableGlobalCss(nuxt=${nuxt})`);
   for (const entry of nuxt.options.css) {
     if (typeof entry !== 'string') { continue }
 
@@ -1273,5 +1342,6 @@ function warnUnresolvableGlobalCss (nuxt: Nuxt) {
     if (isAbsolute(resolved) && !resolved.startsWith(nuxt.options.buildDir) && !existsSync(resolved)) {
       logger.warn(`\`css\` entry \`${entry}\` could not be found${resolved === entry ? '' : ` (resolved to \`${linkToAlias(resolved, nuxt)}\`)`}.`)
     }
+	NuxtLogger.debug(`<<< Exiting warnUnresolvableGlobalCss(nuxt=${nuxt})`);
   }
 }

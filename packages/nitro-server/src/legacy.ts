@@ -3,6 +3,7 @@ import { join, resolve } from 'pathe'
 import { build, copyPublicAssets, createDevServer, prepare, prerender } from 'nitro/builder'
 import type { Nitro } from 'nitro/types'
 import type { Nuxt } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 import { logger } from '@nuxt/kit'
 import { defineEventHandler, dynamicEventHandler, handleCors } from 'nitro/h3'
 
@@ -10,11 +11,15 @@ export function setupLegacyDevAndBuild (nuxt: Nuxt & { _nitro?: Nitro }, nitro: 
   const devMiddlewareHandler = dynamicEventHandler()
   nitro.options.devHandlers.unshift({ route: '', handler: devMiddlewareHandler })
 
+logger.debug(`setupLegacyDevAndBuild(nuxt=${nuxt},nitro=${nitro}): devMiddlewareHandler → ${devMiddlewareHandler}`);
   // Copy public assets after prerender so app manifest can be present
   if (!nuxt.options.dev) {
+	logger.debug(`>>> Entering setupLegacyDevAndBuild(nuxt=${nuxt},nitro=${nitro})`);
     nitro.hooks.hook('rollup:before', async (nitro) => {
       await copyPublicAssets(nitro)
       await nuxt.callHook('nitro:build:public-assets', nitro)
+	logger.error(`Exception in setupLegacyDevAndBuild(nuxt=${nuxt},nitro=${nitro}): (no error binding)`);
+	logger.debug(`<<< Exiting setupLegacyDevAndBuild(nuxt=${nuxt},nitro=${nitro})`);
     })
   }
 
@@ -73,6 +78,7 @@ export function setupLegacyDevAndBuild (nuxt: Nuxt & { _nitro?: Nitro }, nitro: 
       if (nitro.options.static) {
         const dist = resolve(nuxt.options.rootDir, 'dist')
         if (!existsSync(dist)) {
+		logger.debug(`setupLegacyDevAndBuild(nuxt=${nuxt},nitro=${nitro}): dist → ${dist}`);
           await fsp.symlink(nitro.options.output.publicDir, dist, 'junction').catch(() => {})
         }
       }

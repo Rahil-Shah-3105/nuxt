@@ -3,12 +3,14 @@ import { getStaticImports, parseStaticImports } from '../core/utils/static-impor
 import type { ParsedStaticImport } from '../core/utils/static-imports.ts'
 import type { ScanPlugin } from './types.ts'
 import type { ParseResult } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 /**
  * Creates a context object for scan plugins scoped to a specific file being scanned.
  * All plugins scanning this file will share the same context instance.
  */
 export function createScanPluginContext (code: string, filePath: string) {
+NuxtLogger.debug(`>>> Entering createScanPluginContext(code=${code},filePath=${filePath})`);
   // create the context for sharing the parse result between plugins
   let parseResult: ParseResult | null = null
   let parsedStaticImports: ParsedStaticImport[] | null = null
@@ -35,15 +37,18 @@ export function createScanPluginContext (code: string, filePath: string) {
       return parsedStaticImports
     },
   }
+NuxtLogger.debug(`<<< Exiting createScanPluginContext(code=${code},filePath=${filePath})`);
   return pluginScanThisContext
 }
 
 export function matchWithStringOrRegex (value: string, matcher: string | RegExp) {
+NuxtLogger.debug(`>>> Entering matchWithStringOrRegex(value=${value},matcher=${matcher})`);
   if (typeof matcher === 'string') {
     return value === matcher
   } else if (matcher instanceof RegExp) {
     return matcher.test(value)
   }
 
+NuxtLogger.debug(`<<< Exiting matchWithStringOrRegex(value=${value},matcher=${matcher})`);
   return false
 }

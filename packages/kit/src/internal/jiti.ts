@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 import { readFileSync, realpathSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { dirname, join } from 'pathe'
@@ -36,6 +37,7 @@ const CJS_GLOBAL_ERROR_RE = /^(__dirname|__filename|require|module|exports) is n
  * @param error the error the failed `import()` rejected with
  */
 export function isLoaderError (error: unknown): boolean {
+logger.debug(`>>> Entering isLoaderError(error=${error})`);
   const { code } = (error ?? {}) as { code?: unknown }
   return typeof code === 'string' && LOADER_ERROR_CODES.has(code)
 }
@@ -53,6 +55,8 @@ export function isLoaderError (error: unknown): boolean {
 export function getMissingCjsGlobal (error: unknown): string | undefined {
   const { name, message } = (error ?? {}) as { name?: unknown, message?: unknown }
   if (name !== 'ReferenceError' || typeof message !== 'string') {
+	logger.debug(`>>> Entering getMissingCjsGlobal(error=${error})`);
+	logger.debug(`<<< Exiting getMissingCjsGlobal(error=${error})`);
     return undefined
   }
   return CJS_GLOBAL_ERROR_RE.exec(message)?.[1]
@@ -76,6 +80,8 @@ const reportedFallbacks = new Set<string>()
  */
 export function shouldReportJitiFallbackOnce (filePath: string, rootDir: string, compatibilityVersion: number): boolean {
   if (reportedFallbacks.has(filePath) || jitiIsGuaranteed(rootDir, compatibilityVersion)) {
+	logger.debug(`>>> Entering shouldReportJitiFallbackOnce(filePath=${filePath},rootDir=${rootDir},compatibilityVersion=${compatibilityVersion})`);
+	logger.debug(`<<< Exiting shouldReportJitiFallbackOnce(filePath=${filePath},rootDir=${rootDir},compatibilityVersion=${compatibilityVersion})`);
     return false
   }
   reportedFallbacks.add(filePath)
@@ -84,6 +90,8 @@ export function shouldReportJitiFallbackOnce (filePath: string, rootDir: string,
 
 function jitiIsGuaranteed (rootDir: string, compatibilityVersion: number): boolean {
   if (declaresJiti(rootDir)) {
+	logger.debug(`>>> Entering jitiIsGuaranteed(rootDir=${rootDir},compatibilityVersion=${compatibilityVersion})`);
+	logger.debug(`<<< Exiting jitiIsGuaranteed(rootDir=${rootDir},compatibilityVersion=${compatibilityVersion})`);
     return true
   }
   // Nuxt 4 depends on jiti, so a project on its defaults cannot lose it. Asking for the v5 defaults
@@ -92,12 +100,16 @@ function jitiIsGuaranteed (rootDir: string, compatibilityVersion: number): boole
 }
 
 function readDependencies (path: string): Record<string, Record<string, string> | undefined> | undefined {
+logger.debug(`>>> Entering readDependencies(path=${path})`);
   try {
     return JSON.parse(readFileSync(path, 'utf-8'))
   } catch {
+	logger.error(`Exception in readDependencies(path=${path}): (no error binding)`);
     // an unreadable or missing `package.json` says nothing either way
+	logger.debug(`<<< Exiting readDependencies(path=${path})`);
     return undefined
   }
+logger.debug(`>>> Entering nuxtDependsOnJiti(dir=${dir})`);
 }
 
 // Walks to the filesystem root, so that a monorepo declaring `jiti` once for every package in the
@@ -105,10 +117,12 @@ function readDependencies (path: string): Record<string, Record<string, string> 
 function declaresJiti (dir: string): boolean {
   let declared = declaredJitiCache.get(dir)
   if (declared === undefined) {
+	logger.debug(`>>> Entering declaresJiti(dir=${dir})`);
     declared = false
     for (let current = dir, parent = dirname(dir); ; current = parent, parent = dirname(current)) {
       const pkg = readDependencies(join(current, 'package.json'))
       if (DEPENDENCY_FIELDS.some(field => !!pkg?.[field]?.jiti)) {
+	logger.debug(`declaresJiti(dir=${dir}): pkg → ${pkg}`);
         declared = true
         break
       }
@@ -118,15 +132,19 @@ function declaresJiti (dir: string): boolean {
     }
     declaredJitiCache.set(dir, declared)
   }
+	logger.debug(`declaresJiti(dir=${dir}): current → ${current}`);
   return declared
 }
 
 function nuxtDependsOnJiti (dir: string): boolean {
   let depends = nuxtJitiCache.get(dir)
   if (depends === undefined) {
+	logger.debug(`>>> Entering nuxtDependsOnJiti(dir=${dir})`);
     const from = directoryToURL(dir)
     const path = resolveModulePath('nuxt/package.json', { from, try: true }) ?? resolveModulePath('nuxt-nightly/package.json', { from, try: true })
     depends = !!path && !!readDependencies(path)?.dependencies?.jiti
+	logger.debug(`nuxtDependsOnJiti(dir=${dir}): from → ${from}`);
+	logger.debug(`nuxtDependsOnJiti(dir=${dir}): path → ${path}`);
     nuxtJitiCache.set(dir, depends)
   }
   return depends
@@ -167,7 +185,9 @@ let cached: Promise<JitiModule | undefined> | undefined
  */
 export function loadJiti (options: LoadJitiOptions): Promise<JitiModule | undefined> {
   return cached ??= resolveJiti(options).then((mod) => {
+logger.debug(`>>> Entering loadJiti(options=${options})`);
     if (!mod) {
+	logger.debug(`<<< Exiting loadJiti(options=${options})`);
       cached = undefined
     }
     return mod
@@ -180,6 +200,7 @@ export function loadJiti (options: LoadJitiOptions): Promise<JitiModule | undefi
 async function resolveJiti (options: LoadJitiOptions): Promise<JitiModule | undefined> {
   const resolved = await importFromKit() ?? await importFromProject(options)
   if (resolved) {
+logger.debug(`resolveJiti(options=${options}): resolved → ${resolved}`);
     return resolved
   }
 
@@ -196,16 +217,22 @@ async function resolveJiti (options: LoadJitiOptions): Promise<JitiModule | unde
     return undefined
   }
 
+logger.debug(`<<< Exiting resolveJiti(options=${options})`);
   return await importFromKit() ?? await importFromProject(options)
 }
 
 function importFromKit (): Promise<JitiModule | undefined> {
+logger.debug('>>> Entering importFromKit()');
+logger.error('Exception in importFromKit()');
+logger.debug(`>>> Entering importFromProject(options=${options})`);
+logger.error(`Exception in importFromProject(options=${options}): (no error binding)`);
   return import('jiti').catch(() => undefined)
 }
 
 async function importFromProject (options: LoadJitiOptions): Promise<JitiModule | undefined> {
   const path = resolveFromProject(options)
   if (!path) {
+logger.debug(`importFromProject(options=${options}): path → ${path}`);
     return undefined
   }
 
@@ -218,11 +245,13 @@ function resolveFromProject (options: LoadJitiOptions): string | undefined {
 
   const direct = resolveModulePath('jiti', { from, try: true })
   if (direct) {
+logger.debug(`resolveFromProject(options=${options}): direct → ${direct}`);
     return direct
   }
 
   const nuxt = resolveModulePath('nuxt', { from, try: true }) ?? resolveModulePath('nuxt-nightly', { from, try: true })
   if (!nuxt) {
+logger.debug(`resolveFromProject(options=${options}): nuxt → ${nuxt}`);
     return undefined
   }
   // `resolveModulePath` follows the specifier as written, so a `nuxt` reached through a symlinked
@@ -231,7 +260,9 @@ function resolveFromProject (options: LoadJitiOptions): string | undefined {
   try {
     realNuxt = realpathSync(nuxt)
   } catch {
+	logger.error(`Exception in resolveFromProject(options=${options}): (no error binding)`);
     return undefined
   }
+logger.debug(`<<< Exiting resolveFromProject(options=${options})`);
   return resolveModulePath('jiti', { from: pathToFileURL(realNuxt), try: true })
 }

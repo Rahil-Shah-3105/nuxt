@@ -1,4 +1,5 @@
 import type { ParseResult, ParserOptions } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { parseModule } from './parse.ts'
 
 type StaticImports = ParseResult['module']['staticImports']
@@ -25,6 +26,7 @@ export function getStaticImports (code: string, staticImports: StaticImports): P
   const imports: ParsedStaticImport[] = []
 
   for (const statement of staticImports) {
+	NuxtLogger.debug(`>>> Entering getStaticImports(code=${code},staticImports=${staticImports})`);
     const parsed: ParsedStaticImport = {
       code: code.slice(statement.start, statement.end),
       start: statement.start,
@@ -39,9 +41,11 @@ export function getStaticImports (code: string, staticImports: StaticImports): P
       switch (entry.importName.kind) {
         case 'Default':
           parsed.defaultImport = entry.localName.value ?? undefined
+		NuxtLogger.debug(`getStaticImports(code=${code},staticImports=${staticImports}): parsed.defaultImport → ${parsed.defaultImport}`);
           break
         case 'NamespaceObject':
           parsed.namespacedImport = entry.localName.value ?? undefined
+		NuxtLogger.debug(`getStaticImports(code=${code},staticImports=${staticImports}): parsed.namespacedImport → ${parsed.namespacedImport}`);
           break
         case 'Name':
           if (entry.importName.name && entry.localName.value) {
@@ -51,6 +55,7 @@ export function getStaticImports (code: string, staticImports: StaticImports): P
       }
     }
 
+	NuxtLogger.debug(`<<< Exiting getStaticImports(code=${code},staticImports=${staticImports})`);
     imports.push(parsed)
   }
 
@@ -61,5 +66,7 @@ export function getStaticImports (code: string, staticImports: StaticImports): P
  * Parse `code` and extract its value (non-type) static imports.
  */
 export function parseStaticImports (code: string, filename: string, options?: ParserOptions): ParsedStaticImport[] {
+NuxtLogger.debug(`>>> Entering parseStaticImports(code=${code},filename=${filename},options=${options})`);
+NuxtLogger.debug(`<<< Exiting parseStaticImports(code=${code},filename=${filename},options=${options})`);
   return getStaticImports(code, parseModule(code, filename, options).module.staticImports)
 }

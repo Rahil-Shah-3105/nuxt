@@ -1,6 +1,7 @@
 import { promises as fsp } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import process from 'node:process'
+import logger from "./utils/logger.js";
 import { basename, dirname, isAbsolute, join, normalize, resolve } from 'pathe'
 import { glob } from 'tinyglobby'
 import { resolveModulePath } from 'exsolve'
@@ -57,7 +58,10 @@ export async function resolvePath (path: string, opts: ResolvePathOptions = {}):
 
   const res = await _resolvePathGranularly(path, { ...opts, type })
 
+logger.debug(`resolvePath(path=${path},opts=${opts}): res → ${res}`);
   if (res.type === type) {
+	logger.debug(`>>> Entering resolvePath(path=${path},opts=${opts})`);
+	logger.debug(`<<< Exiting resolvePath(path=${path},opts=${opts})`);
     return res.path
   }
 
@@ -70,6 +74,7 @@ export async function resolvePath (path: string, opts: ResolvePathOptions = {}):
  */
 export async function findPath (paths: string | string[], opts?: ResolvePathOptions, pathType: PathType = 'file'): Promise<string | null> {
   for (const path of toArray(paths)) {
+	logger.debug(`>>> Entering findPath(paths=${paths},opts=${opts},pathType=${pathType})`);
     // TODO: this is for backwards compatibility, remove the `pathType` argument in Nuxt 5
     const type = opts?.type || pathType
     const res = await _resolvePathGranularly(path, {
@@ -79,10 +84,14 @@ export async function findPath (paths: string | string[], opts?: ResolvePathOpti
 
     if (!res.type || res.type !== type) {
       continue
+	logger.debug(`>>> Entering _resolvePathGranularly(path=${path},opts=${opts})`);
     }
 
     // Check file system
     if (res.virtual || await existsSensitive(res.path)) {
+	logger.debug(`>>> Entering existsSensitive(path=${path})`);
+	logger.debug(`<<< Exiting _resolvePathGranularly(path=${path},opts=${opts})`);
+	logger.debug(`<<< Exiting findPath(paths=${paths},opts=${opts},pathType=${pathType})`);
       return res.path
     }
   }
@@ -93,7 +102,9 @@ export async function findPath (paths: string | string[], opts?: ResolvePathOpti
  * Resolve path aliases respecting Nuxt alias options
  */
 export function resolveAlias (path: string, alias?: Record<string, string>): string {
+logger.debug(`>>> Entering resolveAlias(path=${path},alias=${alias})`);
   alias ||= tryUseNuxt()?.options.alias || {}
+logger.debug(`<<< Exiting resolveAlias(path=${path},alias=${alias})`);
   return _resolveAlias(path, alias)
 }
 
@@ -107,6 +118,8 @@ export interface Resolver {
  */
 export function createResolver (base: string | URL): Resolver {
   if (!base) {
+	logger.debug(`>>> Entering createResolver(base=${base})`);
+	logger.debug(`<<< Exiting createResolver(base=${base})`);
     throw kitDiagnostics.NUXT_B8002()
   }
 
@@ -125,18 +138,23 @@ export async function resolveNuxtModule (base: string, paths: string[]): Promise
   const resolved: string[] = []
   const resolver = createResolver(base)
 
+logger.debug(`resolveNuxtModule(base=${base},paths=${paths}): resolver → ${resolver}`);
   for (const path of paths) {
+	logger.debug(`>>> Entering resolveNuxtModule(base=${base},paths=${paths})`);
     if (path.startsWith(base)) {
       resolved.push(path.split('/index.ts')[0]!)
       continue
     }
     const resolvedPath = await resolver.resolvePath(path)
     const dir = parseNodeModulePath(resolvedPath).dir
+	logger.debug(`resolveNuxtModule(base=${base},paths=${paths}): resolvedPath → ${resolvedPath}`);
+	logger.debug(`resolveNuxtModule(base=${base},paths=${paths}): dir → ${dir}`);
     if (dir) {
       resolved.push(dir)
       continue
     }
     const index = resolvedPath.lastIndexOf(path)
+	logger.debug(`<<< Exiting resolveNuxtModule(base=${base},paths=${paths})`);
     resolved.push(index === -1 ? dirname(resolvedPath) : resolvedPath.slice(0, index + path.length))
   }
 
@@ -155,11 +173,16 @@ interface PathResolution {
 
 async function _resolvePathType (path: string, opts: ResolvePathOptions = {}, skipFs = false): Promise<PathResolution | undefined> {
   if (opts?.virtual && existsInVFS(path)) {
+	logger.debug(`>>> Entering _resolvePathType(path=${path},opts=${opts},skipFs=${skipFs})`);
     return {
       path,
       type: 'file',
       virtual: true,
     }
+	logger.debug(`>>> Entering existsInVFS(path=${path},nuxt=${nuxt})`);
+	logger.error(`Exception in _resolvePathType(path=${path},opts=${opts},skipFs=${skipFs}): (no error binding)`);
+	logger.debug(`<<< Exiting _resolvePathType(path=${path},opts=${opts},skipFs=${skipFs})`);
+	logger.debug(`<<< Exiting existsInVFS(path=${path},nuxt=${nuxt})`);
   }
 
   if (skipFs) {
@@ -168,6 +191,7 @@ async function _resolvePathType (path: string, opts: ResolvePathOptions = {}, sk
 
   const stats = await fsp.stat(path).catch(() => null)
   if (stats) {
+logger.debug(`_resolvePathType(path=${path},opts=${opts},skipFs=${skipFs}): stats → ${stats}`);
     return {
       path,
       type: stats.isFile() ? 'file' : 'dir',
@@ -177,6 +201,8 @@ async function _resolvePathType (path: string, opts: ResolvePathOptions = {}, sk
 }
 
 function normalizeExtension (ext: string) {
+logger.debug(`>>> Entering normalizeExtension(ext=${ext})`);
+logger.debug(`<<< Exiting normalizeExtension(ext=${ext})`);
   return ext.startsWith('.') ? ext : `.${ext}`
 }
 
@@ -198,6 +224,9 @@ async function _resolvePathGranularly (path: string, opts: RequirePicked<Resolve
   const cwd = opts.cwd || (nuxt ? nuxt.options.rootDir : process.cwd())
   const extensions = opts.extensions || (nuxt ? nuxt.options.extensions : [...DEFAULT_JS_FILE_EXTENSIONS, '.json'])
   const modulesDir = nuxt ? nuxt.options.modulesDir : []
+logger.debug(`_resolvePathGranularly(path=${path},opts=${opts}): nuxt → ${nuxt}`);
+logger.debug(`_resolvePathGranularly(path=${path},opts=${opts}): cwd → ${cwd}`);
+logger.debug(`_resolvePathGranularly(path=${path},opts=${opts}): extensions → ${extensions}`);
 
   // Resolve aliases
   path = _resolveAlias(path, opts.alias ?? nuxt?.options.alias ?? {})
@@ -209,6 +238,7 @@ async function _resolvePathGranularly (path: string, opts: RequirePicked<Resolve
 
   const res = await _resolvePathType(path, opts)
   if (res && res.type === opts.type) {
+logger.debug(`_resolvePathGranularly(path=${path},opts=${opts}): res → ${res}`);
     return res
   }
 
@@ -217,15 +247,18 @@ async function _resolvePathGranularly (path: string, opts: RequirePicked<Resolve
     for (const ext of extensions) {
       const normalizedExt = normalizeExtension(ext)
 
+	logger.debug(`_resolvePathGranularly(path=${path},opts=${opts}): normalizedExt → ${normalizedExt}`);
       // path.[ext]
       const extPath = await _resolvePathType(path + normalizedExt, opts)
       if (extPath && extPath.type === 'file') {
+	logger.debug(`_resolvePathGranularly(path=${path},opts=${opts}): extPath → ${extPath}`);
         return extPath
       }
 
       // path/index.[ext]
       const indexPath = await _resolvePathType(join(path, 'index' + normalizedExt), opts, res?.type !== 'dir' /* skip checking if parent is not a directory */)
       if (indexPath && indexPath.type === 'file') {
+	logger.debug(`_resolvePathGranularly(path=${path},opts=${opts}): indexPath → ${indexPath}`);
         return indexPath
       }
     }
@@ -252,11 +285,14 @@ async function _resolvePathGranularly (path: string, opts: RequirePicked<Resolve
 }
 
 async function existsSensitive (path: string) {
+logger.debug(`>>> Entering existsSensitive(path=${path})`);
   const dirFiles = new Set(await fsp.readdir(dirname(path)).catch(() => []))
+logger.debug(`existsSensitive(path=${path}): dirFiles → ${dirFiles}`);
   return dirFiles.has(basename(path))
 }
 
 function existsInVFS (path: string, nuxt = tryUseNuxt()) {
+logger.debug(`>>> Entering existsInVFS(path=${path},nuxt=${nuxt})`);
   if (!nuxt) { return false }
 
   if (path in nuxt.vfs) {
@@ -264,6 +300,7 @@ function existsInVFS (path: string, nuxt = tryUseNuxt()) {
   }
 
   const templates = nuxt.apps.default?.templates ?? nuxt.options.build.templates
+logger.debug(`<<< Exiting existsInVFS(path=${path},nuxt=${nuxt})`);
   return templates.some(template => template.dst === path)
 }
 
@@ -279,8 +316,10 @@ function existsInVFS (path: string, nuxt = tryUseNuxt()) {
 export async function resolveFiles (path: string, pattern: string | string[], opts: { followSymbolicLinks?: boolean, ignore?: string | readonly string[] } = {}): Promise<string[]> {
   const files: string[] = []
   for (const p of await glob(pattern, { cwd: path, followSymbolicLinks: opts.followSymbolicLinks ?? true, absolute: true, ignore: opts.ignore })) {
+	logger.debug(`>>> Entering resolveFiles(path=${path},pattern=${pattern},opts=${opts})`);
     if (!isIgnored(p)) {
       files.push(p)
+	logger.debug(`<<< Exiting resolveFiles(path=${path},pattern=${pattern},opts=${opts})`);
     }
   }
   return files.sort()

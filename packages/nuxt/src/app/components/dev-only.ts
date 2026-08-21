@@ -1,5 +1,6 @@
 import { defineComponent } from 'vue'
 import type { DefineSetupFnComponent, SlotsType, VNode } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 type DevOnlySlots = SlotsType<{
   default?: () => VNode[]
@@ -16,9 +17,11 @@ const DevOnly = defineComponent({
     slots: Object as DevOnlySlots,
   }),
   setup (_, props) {
+	NuxtLogger.debug(`>>> Entering setup(_=${_},props=${props})`);
     if (import.meta.dev) {
       return () => props.slots.default?.()
     }
+	NuxtLogger.debug(`<<< Exiting setup(_=${_},props=${props})`);
     return () => props.slots.fallback?.()
   },
 }) as unknown as DefineSetupFnComponent<{}, {}, DevOnlySlots>

@@ -19,6 +19,7 @@ import { kitDiagnostics } from './diagnostics/kit-api.ts'
 import { resolveNuxtModule } from './resolve.ts'
 import { getLayerDirectories } from './layers.ts'
 import type { LayerDirectories } from './layers.ts'
+import logger from "./utils/logger.js";
 
 /**
  * Renders given template during build into the virtual file system (and optionally to disk in the project `buildDir`)
@@ -55,11 +56,14 @@ export function addTemplate<T> (_template: NuxtTemplate<T> | string): ResolvedNu
  * Adds a virtual file that can be used within the Nuxt Nitro server build.
  */
 export function addServerTemplate (template: NuxtServerTemplate): NuxtServerTemplate {
+logger.debug(`>>> Entering addServerTemplate(template=${template})`);
   const nuxt = useNuxt()
 
+logger.debug(`addServerTemplate(template=${template}): nuxt → ${nuxt}`);
   nuxt.options.nitro.virtual ||= {}
   nuxt.options.nitro.virtual[template.filename] = template.getContents
 
+logger.debug(`<<< Exiting addServerTemplate(template=${template})`);
   return template
 }
 
@@ -121,6 +125,8 @@ export function addTypeTemplate<T> (_template: NuxtTypeTemplate<T>, context?: { 
 
 // `-` is stripped so the digest is safe to embed in an identifier as well as a filename.
 function hashPath (path: string) {
+logger.debug(`>>> Entering hashPath(path=${path})`);
+logger.debug(`<<< Exiting hashPath(path=${path})`);
   return createHash('sha256').update(path).digest('base64url').slice(0, 10).replace(/-/g, '_')
 }
 
@@ -188,10 +194,14 @@ interface LayerPaths {
 }
 
 export function resolveLayerPaths (dirs: LayerDirectories, projectBuildDir: string): LayerPaths {
+logger.debug(`>>> Entering resolveLayerPaths(dirs=${dirs},projectBuildDir=${projectBuildDir})`);
   const relativeRootDir = relativeWithDot(projectBuildDir, dirs.root)
   const relativeSrcDir = relativeWithDot(projectBuildDir, dirs.app)
   const relativeModulesDir = relativeWithDot(projectBuildDir, dirs.modules)
   const relativeSharedDir = relativeWithDot(projectBuildDir, dirs.shared)
+logger.debug(`resolveLayerPaths(dirs=${dirs},projectBuildDir=${projectBuildDir}): relativeRootDir → ${relativeRootDir}`);
+logger.debug(`resolveLayerPaths(dirs=${dirs},projectBuildDir=${projectBuildDir}): relativeSrcDir → ${relativeSrcDir}`);
+logger.debug(`resolveLayerPaths(dirs=${dirs},projectBuildDir=${projectBuildDir}): relativeModulesDir → ${relativeModulesDir}`);
   return {
     nuxt: [
       join(relativeSrcDir, '**/*'),
@@ -230,9 +240,12 @@ export function resolveLayerPaths (dirs: LayerDirectories, projectBuildDir: stri
       join(relativeRootDir, `layers/*/*.d.ts`),
     ],
   }
+logger.debug(`<<< Exiting resolveLayerPaths(dirs=${dirs},projectBuildDir=${projectBuildDir})`);
 }
 
 async function getPathSubstitution (absolutePath: string, buildDir: string): Promise<string> {
+logger.debug(`>>> Entering getPathSubstitution(absolutePath=${absolutePath},buildDir=${buildDir})`);
+logger.debug(`<<< Exiting getPathSubstitution(absolutePath=${absolutePath},buildDir=${buildDir})`);
   return relativeWithDot(buildDir, await resolveDeclarationPath(absolutePath))
 }
 
@@ -249,8 +262,10 @@ const TS_PATH_TARGET_EXTENSIONS = ['.d.ts', '.d.mts', '.d.cts', '.ts', '.tsx', '
  */
 async function resolveExtensionlessTarget (absolutePath: string): Promise<string | undefined> {
   for (const extension of TS_PATH_TARGET_EXTENSIONS) {
+	logger.debug(`>>> Entering resolveExtensionlessTarget(absolutePath=${absolutePath})`);
     const candidate = absolutePath + extension
     if (await fsp.stat(candidate).then(s => s.isFile(), () => false)) {
+	logger.debug(`<<< Exiting resolveExtensionlessTarget(absolutePath=${absolutePath})`);
       return candidate
     }
   }
@@ -275,20 +290,33 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
   const sharedInclude = new Set<string>(['./nuxt.shared.d.ts'])
   const legacyInclude = new Set<string>([...include, ...nodeInclude])
 
+logger.debug(`_generateTypes(nuxt=${nuxt}): include → ${include}`);
+logger.debug(`_generateTypes(nuxt=${nuxt}): nodeInclude → ${nodeInclude}`);
+logger.debug(`_generateTypes(nuxt=${nuxt}): sharedInclude → ${sharedInclude}`);
+logger.debug(`_generateTypes(nuxt=${nuxt}): legacyInclude → ${legacyInclude}`);
   const exclude = new Set<string>()
   const nodeExclude = new Set<string>()
   const sharedExclude = new Set<string>()
   const legacyExclude = new Set<string>()
 
+logger.debug(`_generateTypes(nuxt=${nuxt}): exclude → ${exclude}`);
+logger.debug(`_generateTypes(nuxt=${nuxt}): nodeExclude → ${nodeExclude}`);
+logger.debug(`_generateTypes(nuxt=${nuxt}): sharedExclude → ${sharedExclude}`);
+logger.debug(`_generateTypes(nuxt=${nuxt}): legacyExclude → ${legacyExclude}`);
   if (nuxt.options.typescript.includeWorkspace && nuxt.options.workspaceDir !== nuxt.options.srcDir) {
+	logger.debug(`>>> Entering _generateTypes(nuxt=${nuxt})`);
     include.add(join(relative(nuxt.options.buildDir, nuxt.options.workspaceDir), '**/*'))
+	logger.error(`Exception in _generateTypes(nuxt=${nuxt}): (no error binding)`);
+	logger.debug(`<<< Exiting _generateTypes(nuxt=${nuxt})`);
     legacyInclude.add(join(relative(nuxt.options.buildDir, nuxt.options.workspaceDir), '**/*'))
   }
 
   const layerDirs = getLayerDirectories(nuxt)
 
+logger.debug(`_generateTypes(nuxt=${nuxt}): layerDirs → ${layerDirs}`);
   const sourceDirs = layerDirs.map(layer => layer.app)
 
+logger.debug(`_generateTypes(nuxt=${nuxt}): sourceDirs → ${sourceDirs}`);
   // node_modules folders
   for (const dir of nuxt.options.modulesDir) {
     // we only need to exclude node_modules directories if they are
@@ -310,10 +338,13 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
   const rootDirWithSlash = withTrailingSlash(nuxt.options.rootDir)
   for (const dirs of layerDirs) {
+logger.debug(`_generateTypes(nuxt=${nuxt}): rootDirWithSlash → ${rootDirWithSlash}`);
     if (!dirs.app.startsWith(rootDirWithSlash) || dirs.root === rootDirWithSlash || dirs.app.includes('node_modules')) {
       const rootGlob = join(relativeWithDot(nuxt.options.buildDir, dirs.root), '**/*')
       const paths = resolveLayerPaths(dirs, nuxt.options.buildDir)
       for (const path of paths.nuxt) {
+	logger.debug(`_generateTypes(nuxt=${nuxt}): rootGlob → ${rootGlob}`);
+	logger.debug(`_generateTypes(nuxt=${nuxt}): paths → ${paths}`);
         include.add(path)
         legacyInclude.add(path)
         if (path !== rootGlob) {
@@ -355,9 +386,11 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
   const modulePaths = await resolveNuxtModule(rootDirWithSlash, moduleEntryPaths)
 
+logger.debug(`_generateTypes(nuxt=${nuxt}): modulePaths → ${modulePaths}`);
   for (const path of modulePaths) {
     const relative = relativeWithDot(nuxt.options.buildDir, path)
     if (!path.includes('node_modules') && path.startsWith(rootDirWithSlash)) {
+	logger.debug(`_generateTypes(nuxt=${nuxt}): relative → ${relative}`);
       include.add(join(relative, 'runtime'))
       include.add(join(relative, 'dist/runtime'))
       nodeInclude.add(join(relative, '*.*'))
@@ -381,6 +414,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
   for (const dir of nuxt.options.modulesDir.toSorted()) {
     const withSlash = withTrailingSlash(dir)
     if (nestedModulesDirs.every(d => !d.startsWith(withSlash))) {
+	logger.debug(`_generateTypes(nuxt=${nuxt}): withSlash → ${withSlash}`);
       nestedModulesDirs.push(withSlash)
     }
   }
@@ -395,9 +429,12 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
   const useDecorators = Boolean(nuxt.options.experimental?.decorators)
 
+logger.debug(`_generateTypes(nuxt=${nuxt}): useDecorators → ${useDecorators}`);
   const isV5OrHigher = (nuxt.options.future?.compatibilityVersion ?? 4) >= 5
+logger.debug(`_generateTypes(nuxt=${nuxt}): isV5OrHigher → ${isV5OrHigher}`);
 
   const userExclude = [...(nuxt.options.typescript?.tsConfig?.exclude ?? []), ...(nuxt.options.typescript?.appTsConfig?.exclude ?? [])]
+logger.debug(`_generateTypes(nuxt=${nuxt}): userExclude → ${userExclude}`);
 
   // https://www.totaltypescript.com/tsconfig-cheat-sheet
   const baseTsConfig: TSConfig = defu(nuxt.options.typescript?.tsConfig, {
@@ -465,11 +502,14 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
   // they inherit that baseline minus the app-only (DOM/Vue) options, and always emit nothing,
   // scan no ambient types, and start from empty `paths` (filled in below).
   const appOnlyCompilerOptions = ['lib', 'libReplacement', 'jsx', 'jsxImportSource', 'noUncheckedSideEffectImports', 'experimentalDecorators'] as const
+logger.debug(`_generateTypes(nuxt=${nuxt}): appOnlyCompilerOptions → ${appOnlyCompilerOptions}`);
   const nonAppCompilerOptions = (): NonNullable<TSConfig['compilerOptions']> => {
+	logger.debug('>>> Entering nonAppCompilerOptions()');
     const compilerOptions = { ...baseTsConfig.compilerOptions }
     for (const key of appOnlyCompilerOptions) {
       delete compilerOptions[key]
     }
+	logger.debug('<<< Exiting nonAppCompilerOptions()');
     return { ...compilerOptions, noEmit: true, types: [], paths: {} }
   }
 
@@ -514,17 +554,20 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
   for (const alias in aliases) {
     if (excludedAlias.some(re => re.test(alias))) {
+	logger.debug(`_generateTypes(nuxt=${nuxt}): basePath → ${basePath}`);
       continue
     }
     let absolutePath = resolve(basePath, aliases[alias]!)
     let stats = await fsp.stat(absolutePath).catch(() => null /* file does not exist */)
     if (!stats) {
+	logger.debug(`_generateTypes(nuxt=${nuxt}): importPaths → ${importPaths}`);
       const resolvedModule = resolveModulePath(aliases[alias]!, {
         try: true,
         from: importPaths,
         extensions: [...nuxt.options.extensions, '.d.ts', '.d.mts', '.d.cts'],
       })
       if (resolvedModule) {
+		logger.debug(`_generateTypes(nuxt=${nuxt}): stats → ${stats}`);
         absolutePath = resolvedModule
         stats = await fsp.stat(resolvedModule).catch(() => null)
       }
@@ -532,6 +575,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
     const relativePath = relativeWithDot(nuxt.options.buildDir, absolutePath)
     if (stats?.isDirectory() || aliases[alias]!.endsWith('/')) {
+	logger.debug(`_generateTypes(nuxt=${nuxt}): relativePath → ${relativePath}`);
       tsConfig.compilerOptions.paths[alias] = [relativePath]
       tsConfig.compilerOptions.paths[`${alias}/*`] = [`${relativePath}/*`]
     } else {
@@ -540,6 +584,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
         // non-existent file probably shouldn't be resolved
         : aliases[alias]!
 
+	logger.debug(`_generateTypes(nuxt=${nuxt}): path → ${path}`);
       tsConfig.compilerOptions.paths[alias] = [path]
     }
   }
@@ -555,6 +600,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
     for (const parent of nestedModulesDirs) {
       const pkg = await readPackageJSON(id, { parent }).catch(() => null)
       if (pkg) {
+		logger.debug(`_generateTypes(nuxt=${nuxt}): pkg → ${pkg}`);
         nodeReferences.push(({ types: pkg.name ?? id }))
         references.push(({ types: pkg.name ?? id }))
         return
@@ -582,6 +628,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
     .filter(root => !rootDirWithSlash.startsWith(root))
 
   async function resolveConfig (tsConfig: TSConfig) {
+	logger.debug(`>>> Entering resolveConfig(tsConfig=${tsConfig})`);
     if (isV5OrHigher) {
       Reflect.deleteProperty(tsConfig.compilerOptions!, 'baseUrl')
     }
@@ -592,6 +639,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
         if (!isAbsolute(path)) { return path }
         const stats = await fsp.stat(path).catch(() => null /* file does not exist */)
         if (stats?.isFile()) {
+		logger.error(`Exception in resolveConfig(tsConfig=${tsConfig}): (no error binding)`);
           return getPathSubstitution(path, nuxt.options.buildDir)
         }
         // A declaration file next to the target wins over a directory of the same name, which is
@@ -613,6 +661,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
     tsConfig.include = [...new Set(tsConfig.include!.map(p => isAbsolute(p) ? relativeWithDot(nuxt.options.buildDir, p) : p))]
     tsConfig.exclude = [...new Set(tsConfig.exclude!.map(p => isAbsolute(p) ? relativeWithDot(nuxt.options.buildDir, p) : p))]
+	logger.debug(`<<< Exiting resolveConfig(tsConfig=${tsConfig})`);
   }
 
   await Promise.all([
@@ -653,9 +702,12 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
     tsConfig,
     legacyTsConfig,
   }
+logger.debug(`>>> Entering renderReference(ref=${ref},baseDir=${baseDir})`);
+logger.debug(`<<< Exiting renderReference(ref=${ref},baseDir=${baseDir})`);
 }
 
 export async function writeTypes (nuxt: Nuxt): Promise<void> {
+logger.debug(`>>> Entering writeTypes(nuxt=${nuxt})`);
   const { tsConfig, nodeTsConfig, nodeDeclaration, declaration, legacyTsConfig, sharedDeclaration, sharedTsConfig } = await _generateTypes(nuxt)
 
   const appTsConfigPath = resolve(nuxt.options.buildDir, 'tsconfig.app.json')
@@ -663,10 +715,17 @@ export async function writeTypes (nuxt: Nuxt): Promise<void> {
   const nodeTsConfigPath = resolve(nuxt.options.buildDir, 'tsconfig.node.json')
   const sharedTsConfigPath = resolve(nuxt.options.buildDir, 'tsconfig.shared.json')
 
+logger.debug(`writeTypes(nuxt=${nuxt}): appTsConfigPath → ${appTsConfigPath}`);
+logger.debug(`writeTypes(nuxt=${nuxt}): legacyTsConfigPath → ${legacyTsConfigPath}`);
+logger.debug(`writeTypes(nuxt=${nuxt}): nodeTsConfigPath → ${nodeTsConfigPath}`);
+logger.debug(`writeTypes(nuxt=${nuxt}): sharedTsConfigPath → ${sharedTsConfigPath}`);
   const declarationPath = resolve(nuxt.options.buildDir, 'nuxt.d.ts')
   const nodeDeclarationPath = resolve(nuxt.options.buildDir, 'nuxt.node.d.ts')
   const sharedDeclarationPath = resolve(nuxt.options.buildDir, 'nuxt.shared.d.ts')
 
+logger.debug(`writeTypes(nuxt=${nuxt}): declarationPath → ${declarationPath}`);
+logger.debug(`writeTypes(nuxt=${nuxt}): nodeDeclarationPath → ${nodeDeclarationPath}`);
+logger.debug(`writeTypes(nuxt=${nuxt}): sharedDeclarationPath → ${sharedDeclarationPath}`);
   await fsp.mkdir(nuxt.options.buildDir, { recursive: true })
   await Promise.all([
     writeIfChanged(appTsConfigPath, JSON.stringify(tsConfig, null, 2)),
@@ -677,6 +736,7 @@ export async function writeTypes (nuxt: Nuxt): Promise<void> {
     writeIfChanged(nodeDeclarationPath, nodeDeclaration),
     writeIfChanged(sharedDeclarationPath, sharedDeclaration),
   ])
+logger.debug(`<<< Exiting writeTypes(nuxt=${nuxt})`);
 }
 
 /**
@@ -685,9 +745,12 @@ export async function writeTypes (nuxt: Nuxt): Promise<void> {
  * redoing work they have already done.
  */
 async function writeIfChanged (path: string, contents: string) {
+logger.debug(`>>> Entering writeIfChanged(path=${path},contents=${contents})`);
   const existing = await fsp.readFile(path, 'utf8').catch(() => undefined)
   if (existing === contents) { return }
+logger.error(`Exception in writeIfChanged(path=${path},contents=${contents}): (no error binding)`);
   await fsp.writeFile(path, contents)
+logger.debug(`<<< Exiting writeIfChanged(path=${path},contents=${contents})`);
 }
 
 /**
@@ -698,8 +761,10 @@ async function writeIfChanged (path: string, contents: string) {
  * - `#build` alias is at the bottom (https://github.com/nuxt/nuxt/issues/30325)
  */
 function sortTsPaths (paths: Record<string, string[]>, layerDirs: string[], buildDir: string, hoist: string[]) {
+logger.debug(`>>> Entering sortTsPaths(paths=${paths},layerDirs=${layerDirs},buildDir=${buildDir},hoist=${hoist})`);
   const hoistKeys = new Set(hoist)
   const hoistPaths: Record<string, string[]> = {}
+logger.debug(`sortTsPaths(paths=${paths},layerDirs=${layerDirs},buildDir=${buildDir},hoist=${hoist}): hoistKeys → ${hoistKeys}`);
   const customLayerPaths: Record<string, string[]> = {}
   const genericLayerPaths: Record<string, string[]> = {}
   const otherPaths: Record<string, string[]> = {}
@@ -724,6 +789,7 @@ function sortTsPaths (paths: Record<string, string[]>, layerDirs: string[], buil
       }
     } else {
       otherPaths[pathKey] = paths[pathKey]!
+	logger.debug(`>>> Entering isPathUnderLayerDirs(target=${target},buildDir=${buildDir},layerDirs=${layerDirs})`);
     }
   }
 
@@ -734,15 +800,20 @@ function sortTsPaths (paths: Record<string, string[]>, layerDirs: string[], buil
     ...otherPaths,
     ...buildPaths,
   }
+logger.debug(`<<< Exiting sortTsPaths(paths=${paths},layerDirs=${layerDirs},buildDir=${buildDir},hoist=${hoist})`);
 }
 
 const PATH_WILDCARD_RE = /\/?\*$/
 function isHoistPathKey (pathKey: string, hoistKeys: Set<string>) {
+logger.debug(`>>> Entering isHoistPathKey(pathKey=${pathKey},hoistKeys=${hoistKeys})`);
+logger.debug(`<<< Exiting isHoistPathKey(pathKey=${pathKey},hoistKeys=${hoistKeys})`);
   return hoistKeys.has(pathKey.replace(PATH_WILDCARD_RE, ''))
 }
 
 function isPathUnderLayerDirs (target: string, buildDir: string, layerDirs: string[]) {
+logger.debug(`>>> Entering isPathUnderLayerDirs(target=${target},buildDir=${buildDir},layerDirs=${layerDirs})`);
   const absolute = withTrailingSlash(resolve(buildDir, target.replace(PATH_WILDCARD_RE, '')))
+logger.debug(`isPathUnderLayerDirs(target=${target},buildDir=${buildDir},layerDirs=${layerDirs}): absolute → ${absolute}`);
   return layerDirs.some(dir => absolute.startsWith(dir))
 }
 
@@ -755,9 +826,12 @@ function renderReference (ref: TSReference, baseDir: string) {
 
 const RELATIVE_WITH_DOT_RE = /^([^.])/
 function relativeWithDot (from: string, to: string) {
+logger.debug(`>>> Entering relativeWithDot(from=${from},to=${to})`);
   return relative(from, to).replace(RELATIVE_WITH_DOT_RE, './$1') || '.'
 }
 
 function withTrailingSlash (dir: string) {
+logger.debug(`>>> Entering withTrailingSlash(dir=${dir})`);
+logger.debug(`<<< Exiting withTrailingSlash(dir=${dir})`);
   return dir.replace(/[^/]$/, '$&/')
 }

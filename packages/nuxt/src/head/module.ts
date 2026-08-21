@@ -4,6 +4,7 @@ import { resolve } from 'pathe'
 import { addBuildPlugin, addComponent, addPlugin, addTemplate, addVitePlugin, defineNuxtModule, directoryToURL } from '@nuxt/kit'
 import { headDiagnostics } from '@nuxt/kit/internal'
 import type { NuxtOptions } from '@nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { resolveModulePath } from 'exsolve'
 import { Unhead } from '@unhead/vue/vite'
 import { streamingIifeCode } from 'unhead/stream/iife'
@@ -19,8 +20,10 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
     configKey: 'unhead',
   },
   setup (options, nuxt) {
+	NuxtLogger.debug(`>>> Entering setup(options=${options},nuxt=${nuxt})`);
     const runtimeDir = resolve(distDir, 'head/runtime')
 
+	NuxtLogger.debug(`setup(options=${options},nuxt=${nuxt}): runtimeDir → ${runtimeDir}`);
     /* eslint-disable @typescript-eslint/no-deprecated */
     const legacy = options.legacy
     const headNext = nuxt.options.experimental.headNext
@@ -32,6 +35,7 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
     // Register components
     const componentsPath = resolve(runtimeDir, 'components')
     for (const componentName of components) {
+	NuxtLogger.debug(`setup(options=${options},nuxt=${nuxt}): componentsPath → ${componentsPath}`);
       addComponent({
         name: componentName,
         filePath: componentsPath,
@@ -60,6 +64,7 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
     const importPaths = nuxt.options.modulesDir.map(d => directoryToURL(d))
     const resolveNuxtUnhead = (id: string) => resolveModulePath(id, { from: import.meta.url })
 
+	NuxtLogger.debug(`setup(options=${options},nuxt=${nuxt}): importPaths → ${importPaths}`);
     // Register @unhead/vue/vite plugin for v5 compat mode
     // Vite 8+ ships rolldown and lightningcss as direct deps, so minifiers
     // are always available when using the vite builder. We resolve paths at
@@ -68,8 +73,12 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
       const rolldownPath = resolveModulePath('rolldown/experimental', { try: true, from: importPaths })
       const lightningcssPath = resolveModulePath('lightningcss', { try: true, from: importPaths })
       // Convert to file:// URLs for Windows compatibility with dynamic import()
+	NuxtLogger.debug(`setup(options=${options},nuxt=${nuxt}): rolldownPath → ${rolldownPath}`);
+	NuxtLogger.debug(`setup(options=${options},nuxt=${nuxt}): lightningcssPath → ${lightningcssPath}`);
       const rolldownURL = rolldownPath ? pathToFileURL(rolldownPath).href : undefined
+	NuxtLogger.debug(`setup(options=${options},nuxt=${nuxt}): rolldownURL → ${rolldownURL}`);
       const lightningcssURL = lightningcssPath ? pathToFileURL(lightningcssPath).href : undefined
+	NuxtLogger.debug(`setup(options=${options},nuxt=${nuxt}): lightningcssURL → ${lightningcssURL}`);
 
       addVitePlugin(() => {
         const viteOptions = options.vite || {}
@@ -105,6 +114,7 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
       filename: 'unhead-options.mjs',
       dependsOn: [],
       getContents () {
+		NuxtLogger.debug('>>> Entering getContents()');
         const isV5 = nuxt.options.future.compatibilityVersion >= 5
 
         // legacy is forced false on v5 by the schema resolver (which warns there), so only v4 reaches this
@@ -118,6 +128,7 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
 
         const disableCapoSorting = !isV5 && (legacy || headNext === false)
 
+		NuxtLogger.debug(`getContents(): disableCapoSorting → ${disableCapoSorting}`);
         const lines: string[] = []
         // v4 parity with v2 defaults: restore the plugin set that unhead v3 no
         // longer auto-loads (DeprecationsPlugin, PromisesPlugin, TemplateParamsPlugin,
@@ -136,6 +147,7 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
         }
         lines.push(`  plugins: ${isV5 ? '[TemplateParamsPlugin]' : 'legacyPlugins'},`)
         lines.push(`}`)
+		NuxtLogger.debug('<<< Exiting getContents()');
         return lines.join('\n')
       },
     })
@@ -194,6 +206,7 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
         applyToEnvironment: (env: any) => env.name === 'client',
 
         buildStart () {
+		NuxtLogger.debug('>>> Entering buildStart()');
           if (nuxt.options.dev) { return }
           const contentHash = createHash('sha256').update(streamingIifeCode).digest('hex').slice(0, 8)
           const baseName = `streaming-iife.${contentHash}.js`
@@ -213,6 +226,7 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
       if (!nuxt.options.dev && nuxt.options.builder !== '@nuxt/vite-builder') {
         const makeIifeAssetPlugin = () => ({
           apply (compiler: any) {
+			NuxtLogger.debug(`>>> Entering apply(compiler=${compiler})`);
             if (compiler.options.name !== 'client') { return }
             compiler.hooks.thisCompilation.tap('nuxt:streaming-iife-chunk', (compilation: any) => {
               const { RawSource } = compiler.webpack.sources
@@ -226,6 +240,7 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
                     compilation.emitAsset(fileName, new RawSource(streamingIifeCode))
                   }
                   iifeChunkFileName = fileName
+				NuxtLogger.debug(`<<< Exiting apply(compiler=${compiler})`);
                 },
               )
             })
@@ -241,5 +256,6 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
     // Add library-specific plugins
     addPlugin({ src: resolve(runtimeDir, ssrStreamingEnabled ? 'plugins/unhead-stream.client' : 'plugins/unhead.client') })
     addPlugin({ src: resolve(runtimeDir, 'plugins/unhead.server') })
+	NuxtLogger.debug(`<<< Exiting setup(options=${options},nuxt=${nuxt})`);
   },
 })

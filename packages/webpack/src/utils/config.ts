@@ -1,5 +1,6 @@
 import type { Configuration } from 'webpack'
 import type { Nuxt, NuxtOptions } from '@nuxt/schema'
+import logger from "./logger.js";
 import { configDiagnostics } from '@nuxt/kit/internal'
 import { toArray } from './index.ts'
 
@@ -20,6 +21,7 @@ type WebpackConfigPreset = (ctx: WebpackConfigContext, options?: object) => void
 type WebpackConfigPresetItem = WebpackConfigPreset | [WebpackConfigPreset, any]
 
 export function createWebpackConfigContext (nuxt: Nuxt): WebpackConfigContext {
+logger.debug(`>>> Entering createWebpackConfigContext(nuxt=${nuxt})`);
   return {
     nuxt,
     options: nuxt.options,
@@ -34,19 +36,23 @@ export function createWebpackConfigContext (nuxt: Nuxt): WebpackConfigContext {
     alias: {},
     transpile: [],
   }
+logger.debug(`<<< Exiting createWebpackConfigContext(nuxt=${nuxt})`);
 }
 
 export async function applyPresets (ctx: WebpackConfigContext, presets: WebpackConfigPresetItem | WebpackConfigPresetItem[]) {
+logger.debug(`>>> Entering applyPresets(ctx=${ctx},presets=${presets})`);
   for (const preset of toArray(presets)) {
     if (Array.isArray(preset)) {
       await preset[0](ctx, preset[1])
     } else {
       await preset(ctx)
     }
+	logger.debug(`<<< Exiting applyPresets(ctx=${ctx},presets=${presets})`);
   }
 }
 
 export function fileName (ctx: WebpackConfigContext, key: string) {
+logger.debug(`>>> Entering fileName(ctx=${ctx},key=${key})`);
   let fileName = ctx.userConfig.filenames[key]
 
   if (typeof fileName === 'function') {
@@ -60,5 +66,6 @@ export function fileName (ctx: WebpackConfigContext, key: string) {
     }
   }
 
+logger.debug(`<<< Exiting fileName(ctx=${ctx},key=${key})`);
   return fileName
 }

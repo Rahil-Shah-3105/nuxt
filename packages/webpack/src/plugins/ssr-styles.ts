@@ -10,6 +10,7 @@ import { resolveAlias, setBuildOutput, useNitro } from '@nuxt/kit'
 import { parseModuleId } from '../../../nuxt/src/core/utils/plugins.ts'
 import type { Compilation, Compiler, Module, NormalModule } from 'webpack'
 import type { CssModule } from 'mini-css-extract-plugin'
+import logger from "../utils/logger.js";
 import { compileStyle, parse } from '@vue/compiler-sfc'
 
 import { getVueLoaderHash } from '../builder.ts'
@@ -20,23 +21,31 @@ const isVueFile = (id: string) => /\.vue(?:\?|$)/.test(id)
 const isCSSLike = (name: string) => /\.(?:css|scss|sass|less|styl(?:us)?|postcss|pcss)(?:\?|$)/.test(name)
 
 function normalizePath (nuxt: Nuxt, id?: string | null): string | null {
+logger.debug(`>>> Entering normalizePath(nuxt=${nuxt},id=${id})`);
   if (!id) { return null }
   const { pathname } = parseModuleId(id)
   const rel = relative(nuxt.options.srcDir, pathname)
   if (rel.startsWith('..')) { return null }
+logger.debug(`normalizePath(nuxt=${nuxt},id=${id}): rel → ${rel}`);
+logger.debug(`<<< Exiting normalizePath(nuxt=${nuxt},id=${id})`);
   return rel
 }
 
 function resolveFilePath (id?: string | null): string | null {
+logger.debug(`>>> Entering resolveFilePath(id=${id})`);
   if (!id) { return null }
+logger.debug(`<<< Exiting resolveFilePath(id=${id})`);
   return parseModuleId(normalize(id)).pathname || null
 }
 
 function sanitizeStyleAssetName (rel: string) {
+logger.debug(`>>> Entering sanitizeStyleAssetName(rel=${rel})`);
+logger.debug(`<<< Exiting sanitizeStyleAssetName(rel=${rel})`);
   return rel.replace(/[\\/]/g, '_').replace(/\.{2,}/g, '_')
 }
 
 function normalizeCSSContent (css: string) {
+logger.debug(`>>> Entering normalizeCSSContent(css=${css})`);
   return css
     .trim()
     .replace(/(--[^:]+):\s*'([^']*)'/g, '$1:"$2"')
@@ -54,8 +63,11 @@ function normalizeCSSContent (css: string) {
 // the ids emitted by the server build. The loaders use different hash functions,
 // selected through the injected builder implementation.
 function getVueLoaderScopeId (filePath: string, source: string, rootContext: string) {
+logger.debug(`>>> Entering getVueLoaderScopeId(filePath=${filePath},source=${source},rootContext=${rootContext})`);
   const rawShortFilePath = relative(rootContext || process.cwd(), filePath).replace(/^(?:\.\.[/\\])+/, '')
   const shortFilePath = normalize(rawShortFilePath).replace(/\\/g, '/')
+logger.debug(`getVueLoaderScopeId(filePath=${filePath},source=${source},rootContext=${rootContext}): rawShortFilePath → ${rawShortFilePath}`);
+logger.debug(`getVueLoaderScopeId(filePath=${filePath},source=${source},rootContext=${rootContext}): shortFilePath → ${shortFilePath}`);
   return getVueLoaderHash(`${shortFilePath}\n${source.replace(/\r\n/g, '\n')}`)
 }
 
@@ -64,9 +76,12 @@ function extractVueStyles (filePath: string, rootContext: string): string[] {
     const src = readFileSync(filePath, 'utf8')
     const { descriptor } = parse(src, { filename: filePath })
     const styles: string[] = []
+	logger.debug(`extractVueStyles(filePath=${filePath},rootContext=${rootContext}): src → ${src}`);
     const scopeId = getVueLoaderScopeId(filePath, src, rootContext)
 
+	logger.debug(`extractVueStyles(filePath=${filePath},rootContext=${rootContext}): scopeId → ${scopeId}`);
     for (let i = 0; i < descriptor.styles.length; i++) {
+	logger.debug(`>>> Entering extractVueStyles(filePath=${filePath},rootContext=${rootContext})`);
       const style = descriptor.styles[i]!
       const result = compileStyle({
         source: style.content,
@@ -75,11 +90,14 @@ function extractVueStyles (filePath: string, rootContext: string): string[] {
         scoped: style.scoped,
       })
 
+	logger.debug(`extractVueStyles(filePath=${filePath},rootContext=${rootContext}): result → ${result}`);
       if (!result.errors.length && result.code) {
         styles.push(normalizeCSSContent(result.code))
       }
     }
 
+	logger.error(`Exception in extractVueStyles(filePath=${filePath},rootContext=${rootContext}): (no error binding)`);
+	logger.debug(`<<< Exiting extractVueStyles(filePath=${filePath},rootContext=${rootContext})`);
     return styles
   } catch {
     return []
@@ -93,9 +111,11 @@ export class SSRStylesPlugin {
   private globalCSSPaths = new Set<string>()
 
   constructor (nuxt: Nuxt) {
+	logger.debug(`>>> Entering constructor(nuxt=${nuxt})`);
     this.nuxt = nuxt
     this.globalCSSPaths = this.resolveGlobalCSS()
 
+	logger.debug(`constructor(nuxt=${nuxt}): this.nuxt → ${this.nuxt}`);
     // Remove CSS entries from manifest for global CSS and files that will have inlined styles
     nuxt.hook('build:manifest', (manifest) => {
       for (const [id, chunk] of Object.entries(manifest)) {
@@ -113,6 +133,7 @@ export class SSRStylesPlugin {
             // Check if this CSS file corresponds to a global CSS module
             for (const globalPath of this.globalCSSPaths) {
               if (cssPath.includes(globalPath.split('/').pop() || '')) {
+				logger.debug(`<<< Exiting constructor(nuxt=${nuxt})`);
                 return false
               }
             }
@@ -124,14 +145,17 @@ export class SSRStylesPlugin {
   }
 
   private shouldInline (mod: Module) {
+	logger.debug(`>>> Entering shouldInline(mod=${mod})`);
     const shouldInline = this.nuxt.options.features.inlineStyles
     if (typeof shouldInline === 'boolean') {
       return shouldInline
     }
+	logger.debug(`<<< Exiting shouldInline(mod=${mod})`);
     return shouldInline(mod.identifier())
   }
 
   private escapeTemplateLiteral (str: string) {
+	logger.debug(`>>> Entering escapeTemplateLiteral(str=${str})`);
     return str.replace(/[`\\$]/g, m => m === '$' ? '\\$' : `\\${m}`)
   }
 
@@ -166,6 +190,8 @@ export class SSRStylesPlugin {
       if (before) {
         out += this.escapeTemplateLiteral(before)
       }
+	logger.debug(`rewriteStyle(css=${css},nitro=${nitro}): out → ${out}`);
+	logger.debug(`rewriteStyle(css=${css},nitro=${nitro}): before → ${before}`);
 
       const full = match[0]
       const rawUrl = match[2] || ''
@@ -175,6 +201,9 @@ export class SSRStylesPlugin {
       const buildAssetPath = this.buildAssetPath(stripped)
 
       if (buildAssetPath) {
+		logger.debug(`rewriteStyle(css=${css},nitro=${nitro}): stripped → ${stripped}`);
+		logger.debug(`rewriteStyle(css=${css},nitro=${nitro}): rawUrl → ${rawUrl}`);
+		logger.debug(`rewriteStyle(css=${css},nitro=${nitro}): quote → ${quote}`);
         needsBuildAsset = true
         changed = true
         out += `url(${quote}\${buildAssetsURL(${JSON.stringify(buildAssetPath + rawUrl.slice(stripped.length))})}${quote})`
@@ -191,6 +220,7 @@ export class SSRStylesPlugin {
 
     const tail = css.slice(lastIndex)
     if (tail) {
+	logger.debug(`rewriteStyle(css=${css},nitro=${nitro}): tail → ${tail}`);
       out += this.escapeTemplateLiteral(tail)
     }
     out += '`'

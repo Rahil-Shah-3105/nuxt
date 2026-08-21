@@ -9,9 +9,12 @@ import _routes from '#build/routes'
 import routerOptions, { hashMode } from '#build/router.options.mjs'
 import { crawlLinks } from '#build/nuxt.config.mjs'
 import _routeRulesMatcher from '#build/route-rules.mjs'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 // hoisted so a circular import cannot hit the TDZ of the `#build/route-rules.mjs` default export
 function routeRulesMatcher (path: string): NitroRouteRules {
+NuxtLogger.debug(`>>> Entering routeRulesMatcher(path=${path})`);
+NuxtLogger.debug(`<<< Exiting routeRulesMatcher(path=${path})`);
   return (_routeRulesMatcher as (path: string) => NitroRouteRules)(path)
 }
 
@@ -35,10 +38,13 @@ export default plugin
 const OPTIONAL_PARAM_RE = /^\/?:.*(?:\?|\(\.\*\)\*)$/
 
 function shouldPrerender (path: string) {
+NuxtLogger.debug(`>>> Entering shouldPrerender(path=${path})`);
+NuxtLogger.debug(`<<< Exiting shouldPrerender(path=${path})`);
   return crawlLinks || !!routeRulesMatcher(path).prerender
 }
 
 function processRoutes (routes: readonly RouteRecordRaw[], currentPath = '/', routesToPrerender = new Set<string>()) {
+NuxtLogger.debug(`>>> Entering processRoutes(routes=${routes},currentPath=${currentPath},routesToPrerender=${routesToPrerender})`);
   for (const route of routes) {
     // Add root of optional dynamic paths and catchalls
     if (OPTIONAL_PARAM_RE.test(route.path) && !route.children?.length && shouldPrerender(currentPath)) {
@@ -56,5 +62,6 @@ function processRoutes (routes: readonly RouteRecordRaw[], currentPath = '/', ro
       processRoutes(route.children, fullPath, routesToPrerender)
     }
   }
+NuxtLogger.debug(`<<< Exiting processRoutes(routes=${routes},currentPath=${currentPath},routesToPrerender=${routesToPrerender})`);
   return routesToPrerender
 }

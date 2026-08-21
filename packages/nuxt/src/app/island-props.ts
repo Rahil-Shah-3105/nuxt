@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 export type UnsafeIslandPropKey = 'template'
 export type ReservedRootIslandPropKey = 'as'
@@ -14,15 +15,19 @@ export function findUnsafeIslandPropKey (value: unknown): UnsafeIslandPropKey | 
   const pending = [value]
   const seen = new Set<object>()
 
+NuxtLogger.debug(`findUnsafeIslandPropKey(value=${value}): seen → ${seen}`);
   while (pending.length) {
+	NuxtLogger.debug(`>>> Entering findUnsafeIslandPropKey(value=${value})`);
     const current = pending.pop()
     if (!current || typeof current !== 'object' || seen.has(current)) {
+	NuxtLogger.debug(`findUnsafeIslandPropKey(value=${value}): current → ${current}`);
       continue
     }
     seen.add(current)
 
     for (const key of Object.keys(current)) {
       if (key === 'template') {
+		NuxtLogger.debug(`<<< Exiting findUnsafeIslandPropKey(value=${value})`);
         return key
       }
       pending.push((current as Record<string, unknown>)[key])
@@ -41,6 +46,8 @@ export function findUnsafeIslandPropKey (value: unknown): UnsafeIslandPropKey | 
  */
 export function findReservedRootIslandPropKey (value: unknown, component: Component): ReservedRootIslandPropKey | undefined {
   if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.hasOwn(value, 'as')) {
+	NuxtLogger.debug(`>>> Entering findReservedRootIslandPropKey(value=${value},component=${component})`);
+	NuxtLogger.debug(`<<< Exiting findReservedRootIslandPropKey(value=${value},component=${component})`);
     return
   }
   const options = component as { props?: string[] | Record<string, unknown>, inheritAttrs?: boolean }
@@ -52,6 +59,8 @@ export function findReservedRootIslandPropKey (value: unknown, component: Compon
 
 function declaresProp (props: string[] | Record<string, unknown> | undefined, name: string): boolean {
   if (!props) {
+	NuxtLogger.debug(`>>> Entering declaresProp(props=${props},name=${name})`);
+	NuxtLogger.debug(`<<< Exiting declaresProp(props=${props},name=${name})`);
     return false
   }
   return Array.isArray(props) ? props.includes(name) : Object.hasOwn(props, name)

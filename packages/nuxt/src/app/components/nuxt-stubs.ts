@@ -1,6 +1,9 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { createError } from '../composables/error'
 
 function renderStubMessage (name: string): never {
+NuxtLogger.debug(`>>> Entering renderStubMessage(name=${name})`);
+NuxtLogger.debug(`<<< Exiting renderStubMessage(name=${name})`);
   throw createError({
     fatal: true,
     status: 500,

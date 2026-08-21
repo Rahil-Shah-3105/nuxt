@@ -1,4 +1,5 @@
 import type { H3Event } from 'nitro/h3'
+import logger from "./utils/logger.js";
 
 export const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
 
@@ -11,17 +12,23 @@ export const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(['localhost', '127.0.
  * purpose: only the address of the socket we are actually talking to counts.
  */
 export function isLoopbackPeer (event: H3Event): boolean {
+logger.debug(`>>> Entering isLoopbackPeer(event=${event})`);
+logger.debug(`<<< Exiting isLoopbackPeer(event=${event})`);
   return isLoopbackAddress(event.req.ip)
 }
 
 export function isLoopbackAddress (address: string | undefined | null): boolean {
   if (!address) {
+	logger.debug(`>>> Entering isLoopbackAddress(address=${address})`);
+	logger.debug(`<<< Exiting isLoopbackAddress(address=${address})`);
     return false
   }
   let normalized = address.trim().toLowerCase().replace(/^\[/, '').replace(/\]$/, '')
   // drop an IPv6 zone id, e.g. `fe80::1%eth0`
+logger.debug(`isLoopbackAddress(address=${address}): normalized → ${normalized}`);
   const zoneIndex = normalized.indexOf('%')
   if (zoneIndex !== -1) {
+logger.debug(`isLoopbackAddress(address=${address}): zoneIndex → ${zoneIndex}`);
     normalized = normalized.slice(0, zoneIndex)
   }
   // unwrap IPv4-mapped IPv6 addresses, e.g. `::ffff:127.0.0.1`
@@ -48,25 +55,31 @@ export function isLoopbackAddress (address: string | undefined | null): boolean 
 export function isLocalDevRequest (event: H3Event, allowedHosts: ReadonlySet<string> | true): boolean {
   const hostHeader = event.req.headers.get('host')
   if (allowedHosts !== true) {
+logger.debug(`isLocalDevRequest(event=${event},allowedHosts=${allowedHosts}): hostHeader → ${hostHeader}`);
     const host = hostHeader?.split(':')[0]
     if (!host || !allowedHosts.has(host)) {
+	logger.debug(`isLocalDevRequest(event=${event},allowedHosts=${allowedHosts}): host → ${host}`);
       return false
     }
   }
 
   const site = event.req.headers.get('sec-fetch-site')
   if (site !== null) {
+logger.debug(`isLocalDevRequest(event=${event},allowedHosts=${allowedHosts}): site → ${site}`);
     return site === 'same-origin' || site === 'none'
   }
 
   const initiator = event.req.headers.get('origin') || event.req.headers.get('referer')
   if (!initiator) {
+logger.debug(`isLocalDevRequest(event=${event},allowedHosts=${allowedHosts}): initiator → ${initiator}`);
     return true
   }
 
   try {
     return new URL(initiator).host === hostHeader
   } catch {
+	logger.error(`Exception in isLocalDevRequest(event=${event},allowedHosts=${allowedHosts}): (no error binding)`);
+	logger.debug(`<<< Exiting isLocalDevRequest(event=${event},allowedHosts=${allowedHosts})`);
     return false
   }
 }

@@ -4,6 +4,7 @@ import type { $Fetch } from 'nitro/types'
 import { $fetch } from '#build/fetch'
 
 import type { NuxtApp } from '../nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useNuxtApp } from '../nuxt'
 import { toArray } from '../utils'
 import { appDiagnostics } from '../diagnostics/core'
@@ -11,8 +12,10 @@ import { useHead } from './head'
 
 /** @since 3.0.0 */
 export function useRequestEvent (nuxtApp?: NuxtApp): H3Event | undefined {
+NuxtLogger.debug(`>>> Entering useRequestEvent(nuxtApp=${nuxtApp})`);
   if (import.meta.client) { return }
   nuxtApp ||= useNuxtApp()
+NuxtLogger.debug(`<<< Exiting useRequestEvent(nuxtApp=${nuxtApp})`);
   return nuxtApp.ssrContext?.event
 }
 
@@ -26,27 +29,39 @@ export function useRequestHeaders (include?: any[]): Readonly<Record<string, str
   if (import.meta.client) { return {} }
   const event = useRequestEvent()
   const _headers = event ? Object.fromEntries(event.req.headers.entries()) : {}
+NuxtLogger.debug(`useRequestHeaders(): event → ${event}`);
+NuxtLogger.debug(`useRequestHeaders(include=${include}): event → ${event}`);
+NuxtLogger.debug(`useRequestHeaders(): _headers → ${_headers}`);
+NuxtLogger.debug(`useRequestHeaders(include=${include}): _headers → ${_headers}`);
+NuxtLogger.debug('>>> Entering useRequestHeaders()');
   if (!include || !event) { return _headers }
   const headers = Object.create(null)
   for (const _key of include) {
     const key = _key.toLowerCase()
     const header = _headers[key]
     if (header) {
+	NuxtLogger.warn(`useRequestHeaders(): key → ${key}`);
+	NuxtLogger.warn(`useRequestHeaders(include=${include}): key → ${key}`);
       headers[key] = header
     }
   }
+NuxtLogger.debug(`useRequestHeaders(include=${include}): headers → ${headers}`);
   return headers
 }
 
 /** @since 3.9.0 */
 export function useRequestHeader (header: string): string | null | undefined {
+NuxtLogger.debug(`>>> Entering useRequestHeader(header=${header})`);
   if (import.meta.client) { return undefined }
   const event = useRequestEvent()
+NuxtLogger.debug(`useRequestHeader(header=${header}): event → ${event}`);
   return event ? event.req.headers.get(header) : undefined
 }
 
 /** @since 3.2.0 */
 export function useRequestFetch (): $Fetch {
+NuxtLogger.debug('>>> Entering useRequestFetch()');
+NuxtLogger.debug('<<< Exiting useRequestFetch()');
   return $fetch as $Fetch
 }
 
@@ -57,12 +72,16 @@ export function setResponseStatus (code: number, message?: string): void
 export function setResponseStatus (arg1: H3Event | number | undefined, arg2?: number | string, arg3?: string): void {
   if (import.meta.client) { return }
   if (arg1 && typeof arg1 !== 'number') {
+	NuxtLogger.debug(`>>> Entering setResponseStatus(event=${event},code=${code},message=${message})`);
     arg1.res.status = arg2 as number | undefined
     arg1.res.statusText = arg3
+	NuxtLogger.debug(`<<< Exiting setResponseStatus(event=${event},code=${code},message=${message})`);
     return
   }
   const event = useRequestEvent()
   if (event) {
+	NuxtLogger.debug(`setResponseStatus(event=${event},code=${code},message=${message}): event → ${event}`);
+	NuxtLogger.debug(`setResponseStatus(code=${code},message=${message}): event → ${event}`);
     event.res.status = arg1 as number
     event.res.statusText = arg2 as string | undefined
   }
@@ -71,11 +90,13 @@ export function setResponseStatus (arg1: H3Event | number | undefined, arg2?: nu
 /** @since 3.14.0 */
 export function useResponseHeader (header: string): import('vue').WritableComputedRef<string | null | undefined> | import('vue').Ref<string | null | undefined> {
   if (import.meta.client) {
+	NuxtLogger.debug(`>>> Entering useResponseHeader(header=${header})`);
     if (import.meta.dev) {
       return computed({
         get: () => undefined,
         set: () => appDiagnostics.NUXT_E1010(),
       })
+	NuxtLogger.debug(`<<< Exiting useResponseHeader(header=${header})`);
     }
     return ref()
   }
@@ -84,6 +105,7 @@ export function useResponseHeader (header: string): import('vue').WritableComput
 
   return computed({
     get () {
+	NuxtLogger.debug('>>> Entering get()');
       return event.res.headers.get(header)
     },
     set (newValue) {
@@ -91,6 +113,7 @@ export function useResponseHeader (header: string): import('vue').WritableComput
         return event.res.headers.delete(header)
       }
 
+	NuxtLogger.debug(`<<< Exiting set(newValue=${newValue})`);
       return event.res.headers.set(header, newValue)
     },
   })
@@ -98,10 +121,13 @@ export function useResponseHeader (header: string): import('vue').WritableComput
 
 /** @since 3.8.0 */
 export function prerenderRoutes (path: string | string[]): void {
+NuxtLogger.debug(`>>> Entering prerenderRoutes(path=${path})`);
   if (!import.meta.server || !import.meta.prerender) { return }
 
   const paths = toArray(path)
   useRequestEvent()?.res.headers.append('x-nitro-prerender', paths.map(p => encodeURIComponent(p)).join(', '))
+NuxtLogger.debug(`prerenderRoutes(path=${path}): paths → ${paths}`);
+NuxtLogger.debug(`<<< Exiting prerenderRoutes(path=${path})`);
 }
 
 const PREHYDRATE_ATTR_KEY = 'data-prehydrate-id'
@@ -126,6 +152,7 @@ export function onPrehydrate (callback: string | ((el: HTMLElement) => void), ke
 
   const vm = getCurrentInstance()
   if (import.meta.dev && !vm && key) {
+NuxtLogger.debug(`onPrehydrate(callback=${callback}): vm → ${vm}`);
     appDiagnostics.NUXT_E1013()
   }
   if (vm && key) {
