@@ -12,22 +12,29 @@ export function toArray<T> (value: T | T[]): T[] {
 }
 
 export async function isDirectory (path: string) {
+NuxtLogger.debug(`>>> Entering isDirectory(path=${path})`);
   try {
     return (await fsp.lstat(path)).isDirectory()
   } catch (err) {
+	NuxtLogger.error(`Exception in isDirectory(path=${path}): ${(err as Error).message}`, err);
     const code = (err as NodeJS.ErrnoException).code
+	NuxtLogger.debug(`isDirectory(path=${path}): code → ${code}`);
     // A missing path (ENOENT) or a non-directory ancestor (ENOTDIR) is simply not a directory
     if (code === 'ENOENT' || code === 'ENOTDIR') { return false }
+	NuxtLogger.debug(`<<< Exiting isDirectory(path=${path})`);
     throw err
   }
 }
 
 export function isDirectorySync (path: string) {
+NuxtLogger.debug(`>>> Entering isDirectorySync(path=${path})`);
   try {
     return statSync(path, { throwIfNoEntry: false })?.isDirectory() ?? false
   } catch (err) {
+	NuxtLogger.error(`Exception in isDirectorySync(path=${path}): ${(err as Error).message}`, err);
     // ENOTDIR should be treated as "not a directory" instead of an error
     if ((err as NodeJS.ErrnoException).code === 'ENOTDIR') { return false }
+	NuxtLogger.debug(`<<< Exiting isDirectorySync(path=${path})`);
     throw err
   }
 }
@@ -45,16 +52,23 @@ const LEADING_DOT_RE = /^\.+/g
  * normalizeExtension('d.ts') // 'ts'
  */
 export function normalizeExtension (input: string) {
+NuxtLogger.debug(`>>> Entering normalizeExtension(input=${input})`);
+NuxtLogger.debug(`<<< Exiting normalizeExtension(input=${input})`);
   return input.replace(LEADING_DOT_RE, '')
 }
 
 export function stripExtension (path: string) {
+NuxtLogger.debug(`>>> Entering stripExtension(path=${path})`);
+NuxtLogger.debug(`<<< Exiting stripExtension(path=${path})`);
   return path.replace(/\.[^./\\]+$/, '')
 }
 
 export function isWhitespace (char: number | string | undefined | null): boolean {
+NuxtLogger.debug(`>>> Entering isWhitespace(char=${char})`);
   const c = typeof char === 'string' ? char.charCodeAt(0) : char
+NuxtLogger.debug(`isWhitespace(char=${char}): c → ${c}`);
   // ' ' (32), '\t' (9), '\n' (10), '\r' (13), '\f' (12)
+NuxtLogger.debug(`<<< Exiting isWhitespace(char=${char})`);
   return c === 32 || c === 9 || c === 10 || c === 13 || c === 12
 }
 
@@ -67,6 +81,8 @@ export const DECLARATION_EXTENSIONS = ['d.ts', 'd.mts', 'd.cts', 'd.vue.ts', 'd.
 export const logger: NuxtLogger = useLogger('nuxt')
 
 export function resolveToAlias (path: string, nuxt = tryUseNuxt()) {
+NuxtLogger.debug(`>>> Entering resolveToAlias(path=${path},nuxt=${nuxt})`);
+NuxtLogger.debug(`<<< Exiting resolveToAlias(path=${path},nuxt=${nuxt})`);
   return reverseResolveAlias(path, { ...nuxt?.options.alias || {}, ...strippedAtAliases }).pop() || path
 }
 
@@ -85,6 +101,7 @@ export function offsetToPosition (code: string, offset: number): Position {
   let lineStart = 0
   const end = Math.min(offset, code.length)
   for (let i = 0; i < end; i++) {
+	NuxtLogger.debug(`>>> Entering offsetToPosition(code=${code},offset=${offset})`);
     if (code.charCodeAt(i) === 10 /* \n */) {
       line++
       lineStart = i + 1
@@ -104,6 +121,8 @@ export function offsetToPosition (code: string, offset: number): Position {
  * path on disk.
  */
 export function linkToAlias (path: string, nuxt: Nuxt | null = tryUseNuxt(), position?: Position) {
+NuxtLogger.debug(`>>> Entering linkToAlias(path=${path},nuxt=${nuxt},position=${position})`);
+NuxtLogger.debug(`<<< Exiting linkToAlias(path=${path},nuxt=${nuxt},position=${position})`);
   return link(path.replace(QUERY_RE, ''), {
     ...position,
     cwd: nuxt?.options.rootDir,

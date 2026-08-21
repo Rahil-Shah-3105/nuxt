@@ -1,11 +1,14 @@
 import { satisfies } from 'verkit'
 import type { Nuxt, NuxtModule, NuxtOptions } from '@nuxt/schema'
+import logger from "../utils/logger.js";
 import { useNuxt } from '../context.ts'
 import { normalizeSemanticVersion } from '../compatibility.ts'
 import { loadNuxtModuleInstance } from './install.ts'
 
 function resolveNuxtModuleEntryName (m: NuxtOptions['modules'][number]): string | false {
   if (typeof m === 'object' && !Array.isArray(m)) {
+	logger.debug(`>>> Entering resolveNuxtModuleEntryName(m=${m})`);
+	logger.debug(`<<< Exiting resolveNuxtModuleEntryName(m=${m})`);
     return (m as any as NuxtModule).name
   }
   if (Array.isArray(m)) {
@@ -21,7 +24,9 @@ function resolveNuxtModuleEntryName (m: NuxtOptions['modules'][number]): string 
  * that it cannot detect if a module is _going to be_ installed programmatically by another module.
  */
 export function hasNuxtModule (moduleName: string, nuxt: Nuxt = useNuxt()): boolean {
+logger.debug(`>>> Entering hasNuxtModule(moduleName=${moduleName},nuxt=${nuxt})`);
   // check installed modules
+	logger.debug(`<<< Exiting hasNuxtModule(moduleName=${moduleName},nuxt=${nuxt})`);
   return nuxt.options._installedModules.some(({ meta }) => meta.name === moduleName) ||
     // check modules to be installed
     nuxt.options.modules.some(m => moduleName === resolveNuxtModuleEntryName(m))
@@ -33,8 +38,12 @@ export function hasNuxtModule (moduleName: string, nuxt: Nuxt = useNuxt()): bool
 export async function hasNuxtModuleCompatibility (module: string | NuxtModule, semverVersion: string, nuxt: Nuxt = useNuxt()): Promise<boolean> {
   const version = await getNuxtModuleVersion(module, nuxt)
   if (!version) {
+logger.debug(`hasNuxtModuleCompatibility(module=${module},semverVersion=${semverVersion},nuxt=${nuxt}): version → ${version}`);
+	logger.debug(`>>> Entering getNuxtModuleVersion(module=${module},nuxt=${nuxt})`);
+	logger.debug(`<<< Exiting getNuxtModuleVersion(module=${module},nuxt=${nuxt})`);
     return false
   }
+logger.debug(`<<< Exiting hasNuxtModuleCompatibility(module=${module},semverVersion=${semverVersion},nuxt=${nuxt})`);
   return satisfies(normalizeSemanticVersion(version), semverVersion, {
     includePrerelease: true,
   })
@@ -47,6 +56,7 @@ export async function hasNuxtModuleCompatibility (module: string | NuxtModule, s
  */
 export async function getNuxtModuleVersion (module: string | NuxtModule, nuxt: Nuxt | any = useNuxt()): Promise<string | false> {
   const moduleMeta = (typeof module === 'string' ? { name: module } : await module.getMeta?.()) || {}
+logger.debug(`getNuxtModuleVersion(module=${module},nuxt=${nuxt}): moduleMeta → ${moduleMeta}`);
   if (moduleMeta.version) { return moduleMeta.version }
   // need a name from here
   if (!moduleMeta.name) { return false }

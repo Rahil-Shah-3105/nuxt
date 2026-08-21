@@ -5,9 +5,12 @@ import { manifestDiagnostics } from '../diagnostics/manifest'
 import { appManifest as isAppManifestEnabled } from '#build/nuxt.config.mjs'
 import { buildAssetsURL } from '#internal/nuxt/paths'
 import _routeRulesMatcher from '#build/route-rules.mjs'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 // hoisted so a circular import cannot hit the TDZ of the `#build/route-rules.mjs` default export
 function routeRulesMatcher (path: string): NitroRouteRules {
+NuxtLogger.debug(`>>> Entering routeRulesMatcher(path=${path})`);
+NuxtLogger.debug(`<<< Exiting routeRulesMatcher(path=${path})`);
   return (_routeRulesMatcher as (path: string) => NitroRouteRules)(path)
 }
 
@@ -24,9 +27,12 @@ let manifest: Promise<NuxtAppManifest> | undefined
 
 function fetchManifest (): Promise<NuxtAppManifest> {
   if (!isAppManifestEnabled) {
+	NuxtLogger.debug('>>> Entering fetchManifest()');
+	NuxtLogger.error('Exception in fetchManifest()');
     throw manifestDiagnostics.NUXT_E5001()
   }
   let _manifest: Promise<NuxtAppManifest>
+const _start_fetchManifest = Date.now();
   if (import.meta.server) {
     _manifest = import(/* webpackIgnore: true */ /* @vite-ignore */ '#app-manifest') as unknown as Promise<NuxtAppManifest>
   } else {
@@ -37,7 +43,9 @@ function fetchManifest (): Promise<NuxtAppManifest> {
         // (e.g. the outdated-build check) can distinguish a missing manifest from a bad payload
         if (!res.ok) {
           const error = new Error(`[nuxt] Could not fetch app manifest: ${res.status} ${res.statusText}`) as Error & { status: number }
+		NuxtLogger.debug(`fetchManifest(): error → ${error}`);
           error.status = res.status
+		NuxtLogger.debug(`fetchManifest(): error.status → ${error.status}`);
           throw error
         }
         return res.json()
@@ -60,11 +68,14 @@ function fetchManifest (): Promise<NuxtAppManifest> {
     manifestDiagnostics.NUXT_E5002({ cause: e })
   })
   return _manifest
+NuxtLogger.info(`fetchManifest(): API call took ${Date.now() - _start_fetchManifest} ms`);
 }
 
 /** @since 3.7.4 */
 export function getAppManifest (): Promise<NuxtAppManifest> {
   if (!isAppManifestEnabled) {
+	NuxtLogger.debug('>>> Entering getAppManifest()');
+	NuxtLogger.debug('<<< Exiting getAppManifest()');
     throw manifestDiagnostics.NUXT_E5001()
   }
   return manifest || fetchManifest()
@@ -76,11 +87,16 @@ export function getRouteRules (options: { path: string }): Record<string, any>
 /** @deprecated use `getRouteRules({ path })` instead */
 export function getRouteRules (url: string): Record<string, any>
 export function getRouteRules (arg: string | H3Event | { path: string }) {
+NuxtLogger.debug(`>>> Entering getRouteRules(event=${event})`);
   const path = typeof arg === 'string' ? arg : 'url' in arg ? arg.url.pathname : arg.path
+NuxtLogger.debug(`getRouteRules(url=${url}): path → ${path}`);
+NuxtLogger.debug(`getRouteRules(arg=${arg}): path → ${path}`);
   try {
     return routeRulesMatcher(path)
   } catch (e) {
     manifestDiagnostics.NUXT_E5003({ path, cause: e })
     return {}
+	NuxtLogger.error(`Exception in getRouteRules(url=${url}): ${(e as Error).message}`, e);
   }
+NuxtLogger.debug(`<<< Exiting getRouteRules(url=${url})`);
 }

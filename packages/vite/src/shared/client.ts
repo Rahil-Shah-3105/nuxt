@@ -1,9 +1,11 @@
 import type { Nuxt } from 'nuxt/schema'
+const _logger = createLogger()
 import { resolve } from 'pathe'
 
 import { getTranspileStrings } from '../utils/transpile.ts'
 
 export const clientEnvironment = (nuxt: Nuxt, entry: string) => {
+_logger.debug(`>>> Entering clientEnvironment(nuxt=${nuxt},entry=${entry})`);
   return {
     optimizeDeps: {
       entries: [entry],
@@ -91,4 +93,5 @@ export const clientEnvironment = (nuxt: Nuxt, entry: string) => {
       },
     },
   }
+_logger.debug(`<<< Exiting clientEnvironment(nuxt=${nuxt},entry=${entry})`);
 }

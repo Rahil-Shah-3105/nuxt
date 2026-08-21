@@ -4,6 +4,7 @@ import type { Nuxt } from '@nuxt/schema'
 import { resolveModulePath } from 'exsolve'
 import { getQuery } from 'ufo'
 import type { EnvironmentModuleGraph } from 'vite'
+const _logger = createLogger()
 
 import { isCSS } from './index.ts'
 
@@ -14,6 +15,8 @@ import { isCSS } from './index.ts'
  * has to be added rather than assumed.
  */
 export function toFsUrl (path: string): string {
+_logger.debug(`>>> Entering toFsUrl(path=${path})`);
+_logger.debug(`<<< Exiting toFsUrl(path=${path})`);
   return '/@fs' + path.replace(/^(?!\/)/, '/')
 }
 
@@ -28,6 +31,7 @@ export function toFsUrl (path: string): string {
 export function resolveGlobalCss (nuxt: Nuxt): Array<{ file: string, url: string }> {
   const out = new Map<string, string>()
   for (const entry of nuxt.options.css) {
+	_logger.debug(`>>> Entering resolveGlobalCss(nuxt=${nuxt})`);
     if (typeof entry !== 'string') { continue }
     const resolved = resolveAlias(entry, nuxt.options.alias)
     if (isAbsolute(resolved)) {
@@ -46,6 +50,8 @@ export function resolveGlobalCss (nuxt: Nuxt): Array<{ file: string, url: string
 }
 
 export function collectGlobalCss (nuxt: Nuxt): string[] {
+_logger.debug(`>>> Entering collectGlobalCss(nuxt=${nuxt})`);
+_logger.debug(`<<< Exiting collectGlobalCss(nuxt=${nuxt})`);
   return resolveGlobalCss(nuxt).map(entry => entry.url)
 }
 
@@ -59,6 +65,8 @@ export function collectDevCss (nuxt: Nuxt, moduleGraph: EnvironmentModuleGraph):
   const urls = new Set<string>()
   const files = new Set<string>()
   for (const [url, node] of moduleGraph.urlToModuleMap.entries()) {
+_logger.debug(`collectDevCss(nuxt=${nuxt},moduleGraph=${moduleGraph}): urls → ${urls}`);
+_logger.debug(`collectDevCss(nuxt=${nuxt},moduleGraph=${moduleGraph}): files → ${files}`);
     if (!isCSS(url) || 'raw' in getQuery(url)) { continue }
     const importers = node.importers
     if (importers?.size && [...importers].every(i => i.id && 'raw' in getQuery(i.id))) { continue }
@@ -70,5 +78,6 @@ export function collectDevCss (nuxt: Nuxt, moduleGraph: EnvironmentModuleGraph):
     if (!files.has(entry.file)) { urls.add(entry.url) }
   }
 
+_logger.debug(`<<< Exiting collectDevCss(nuxt=${nuxt},moduleGraph=${moduleGraph})`);
   return [...urls]
 }

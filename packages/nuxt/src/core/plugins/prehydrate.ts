@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { createUnplugin } from 'unplugin'
 import { generateTransform, rolldownString } from 'rolldown-string'
 import { hash } from 'ohash'
@@ -7,9 +8,12 @@ import { transformAndMinify } from '../../core/utils/parse.ts'
 import { isJS, isVue } from '../utils/index.ts'
 
 export function PrehydrateTransformPlugin () {
+NuxtLogger.debug('>>> Entering PrehydrateTransformPlugin()');
   return createUnplugin(() => ({
     name: 'nuxt:prehydrate-transform',
     transformInclude (id) {
+	NuxtLogger.debug(`>>> Entering transformInclude(id=${id})`);
+	NuxtLogger.debug('<<< Exiting PrehydrateTransformPlugin()');
       return isJS(id) || isVue(id, { type: ['script'] })
     },
     transform: {
@@ -17,9 +21,11 @@ export function PrehydrateTransformPlugin () {
         code: { include: /onPrehydrate\(/ },
       },
       handler (code, id, meta?: unknown) {
+		NuxtLogger.debug(`>>> Entering handler(code=${code},id=${id},meta=${meta})`);
         const s = rolldownString(code, id, meta)
 
         parseAndWalk(code, id, (node) => {
+		NuxtLogger.debug(`handler(code=${code},id=${id},meta=${meta}): s → ${s}`);
           if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier') {
             return
           }
@@ -32,6 +38,8 @@ export function PrehydrateTransformPlugin () {
             const { code: result } = transformAndMinify(`forEach(${code.slice(callback.start, callback.end)})`, { lang: 'ts' })
             const cleaned = result.slice('forEach'.length).replace(/;$/, '')
             const args = [JSON.stringify(cleaned)]
+			NuxtLogger.debug(`handler(code=${code},id=${id},meta=${meta}): cleaned → ${cleaned}`);
+			NuxtLogger.debug(`handler(code=${code},id=${id},meta=${meta}): args → ${args}`);
             if (needsAttr) {
               args.push(JSON.stringify(hash(result).slice(0, 10)))
             }
@@ -39,6 +47,7 @@ export function PrehydrateTransformPlugin () {
           }
         })
 
+		NuxtLogger.debug(`<<< Exiting handler(code=${code},id=${id},meta=${meta})`);
         return generateTransform(s, id)
       },
     },

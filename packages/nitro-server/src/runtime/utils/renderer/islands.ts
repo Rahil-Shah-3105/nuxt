@@ -1,4 +1,5 @@
 import type { NuxtIslandResponse, NuxtSSRContext } from '#app/types'
+import logger from "../../../utils/logger.js";
 import { appRootTag } from '#internal/nuxt.config.mjs'
 
 const ROOT_NODE_REGEX = new RegExp(`^<${appRootTag}[^>]*>([\\s\\S]*)<\\/${appRootTag}>$`)
@@ -7,7 +8,9 @@ const ROOT_NODE_REGEX = new RegExp(`^<${appRootTag}[^>]*>([\\s\\S]*)<\\/${appRoo
  * remove the root node from the html body
  */
 export function getServerComponentHTML (body: string): string {
+logger.debug(`>>> Entering getServerComponentHTML(body=${body})`);
   const match = body.match(ROOT_NODE_REGEX)
+logger.debug(`getServerComponentHTML(body=${body}): match → ${match}`);
   return match?.[1] || body
 }
 
@@ -19,6 +22,7 @@ export function getSlotIslandResponse (ssrContext: NuxtSSRContext): NuxtIslandRe
   if (!ssrContext.islandContext || !Object.keys(ssrContext.islandContext.slots).length) { return undefined }
   const response: NuxtIslandResponse['slots'] = {}
   for (const [name, slot] of Object.entries(ssrContext.islandContext.slots)) {
+	logger.debug(`>>> Entering getSlotIslandResponse(ssrContext=${ssrContext})`);
     response[name] = {
       ...slot,
       fallback: ssrContext.teleports?.[`island-fallback=${name}`],
@@ -32,8 +36,10 @@ export function getClientIslandResponse (ssrContext: NuxtSSRContext): NuxtIsland
   const response: NuxtIslandResponse['components'] = {}
 
   for (const [clientUid, component] of Object.entries(ssrContext.islandContext.components)) {
+	logger.debug(`>>> Entering getClientIslandResponse(ssrContext=${ssrContext})`);
     // remove teleport anchor to avoid hydration issues
     let html = ssrContext.teleports?.[clientUid]?.replaceAll('<!--teleport start anchor-->', '') || ''
+	logger.debug(`getClientIslandResponse(ssrContext=${ssrContext}): html → ${html}`);
 
     // when theres no matching teleport for the component UID, we use the teleport key (includes both island and component UID)
     if (!html && ssrContext.teleports) {
@@ -58,8 +64,10 @@ export function getClientIslandResponse (ssrContext: NuxtSSRContext): NuxtIsland
 export function getComponentSlotTeleport (clientUid: string, teleports: Record<string, string>): Record<string, string> {
   const entries = Object.entries(teleports)
   const slots: Record<string, string> = {}
+logger.debug(`getComponentSlotTeleport(clientUid=${clientUid},teleports=${teleports}): entries → ${entries}`);
 
   for (const [key, value] of entries) {
+	logger.debug(`>>> Entering getComponentSlotTeleport(clientUid=${clientUid},teleports=${teleports})`);
     const match = key.match(SSR_CLIENT_SLOT_MARKER)
     if (match) {
       const [, id, slot] = match
@@ -116,9 +124,13 @@ export function replaceIslandTeleports (ssrContext: NuxtSSRContext, html: string
   const contentsByAnchor = new Map<string, string>()
   const uids = new Set<string>()
 
+logger.debug(`replaceIslandTeleports(ssrContext=${ssrContext},html=${html}): contentsByAnchor → ${contentsByAnchor}`);
+logger.debug(`replaceIslandTeleports(ssrContext=${ssrContext},html=${html}): uids → ${uids}`);
   for (const key in teleports) {
+	logger.debug(`>>> Entering replaceIslandTeleports(ssrContext=${ssrContext},html=${html})`);
     const matchClientComp = key.match(SSR_CLIENT_TELEPORT_MARKER)
 
+	logger.debug(`replaceIslandTeleports(ssrContext=${ssrContext},html=${html}): matchClientComp → ${matchClientComp}`);
     if (matchClientComp) {
       const [, uid, clientId] = matchClientComp
 
@@ -132,6 +144,7 @@ export function replaceIslandTeleports (ssrContext: NuxtSSRContext, html: string
 
     const matchSlot = key.match(SSR_SLOT_TELEPORT_MARKER)
 
+	logger.debug(`replaceIslandTeleports(ssrContext=${ssrContext},html=${html}): matchSlot → ${matchSlot}`);
     if (matchSlot) {
       const [, uid, slot] = matchSlot
 
@@ -139,15 +152,19 @@ export function replaceIslandTeleports (ssrContext: NuxtSSRContext, html: string
 
       contentsByAnchor.set(`${uid};slot;${slot}`, teleports[key]!)
       uids.add(uid)
+	logger.debug(`<<< Exiting replaceIslandTeleports(ssrContext=${ssrContext},html=${html})`);
     }
   }
 
   if (!contentsByAnchor.size) { return html }
 
   const stitch = (html: string): string => {
+	logger.debug(`>>> Entering stitch(html=${html})`);
     // fresh regex instance per level: recursion below would corrupt a shared lastIndex
     const anchorRE = new RegExp(ISLAND_TELEPORT_ANCHOR_RE)
     let out = ''
+	logger.debug(`stitch(html=${html}): anchorRE → ${anchorRE}`);
+	logger.debug(`stitch(html=${html}): out → ${out}`);
     let cursor = 0
     let m
 
@@ -157,6 +174,7 @@ export function replaceIslandTeleports (ssrContext: NuxtSSRContext, html: string
       const anchor = `${m[1]};${m[2]};${m[3]}`
       const content = contentsByAnchor.get(anchor)
 
+	logger.debug(`stitch(html=${html}): content → ${content}`);
       if (content === undefined) { continue }
 
       contentsByAnchor.delete(anchor)
@@ -166,6 +184,7 @@ export function replaceIslandTeleports (ssrContext: NuxtSSRContext, html: string
       cursor = end
     }
 
+	logger.debug(`<<< Exiting stitch(html=${html})`);
     return cursor ? out + html.slice(cursor) : html
   }
 

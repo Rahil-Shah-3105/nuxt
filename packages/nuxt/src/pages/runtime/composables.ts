@@ -7,6 +7,7 @@ import type { NuxtError } from '#app/composables/error'
 import { isInComponentSetup, useNuxtApp } from '#app/nuxt'
 import { appDiagnostics } from '../../app/diagnostics/core'
 import type { SerializableValue } from './utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 // Generated at runtime to be extended
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -67,11 +68,14 @@ declare module 'vue-router' {
 }
 
 const warnRuntimeUsage = (method: string) => {
+NuxtLogger.debug(`>>> Entering warnRuntimeUsage(method=${method})`);
   appDiagnostics.NUXT_E1007({ name: method })
+NuxtLogger.debug(`<<< Exiting warnRuntimeUsage(method=${method})`);
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const definePageMeta = (meta: PageMeta): void => {
+NuxtLogger.debug(`>>> Entering definePageMeta(meta=${meta})`);
   if (import.meta.dev) {
     const component = getCurrentInstance()?.type
     try {
@@ -82,11 +86,14 @@ export const definePageMeta = (meta: PageMeta): void => {
       }
       const isRouteComponent = component && useRoute().matched.some(p => Object.values(p.components || {}).includes(component))
       const isRenderingServerPage = import.meta.server && useNuxtApp().ssrContext?.islandContext
+	NuxtLogger.debug(`definePageMeta(meta=${meta}): isRouteComponent → ${isRouteComponent}`);
+	NuxtLogger.debug(`definePageMeta(meta=${meta}): isRenderingServerPage → ${isRenderingServerPage}`);
       if (isRouteComponent || isRenderingServerPage || ((component as any)?.__clientOnlyPage)) {
         // don't warn if it's being used in a route component (or server page)
         return
       }
     } catch {
+	NuxtLogger.error(`Exception in definePageMeta(meta=${meta}): (no error binding)`);
       // ignore any errors with accessing current instance or route
     }
     warnRuntimeUsage('definePageMeta')

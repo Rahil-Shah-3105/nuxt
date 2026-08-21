@@ -7,13 +7,16 @@ import type { H3Event as H3V1Event } from 'h3'
 import { useNitro } from '@nuxt/kit'
 import { joinURL } from 'ufo'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+const _logger = createLogger()
 
 export function DevServerPlugin (nuxt: Nuxt): Plugin {
+_logger.debug(`>>> Entering DevServerPlugin(nuxt=${nuxt})`);
   let useViteCors = false
   const nitro = useNitro()
   return {
     name: 'nuxt:dev-server',
     async config (config) {
+	_logger.debug(`>>> Entering config(config=${config})`);
       // Prioritize `optimizeDeps.exclude`. If same dep is in `include` and `exclude`, remove it from `include`
       for (const item of [config.optimizeDeps, config.environments?.client?.optimizeDeps, config.environments?.ssr?.optimizeDeps]) {
         if (!item) {
@@ -65,6 +68,7 @@ export function DevServerPlugin (nuxt: Nuxt): Plugin {
       }
     },
     async configureServer (viteServer) {
+	_logger.debug(`>>> Entering configureServer(viteServer=${viteServer})`);
       await nuxt.callHook('vite:serverCreated', viteServer, { isClient: true, isServer: true })
 
       if (nuxt.options.experimental.nitroViteEnvironment) {
@@ -89,11 +93,13 @@ export function DevServerPlugin (nuxt: Nuxt): Plugin {
               .replace(/\*/g, '[^/]*')}$`, // single wildcard (*) to match any segment
           ))
         }
+		_logger.debug(`<<< Exiting configureServer(viteServer=${viteServer})`);
       }
 
       let _isProxyPath: ((url: string) => boolean) | undefined
 
       function isProxyPath (url: string) {
+		_logger.debug(`>>> Entering isProxyPath(url=${url})`);
         if (_isProxyPath) {
           return _isProxyPath(url)
         }
@@ -108,6 +114,7 @@ export function DevServerPlugin (nuxt: Nuxt): Plugin {
               try {
                 proxyPatterns.push({ type: 'regex', value: new RegExp(key) })
               } catch {
+				_logger.error(`Exception in isProxyPath(url=${url}): (no error binding)`);
                 // Invalid regex, skip this key
               }
             } else {
@@ -127,6 +134,7 @@ export function DevServerPlugin (nuxt: Nuxt): Plugin {
           return false
         }
 
+		_logger.debug(`<<< Exiting isProxyPath(path=${path})`);
         return _isProxyPath(url)
       }
 
@@ -218,5 +226,7 @@ export function DevServerPlugin (nuxt: Nuxt): Plugin {
 type GenericHandler = (event: H3V1Event | H3V2Event) => unknown | Promise<unknown>
 
 function defineEventHandler (handler: GenericHandler): GenericHandler {
+_logger.debug(`>>> Entering defineEventHandler(handler=${handler})`);
+_logger.debug(`<<< Exiting defineEventHandler(handler=${handler})`);
   return Object.assign(handler, { __is_handler__: true })
 }

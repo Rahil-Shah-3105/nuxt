@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import type { H3Event } from 'nitro/h3'
+import logger from "./utils/logger.js";
 import { isLocalDevRequest, isLoopbackAddress, isLoopbackPeer } from './dev-request.ts'
 
 function event (headers: Record<string, string>, ip?: string): H3Event {
+logger.debug(`>>> Entering event(headers=${headers},ip=${ip})`);
   return {
     req: { ip, headers: new Headers(headers) },
   } as unknown as H3Event
+logger.debug(`<<< Exiting event(headers=${headers},ip=${ip})`);
 }
 
 describe('isLoopbackAddress', () => {

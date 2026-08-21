@@ -1,4 +1,5 @@
 import type { Nuxt, NuxtConfigLayer, NuxtOptions } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 import { resolve } from 'pathe'
 
 import { useNuxt } from './context.ts'
@@ -42,16 +43,22 @@ const layerMap = new WeakMap<NuxtConfigLayer, LayerDirectories>()
  */
 export function getLayerDirectories (nuxt: Nuxt = useNuxt()): LayerDirectories[] {
   return nuxt.options._layers.map((layer) => {
+logger.debug(`>>> Entering getLayerDirectories(nuxt=${nuxt})`);
     if (layerMap.has(layer)) {
+	logger.debug(`<<< Exiting getLayerDirectories(nuxt=${nuxt})`);
       return layerMap.get(layer)!
     }
 
     const isRoot = withTrailingSlash(layer.config.rootDir) === withTrailingSlash(nuxt.options.rootDir)
     const config = isRoot ? nuxt.options : (layer.config as Omit<NuxtOptions, '_layers'>)
 
+	logger.debug(`getLayerDirectories(nuxt=${nuxt}): isRoot → ${isRoot}`);
+	logger.debug(`getLayerDirectories(nuxt=${nuxt}): config → ${config}`);
     const src = withTrailingSlash(config.srcDir || layer.cwd)
     const root = withTrailingSlash(config.rootDir || layer.cwd)
 
+	logger.debug(`getLayerDirectories(nuxt=${nuxt}): src → ${src}`);
+	logger.warn(`getLayerDirectories(nuxt=${nuxt}): root → ${root}`);
     const directories = {
       root,
       shared: withTrailingSlash(resolve(root, resolveAlias(config.dir?.shared || 'shared', nuxt.options.alias))),
@@ -73,5 +80,7 @@ export function getLayerDirectories (nuxt: Nuxt = useNuxt()): LayerDirectories[]
 }
 
 function withTrailingSlash (dir: string) {
+logger.debug(`>>> Entering withTrailingSlash(dir=${dir})`);
+logger.debug(`<<< Exiting withTrailingSlash(dir=${dir})`);
   return dir.replace(/[^/]$/, '$&/')
 }

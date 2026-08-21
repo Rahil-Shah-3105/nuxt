@@ -2,6 +2,7 @@ import type Webpack from 'webpack'
 import type MiniCssExtractPluginType from 'mini-css-extract-plugin'
 import type TsCheckerPluginType from 'fork-ts-checker-webpack-plugin'
 import type VueLoaderPluginConstructor from 'vue-loader/dist/pluginWebpack5.js'
+import logger from "./utils/logger.js";
 
 export interface BuilderImpl {
   builder: 'webpack' | 'rspack'
@@ -26,11 +27,15 @@ let _impl: BuilderImpl | undefined
  * effect) as the first import of its entry module.
  */
 export function setBuilderImpl (impl: BuilderImpl): void {
+logger.debug(`>>> Entering setBuilderImpl(impl=${impl})`);
   _impl = impl
+logger.debug(`<<< Exiting setBuilderImpl(impl=${impl})`);
 }
 
 export function getBuilderImpl (): BuilderImpl {
   if (!_impl) {
+	logger.debug('>>> Entering getBuilderImpl()');
+	logger.debug('<<< Exiting getBuilderImpl()');
     throw new Error('Builder implementation is not set. Import the builder package entry (or its `impl.ts`) before any module that uses the builder bindings.')
   }
   return _impl

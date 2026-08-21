@@ -1,5 +1,6 @@
 import { joinURL } from 'ufo'
 import type { Plugin } from 'vite'
+const _logger = createLogger()
 import { isCSS } from '../utils/index.ts'
 
 interface DevStyleSSRPluginOptions {
@@ -8,12 +9,14 @@ interface DevStyleSSRPluginOptions {
 }
 
 export function DevStyleSSRPlugin (options: DevStyleSSRPluginOptions): Plugin {
+_logger.debug(`>>> Entering DevStyleSSRPlugin(options=${options})`);
   return {
     name: 'nuxt:dev-style-ssr',
     apply: 'serve',
     enforce: 'post',
     applyToEnvironment: environment => environment.name === 'client',
     transform (code, id) {
+	_logger.debug(`>>> Entering transform(code=${code},id=${id})`);
       if (!isCSS(id) || !code.includes('import.meta.hot')) {
         return
       }
@@ -25,6 +28,7 @@ export function DevStyleSSRPlugin (options: DevStyleSSRPluginOptions): Plugin {
 
       // When dev `<style>` is injected, remove the `<link>` styles from manifest
       const selectors = [joinURL(options.buildAssetsURL, moduleId), joinURL(options.buildAssetsURL, '@fs', moduleId)]
+	_logger.debug(`transform(code=${code},id=${id}): selectors → ${selectors}`);
       return code + selectors.map(selector => `\ndocument.querySelectorAll(\`link[href="${selector}"]\`).forEach(i=>i.remove())`).join('')
     },
   }

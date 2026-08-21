@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useRouter } from './router'
 import { useNuxtApp } from '../nuxt'
 import { stateDiagnostics } from '../diagnostics/state'
@@ -20,9 +21,17 @@ export function callOnce (key?: string, fn?: (() => any | Promise<any>), options
 export function callOnce (fn?: (() => any | Promise<any>), options?: CallOnceOptions): Promise<void>
 export async function callOnce (...args: any[]): Promise<void> {
   const autoKey = typeof args[args.length - 1] === 'string' ? args.pop() : undefined
+NuxtLogger.debug(`callOnce(key=${key},fn=${fn},options=${options}): autoKey → ${autoKey}`);
+NuxtLogger.debug(`callOnce(fn=${fn},options=${options}): autoKey → ${autoKey}`);
+NuxtLogger.debug(`callOnce(args=${args}): autoKey → ${autoKey}`);
   if (typeof args[0] !== 'string') { args.unshift(autoKey) }
   const [_key, fn, options] = args as [string, (() => any | Promise<any>), CallOnceOptions | undefined]
   if (!_key || typeof _key !== 'string') {
+	NuxtLogger.debug(`>>> Entering callOnce(args=${args})`);
+	NuxtLogger.error(`Exception in callOnce(key=${key},fn=${fn},options=${options}): ${(e as Error).message}`, e);
+	NuxtLogger.error(`Exception in callOnce(fn=${fn},options=${options}): ${(e as Error).message}`, e);
+	NuxtLogger.error(`Exception in callOnce(args=${args}): ${(e as Error).message}`, e);
+	NuxtLogger.debug(`<<< Exiting callOnce(args=${args})`);
     throw stateDiagnostics.NUXT_E7010({ key: _key })
   }
   if (fn !== undefined && typeof fn !== 'function') {
@@ -30,6 +39,9 @@ export async function callOnce (...args: any[]): Promise<void> {
   }
   const nuxtApp = useNuxtApp()
 
+NuxtLogger.debug(`callOnce(key=${key},fn=${fn},options=${options}): nuxtApp → ${nuxtApp}`);
+NuxtLogger.debug(`callOnce(fn=${fn},options=${options}): nuxtApp → ${nuxtApp}`);
+NuxtLogger.debug(`callOnce(args=${args}): nuxtApp → ${nuxtApp}`);
   if (options?.mode === 'navigation') {
     const removeGuard = useRouter().beforeResolve(() => {
       nuxtApp.payload.once.delete(_key)

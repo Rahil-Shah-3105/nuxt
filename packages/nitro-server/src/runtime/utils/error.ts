@@ -1,6 +1,7 @@
 import type { HTTPEvent } from 'nitro/h3'
 import { FastURL } from 'srvx'
 import type { NuxtPayload } from '#app/types'
+import logger from "../../utils/logger.js";
 
 /**
  * Query parameter carrying the JSON-encoded error to `/__nuxt_error`.
@@ -39,12 +40,15 @@ export type SSRErrorInput = {
  * @internal
  */
 export function encodeSSRError (error: SSRErrorInput): string {
+logger.debug(`>>> Entering encodeSSRError(error=${error})`);
   try {
     return JSON.stringify(error)
   } catch {
+	logger.error(`Exception in encodeSSRError(error=${error}): (no error binding)`);
     try {
       return JSON.stringify({ ...error, data: undefined })
     } catch {
+	logger.debug(`<<< Exiting encodeSSRError(error=${error})`);
       return '{}'
     }
   }
@@ -61,10 +65,13 @@ export function encodeSSRError (error: SSRErrorInput): string {
  * @internal
  */
 export function decodeSSRError (encoded: string | undefined): SSRError | undefined {
+logger.debug(`>>> Entering decodeSSRError(encoded=${encoded})`);
   if (!encoded) { return undefined }
   try {
     return { ...JSON.parse(encoded), [NUXT_ERROR_SIGNATURE]: true } as SSRError
   } catch {
+	logger.error(`Exception in decodeSSRError(encoded=${encoded}): (no error binding)`);
+	logger.debug(`<<< Exiting decodeSSRError(encoded=${encoded})`);
     return undefined
   }
 }
@@ -81,6 +88,8 @@ export function decodeSSRError (encoded: string | undefined): SSRError | undefin
  * @internal
  */
 export function stringifyErrorData (data: unknown): unknown {
+logger.debug(`>>> Entering stringifyErrorData(data=${data})`);
+logger.debug(`<<< Exiting stringifyErrorData(data=${data})`);
   return data === undefined || typeof data === 'string' ? data : JSON.stringify(data)
 }
 
@@ -91,9 +100,12 @@ export function stringifyErrorData (data: unknown): unknown {
 export function isJsonRequest (event: HTTPEvent): boolean {
   // If the client specifically requests HTML, then avoid classifying as JSON.
   if (event.req.headers.get('accept')?.includes('text/html')) {
+	logger.debug(`>>> Entering isJsonRequest(event=${event})`);
+	logger.debug(`<<< Exiting isJsonRequest(event=${event})`);
     return false
   }
   const pathname = new FastURL(event.req.url).pathname
+logger.debug(`isJsonRequest(event=${event}): pathname → ${pathname}`);
   return (
     hasReqHeader(event, 'accept', 'application/json') ||
     hasReqHeader(event, 'user-agent', 'curl/') ||
@@ -105,7 +117,10 @@ export function isJsonRequest (event: HTTPEvent): boolean {
 }
 
 export function hasReqHeader (event: HTTPEvent, name: string, includes: string): boolean {
+logger.debug(`>>> Entering hasReqHeader(event=${event},name=${name},includes=${includes})`);
   const value = event.req.headers.get(name)
+logger.debug(`hasReqHeader(event=${event},name=${name},includes=${includes}): value → ${value}`);
+logger.debug(`<<< Exiting hasReqHeader(event=${event},name=${name},includes=${includes})`);
   return !!(
     value && value.toLowerCase().includes(includes)
   )

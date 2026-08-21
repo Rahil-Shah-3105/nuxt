@@ -22,6 +22,7 @@ import { toVirtualId } from '../utils/index.ts'
 import { collectDevCss } from '../utils/css.ts'
 import { resolveClientEntry, resolveServerEntry } from '../utils/config.ts'
 import type { ErrorPartial } from '../types.ts'
+const _logger = createLogger()
 
 type ResolveIdResponse = Awaited<ReturnType<PluginContainer['resolveId']>>
 
@@ -68,6 +69,7 @@ export interface ViteNodeFetch {
 }
 
 function getManifest (nuxt: Nuxt, viteServer: ViteDevServer, clientEntry: string) {
+_logger.debug(`>>> Entering getManifest(nuxt=${nuxt},viteServer=${viteServer},clientEntry=${clientEntry})`);
   // global CSS is included as a fallback to prevent FOUC before the ssr module
   // graph is populated
   const css = collectDevCss(nuxt, viteServer.environments.ssr.moduleGraph)
@@ -91,6 +93,8 @@ function getManifest (nuxt: Nuxt, viteServer: ViteDevServer, clientEntry: string
         },
   })
 
+_logger.debug(`getManifest(nuxt=${nuxt},viteServer=${viteServer},clientEntry=${clientEntry}): css → ${css}`);
+_logger.debug(`<<< Exiting getManifest(nuxt=${nuxt},viteServer=${viteServer},clientEntry=${clientEntry})`);
   return manifest
 }
 
@@ -103,17 +107,21 @@ export interface SocketPathInfo {
 // only exported for tests
 export function pickSocketPath (platform: NodeJS.Platform, tmpdir: string = os.tmpdir()): SocketPathInfo {
   const socketName = 'nuxt.sock'
+_logger.debug(`pickSocketPath(platform=${platform},tmpdir=${tmpdir}): socketName → ${socketName}`);
   const socketDir = `nuxt-vite-`
 
   if (platform === 'win32') {
+	_logger.debug(`>>> Entering pickSocketPath(platform=${platform},tmpdir=${tmpdir})`);
     // use `node:path/win32` so the `\\.\pipe\...` separators stay as backslashes
     // (for deno compatibility) plus enough randomness to avoid collisions and being predictable
+	_logger.debug(`<<< Exiting pickSocketPath(platform=${platform},tmpdir=${tmpdir})`);
     return { socketPath: pathWin32.join(String.raw`\\.\pipe`, socketDir + randomUUID().slice(0, 8)) }
   }
 
   // creates a random suffix and avoids collisions
   let parentDir = fs.mkdtempSync(join(tmpdir, socketDir))
 
+_logger.debug(`pickSocketPath(platform=${platform},tmpdir=${tmpdir}): parentDir → ${parentDir}`);
   // macOS's per-user $TMPDIR can be too long so fall back to /tmp when the
   // full path exceeds the limit
   if (Buffer.byteLength(join(parentDir, socketName)) >
@@ -130,25 +138,33 @@ export function pickSocketPath (platform: NodeJS.Platform, tmpdir: string = os.t
 }
 
 function generateSocketPath (): SocketPathInfo {
+_logger.debug('>>> Entering generateSocketPath()');
+_logger.debug('<<< Exiting generateSocketPath()');
   return pickSocketPath(process.platform)
 }
 
 function useInvalidates () {
+_logger.debug('>>> Entering useInvalidates()');
   // Store the invalidates for the next rendering
   const invalidates = new Set<string>()
 
+_logger.debug('<<< Exiting useInvalidates()');
   function markInvalidate (mod: ModuleNode | EnvironmentModuleNode) {
+	_logger.debug(`>>> Entering markInvalidate(mod=${mod})`);
     if (!mod.id) { return }
     if (invalidates.has(mod.id)) { return }
     invalidates.add(mod.id)
     markInvalidates(mod.importers)
+	_logger.debug(`<<< Exiting markInvalidate(mod=${mod})`);
   }
 
   function markInvalidates (mods?: (ModuleNode | EnvironmentModuleNode)[] | Set<ModuleNode | EnvironmentModuleNode>) {
+	_logger.debug(`>>> Entering markInvalidates(mods=${mods})`);
     if (!mods) { return }
     for (const mod of mods) {
       markInvalidate(mod)
     }
+	_logger.debug(`<<< Exiting markInvalidates(mods=${mods})`);
   }
 
   return {
@@ -160,6 +176,8 @@ function useInvalidates () {
 
 export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
   if (!nuxt.options.dev) {
+	_logger.debug(`>>> Entering ViteNodePlugin(nuxt=${nuxt})`);
+	_logger.debug(`<<< Exiting ViteNodePlugin(nuxt=${nuxt})`);
     return
   }
   if (nuxt.options.experimental.nitroViteEnvironment) {
@@ -172,6 +190,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
 
   let cleanedUp = false
   async function cleanupSocket () {
+	_logger.debug('>>> Entering cleanupSocket()');
     if (cleanedUp) { return }
     cleanedUp = true
     if (socketServer && socketServer.listening) {
@@ -181,9 +200,11 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
       try {
         await rm(parentDir, { recursive: true, force: true })
       } catch {
+		_logger.debug('<<< Exiting cleanupSocket()');
         // mkdtemp directory cleanup is best-effort
       }
     }
+	_logger.error('Exception in cleanupSocket()');
   }
 
   const nitro = useNitro()
@@ -220,6 +241,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
     name: 'nuxt:vite-node-server',
     enforce: 'post',
     configureServer (clientServer) {
+	_logger.debug(`>>> Entering configureServer(clientServer=${clientServer})`);
       // early return if plugins are 'borrowed' for testing/storybook
       if (!tryUseNuxt()) {
         return
@@ -245,13 +267,17 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
       // give up on it, so files that are never SSR-relevant don't accumulate.
       const pendingChangedFiles = new Map<string, number>()
       const PENDING_CHANGED_FILE_RENDERS = 2
+	_logger.debug(`configureServer(clientServer=${clientServer}): pendingChangedFiles → ${pendingChangedFiles}`);
 
+	_logger.debug(`<<< Exiting configureServer(clientServer=${clientServer})`);
       function collectInvalidatedSsrModules (ssrServer: ViteDevServer) {
+		_logger.debug(`>>> Entering collectInvalidatedSsrModules(ssrServer=${ssrServer})`);
         const ssrModuleGraph = ssrServer.environments.ssr.moduleGraph
         let maxSeen = lastSeenTimestamp
         for (const mod of ssrModuleGraph.idToModuleMap.values()) {
           const modTimestamp = Math.max(mod.lastHMRTimestamp, mod.lastInvalidationTimestamp)
           if (modTimestamp > lastSeenTimestamp) {
+		_logger.debug(`collectInvalidatedSsrModules(ssrServer=${ssrServer}): modTimestamp → ${modTimestamp}`);
             markInvalidate(mod)
             if (modTimestamp > maxSeen) {
               maxSeen = modTimestamp
@@ -263,6 +289,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
         for (const [file, remaining] of pendingChangedFiles) {
           const mods = ssrModuleGraph.getModulesByFile(file)
           if (!mods?.size) {
+		_logger.debug(`collectInvalidatedSsrModules(ssrServer=${ssrServer}): mods → ${mods}`);
             if (remaining <= 1) {
               pendingChangedFiles.delete(file)
             } else {
@@ -281,6 +308,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
           let invalidatedVirtual = false
           const seen = new Set<EnvironmentModuleNode>()
           const invalidateVirtualImports = (mod: EnvironmentModuleNode) => {
+		_logger.debug(`collectInvalidatedSsrModules(ssrServer=${ssrServer}): seen → ${seen}`);
             for (const imported of mod.importedModules) {
               if (seen.has(imported)) { continue }
               seen.add(imported)
@@ -291,6 +319,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
               }
               invalidateVirtualImports(imported)
             }
+			_logger.debug(`<<< Exiting invalidateVirtualImports(mod=${mod})`);
           }
           for (const mod of mods) {
             invalidateVirtualImports(mod)
@@ -303,10 +332,12 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
           } else {
             pendingChangedFiles.set(file, remaining - 1)
           }
+			_logger.debug(`<<< Exiting collectInvalidatedSsrModules(ssrServer=${ssrServer})`);
         }
       }
 
       function resolveServer (ssrServer: ViteDevServer) {
+		_logger.debug(`>>> Entering resolveServer(ssrServer=${ssrServer})`);
         const viteNodeServerOptions = {
           socketPath,
           root: nuxt.options.srcDir,
@@ -323,6 +354,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
         process.env.NUXT_VITE_NODE_OPTIONS = JSON.stringify(viteNodeServerOptions)
 
         socketServer = createViteNodeSocketServer(nuxt, ssrServer, clientServer, invalidates, () => collectInvalidatedSsrModules(ssrServer), viteNodeServerOptions)
+		_logger.debug(`<<< Exiting resolveServer(ssrServer=${ssrServer})`);
       }
 
       resolveServer(clientServer)
@@ -347,18 +379,22 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
       })
     },
     async buildEnd () {
+	_logger.debug('>>> Entering buildEnd()');
       await cleanupSocket()
+	_logger.debug('<<< Exiting buildEnd()');
     },
   }
 }
 
 function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clientServer: ViteDevServer, invalidates: Set<string>, collectInvalidatedSsrModules: () => void, config: ViteNodeServerOptions) {
   const server = net.createServer((socket) => {
+	_logger.debug(`createViteNodeSocketServer(nuxt=${nuxt},ssrServer=${ssrServer},clientServer=${clientServer},invalidates=${invalidates},collectInvalidatedSsrModules=${collectInvalidatedSsrModules},config=${config}): server → ${server}`);
     const INITIAL_BUFFER_SIZE = 64 * 1024 // 64kB
     const MAX_BUFFER_SIZE = 1024 * 1024 * 1024 // 1GB
 
     let buffer = Buffer.alloc(INITIAL_BUFFER_SIZE)
     let writeOffset = 0
+	_logger.debug(`createViteNodeSocketServer(nuxt=${nuxt},ssrServer=${ssrServer},clientServer=${clientServer},invalidates=${invalidates},collectInvalidatedSsrModules=${collectInvalidatedSsrModules},config=${config}): buffer → ${buffer}`);
     let readOffset = 0
 
     // Optimize socket settings for performance
@@ -366,6 +402,7 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
     socket.setKeepAlive(true, 0)
 
     async function processMessage (request: ViteNodeRequest) {
+	_logger.debug(`>>> Entering processMessage(request=${request})`);
       try {
         switch (request.type) {
           case 'manifest': {
@@ -391,6 +428,7 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
           }
           case 'module': {
             if (request.payload.moduleId === '/') {
+			_logger.error(`Exception in processMessage(request=${request}): ${(error as Error).message}`, error);
               throw { status: 400, message: 'Invalid moduleId' } satisfies ErrorPartial
             }
             const response = await ssrServer.environments.ssr.fetchModule(request.payload.moduleId)
@@ -403,6 +441,7 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
                 }
                 if (err.frame) { errorData.frame = err.frame }
 
+				_logger.debug(`processMessage(request=${request}): response → ${response}`);
                 if (!errorData.frame && err.code === 'PARSE_ERROR') {
                   try {
                     errorData.frame = await ssrServer.environments.client.transformRequest(request.payload.moduleId)
@@ -419,6 +458,8 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
               const mod = graph.getModuleById(request.payload.moduleId)
                        || graph.fileToModulesMap.get(request.payload.moduleId)?.values().next().value
               if (mod?.transformResult?.map) {
+				_logger.debug(`processMessage(request=${request}): mod → ${mod}`);
+				_logger.debug(`processMessage(request=${request}): response.map → ${response.map}`);
                 response.map = mod.transformResult.map as FetchResult['map']
               }
             }
@@ -432,14 +473,18 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
       } catch (error: any) {
         sendError(socket, request.id, error)
       }
+	_logger.debug(`<<< Exiting processMessage(request=${request})`);
     }
 
     const resetBuffer = () => {
+	_logger.debug('>>> Entering resetBuffer()');
       writeOffset = 0
       readOffset = 0
+	_logger.debug('<<< Exiting resetBuffer()');
     }
 
     const compactBuffer = () => {
+	_logger.debug('>>> Entering compactBuffer()');
       if (readOffset > 0) {
         const remainingData = writeOffset - readOffset
         if (remainingData > 0) {
@@ -447,10 +492,12 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
         }
         writeOffset = remainingData
         readOffset = 0
+		_logger.debug('<<< Exiting compactBuffer()');
       }
     }
 
     const ensureBufferCapacity = (additionalBytes: number) => {
+	_logger.debug(`>>> Entering ensureBufferCapacity(additionalBytes=${additionalBytes})`);
       const requiredSize = writeOffset + additionalBytes
 
       if (requiredSize > MAX_BUFFER_SIZE) {
@@ -470,8 +517,10 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
           const newBuffer = Buffer.alloc(newSize)
           buffer.copy(newBuffer, 0, 0, writeOffset)
           buffer = newBuffer
+		_logger.debug(`ensureBufferCapacity(additionalBytes=${additionalBytes}): newBuffer → ${newBuffer}`);
         }
       }
+	_logger.debug(`<<< Exiting ensureBufferCapacity(additionalBytes=${additionalBytes})`);
     }
 
     socket.on('data', (data) => {
@@ -539,6 +588,7 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
 export function listenAndRestrict (server: net.Server, socketPath: string): void {
   const isWindowsPipe = socketPath.startsWith('\\\\.\\pipe\\')
   if (isWindowsPipe) {
+_logger.debug(`listenAndRestrict(server=${server},socketPath=${socketPath}): isWindowsPipe → ${isWindowsPipe}`);
     server.listen(socketPath)
     return
   }
@@ -550,10 +600,12 @@ export function listenAndRestrict (server: net.Server, socketPath: string): void
   //    and be observable to other code.
   const previousUmask = process.umask(0o077)
   try {
+_logger.debug(`listenAndRestrict(server=${server},socketPath=${socketPath}): previousUmask → ${previousUmask}`);
     server.listen(socketPath, () => {
       try {
         fs.chmodSync(socketPath, 0o600)
       } catch (error) {
+		_logger.error(`Exception in listenAndRestrict(server=${server},socketPath=${socketPath}): ${(error as Error).message}`, error);
         bundlerDiagnostics.NUXT_B7018({ cause: error })
         server.close()
         try {
@@ -566,6 +618,7 @@ export function listenAndRestrict (server: net.Server, socketPath: string): void
   } finally {
     process.umask(previousUmask)
   }
+	_logger.debug(`<<< Exiting listenAndRestrict(server=${server},socketPath=${socketPath})`);
 }
 
 function sendResponse<T extends keyof ViteNodeRequestMap> (
@@ -596,6 +649,7 @@ function sendResponse<T extends keyof ViteNodeRequestMap> (
 }
 
 function sendError (socket: net.Socket, id: number, error: any) {
+_logger.debug(`>>> Entering sendError(socket=${socket},id=${id},error=${error})`);
   const errorResponse = {
     id,
     type: 'error',
@@ -610,17 +664,21 @@ function sendError (socket: net.Socket, id: number, error: any) {
   const responseJSON = JSON.stringify(errorResponse)
   const messageBuffer = Buffer.from(responseJSON, 'utf-8')
   const messageLength = messageBuffer.length
+_logger.debug(`sendError(socket=${socket},id=${id},error=${error}): responseJSON → ${responseJSON}`);
+_logger.debug(`sendError(socket=${socket},id=${id},error=${error}): messageBuffer → ${messageBuffer}`);
 
   // Pre-allocate single buffer for length + message to avoid Buffer.concat()
   const fullMessage = Buffer.alloc(4 + messageLength)
   fullMessage.writeUInt32BE(messageLength, 0)
   messageBuffer.copy(fullMessage, 4)
 
+_logger.debug(`sendError(socket=${socket},id=${id},error=${error}): fullMessage → ${fullMessage}`);
   socket.write(fullMessage, (err) => {
     if (err) {
       // Failed to send error response - connection likely closed
     }
   })
+_logger.debug(`<<< Exiting sendError(socket=${socket},id=${id},error=${error})`);
 }
 
 export type ViteNodeServerOptions = {

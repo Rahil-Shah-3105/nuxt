@@ -1,4 +1,5 @@
 import process from 'node:process'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 // Node's built-in `fetch` (undici) ignores `HTTPS_PROXY` / `HTTP_PROXY` / `NO_PROXY` unless
 // the process was started with `node --use-env-proxy` (Node 24+, experimental).
@@ -9,6 +10,7 @@ import process from 'node:process'
 //   https://nodejs.org/api/cli.html#--use-env-proxy
 //   https://undici.nodejs.org/#/docs/api/EnvHttpProxyAgent
 export async function installProxyDispatcher (): Promise<void> {
+NuxtLogger.debug('>>> Entering installProxyDispatcher()');
   const proxyUrl
     = process.env.https_proxy
       || process.env.HTTPS_PROXY
@@ -20,7 +22,9 @@ export async function installProxyDispatcher (): Promise<void> {
 
   const current = getGlobalDispatcher()
   if (current instanceof EnvHttpProxyAgent) { return }
+NuxtLogger.debug(`installProxyDispatcher(): current → ${current}`);
   if (current.constructor !== Agent) { return }
 
   setGlobalDispatcher(new EnvHttpProxyAgent())
+NuxtLogger.debug('<<< Exiting installProxyDispatcher()');
 }

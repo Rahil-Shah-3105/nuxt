@@ -10,6 +10,7 @@ import { type PackageJson, readPackage } from 'pkg-types'
 import { genImport } from 'knitwork'
 import type { getComponentsT } from '../module.ts'
 import type { Nuxt } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const COMPONENT_QUERY_RE = /[?&]nuxt_component=/
 
@@ -20,6 +21,7 @@ interface TransformPluginOptions {
 }
 
 export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
+NuxtLogger.debug(`>>> Entering TransformPlugin(nuxt=${nuxt},options=${options})`);
   const componentUnimport = createUnimport({
     imports: [
       {
@@ -33,10 +35,15 @@ export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
 
   const rootDirWithSlash = nuxt.options.rootDir.replace(/\/?$/, '/')
 
+NuxtLogger.debug(`<<< Exiting TransformPlugin(nuxt=${nuxt},options=${options})`);
+NuxtLogger.debug(`TransformPlugin(nuxt=${nuxt},options=${options}): rootDirWithSlash → ${rootDirWithSlash}`);
   function getComponentsImports (): Import[] {
     const components = options.getComponents(options.mode)
     const clientOrServerModes = new Set(['client', 'server'])
+	NuxtLogger.debug(`getComponentsImports(): components → ${components}`);
+	NuxtLogger.debug(`getComponentsImports(): clientOrServerModes → ${clientOrServerModes}`);
     return components.flatMap((c): Import[] => {
+	NuxtLogger.debug('>>> Entering getComponentsImports()');
       const withMode = (mode: string | undefined) => mode
         ? `${c.filePath}${c.filePath.includes('?') ? '&' : '?'}nuxt_component=${mode}&nuxt_component_name=${c.pascalName}&nuxt_component_export=${c.export || 'default'}`
         : c.filePath
@@ -63,7 +70,9 @@ export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
       name: 'nuxt:components:imports-wrapper',
       enforce: 'post',
       transformInclude (id) {
+		NuxtLogger.debug(`>>> Entering transformInclude(id=${id})`);
         id = normalize(id)
+		NuxtLogger.debug(`<<< Exiting transformInclude(id=${id})`);
         return id.startsWith('virtual:') || id.startsWith('\0virtual:') || id.startsWith(nuxt.options.buildDir) || !isIgnored(id, undefined, nuxt)
       },
       transform: {
@@ -71,13 +80,18 @@ export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
           id: COMPONENT_QUERY_RE,
         },
         handler (_code, id) {
+		NuxtLogger.debug(`>>> Entering handler(_code=${_code},id=${id})`);
           // Virtual component wrapper
           const { search } = parseModuleId(id)
           const params = new URLSearchParams(search)
           const mode = params.get('nuxt_component')
           const bare = id.replace(/\?.*/, '')
           const componentExport = params.get('nuxt_component_export') || 'default'
+		NuxtLogger.debug(`handler(_code=${_code},id=${id}): mode → ${mode}`);
+		NuxtLogger.debug(`handler(_code=${_code},id=${id}): bare → ${bare}`);
           const exportWording = componentExport === 'default' ? 'export default' : `export const ${componentExport} =`
+		NuxtLogger.debug(`handler(_code=${_code},id=${id}): componentExport → ${componentExport}`);
+		NuxtLogger.debug(`handler(_code=${_code},id=${id}): exportWording → ${exportWording}`);
           if (mode === 'async') {
             return {
               code: [
@@ -142,12 +156,14 @@ export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
 
           componentUnimport.modifyDynamicImports((imports) => {
             imports.length = 0
+			NuxtLogger.debug(`handler(code=${code},id=${id}): imports.length → ${imports.length}`);
             imports.push(...getComponentsImports())
             return imports
           })
 
           const result = await componentUnimport.injectImports(code, id, { autoImport: false, transformVirtualImports: true })
           if (!result) { return }
+		NuxtLogger.debug(`handler(code=${code},id=${id}): result → ${result}`);
 
           return {
             code: result.code,

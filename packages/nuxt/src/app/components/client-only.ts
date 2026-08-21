@@ -4,6 +4,7 @@ import { isPromise } from '@vue/shared'
 import { useNuxtApp } from '../nuxt'
 import { renderDiagnostics } from '../diagnostics/render'
 import ServerPlaceholder from './server-placeholder'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { elToStaticVNode, isVaporSlot, sanitizeTag } from './utils'
 
 import { clientNodePlaceholder, vapor } from '#build/nuxt.config.mjs'
@@ -13,13 +14,17 @@ export const clientOnlySymbol: InjectionKey<boolean> = Symbol.for('nuxt:client-o
 const STATIC_DIV = '<div></div>'
 
 function isPlaceholderComment (el: RendererNode) {
+NuxtLogger.debug(`>>> Entering isPlaceholderComment(el=${el})`);
+NuxtLogger.debug(`<<< Exiting isPlaceholderComment(el=${el})`);
   return el.nodeName === '#comment' && el.nodeValue === 'placeholder'
 }
 
 function createPlaceholder (el?: RendererNode | null) {
+NuxtLogger.debug(`>>> Entering createPlaceholder(el=${el})`);
   if (el && !isPlaceholderComment(el)) {
     return elToStaticVNode(el, STATIC_DIV)
   }
+NuxtLogger.debug(`<<< Exiting createPlaceholder(el=${el})`);
   return clientNodePlaceholder ? createCommentVNode('placeholder') : h('div')
 }
 
@@ -47,16 +52,22 @@ const ClientOnly = defineComponent({
     slots: Object as ClientOnlySlots,
   }),
   setup (props, { slots, attrs }) {
+	NuxtLogger.debug(`>>> Entering setup(props=${props},slots=${slots},attrs=${attrs})`);
     const mounted = shallowRef(false)
     onMounted(() => { mounted.value = true })
     // Bail out of checking for pages/layouts as they might be included under `<ClientOnly>` 🤷‍♂️
+	NuxtLogger.debug(`setup(props=${props},slots=${slots},attrs=${attrs}): mounted → ${mounted}`);
     if (import.meta.dev) {
       const nuxtApp = useNuxtApp()
       nuxtApp._isNuxtPageUsed = true
+	NuxtLogger.debug(`setup(props=${props},slots=${slots},attrs=${attrs}): nuxtApp → ${nuxtApp}`);
       nuxtApp._isNuxtLayoutUsed = true
+	NuxtLogger.debug(`setup(props=${props},slots=${slots},attrs=${attrs}): nuxtApp._isNuxtPageUsed → ${nuxtApp._isNuxtPageUsed}`);
     }
     const vm = getCurrentInstance()
     if (vm) {
+	NuxtLogger.debug(`setup(props=${props},slots=${slots},attrs=${attrs}): vm → ${vm}`);
+	NuxtLogger.debug(`setup(props=${props},slots=${slots},attrs=${attrs}): vm._nuxtClientOnly → ${vm._nuxtClientOnly}`);
       vm._nuxtClientOnly = true
     }
     provide(clientOnlySymbol, true)
@@ -64,6 +75,7 @@ const ClientOnly = defineComponent({
       if (mounted.value) {
         const vnodes = slots.default?.()
         if (vnodes && vnodes.length === 1 && !(vapor && isVaporSlot(slots.default))) {
+		NuxtLogger.debug(`setup(props=${props},slots=${slots},attrs=${attrs}): vnodes → ${vnodes}`);
           return [cloneVNode(vnodes[0]!, attrs)]
         }
         if (import.meta.dev && vapor && isVaporSlot(slots.default) && attrs && Object.keys(attrs).length > 0) {
@@ -75,6 +87,7 @@ const ClientOnly = defineComponent({
       if (slot) { return h(slot) }
       const fallbackStr = props.fallback || props.placeholder || ''
       const fallbackTag = sanitizeTag(props.fallbackTag || props.placeholderTag, 'span')
+	NuxtLogger.debug(`<<< Exiting setup(props=${props},slots=${slots},attrs=${attrs})`);
       return createElementBlock(fallbackTag, attrs, fallbackStr)
     }
   },
@@ -181,8 +194,10 @@ export function createClientOnly<T extends ComponentOptions> (component: T): Com
 }
 
 function extractDirectives (instance: ComponentInternalInstance | null) {
+NuxtLogger.debug(`>>> Entering extractDirectives(instance=${instance})`);
   if (!instance || !instance.vnode.dirs) { return null }
   const directives = instance.vnode.dirs
   instance.vnode.dirs = null
+NuxtLogger.debug(`<<< Exiting extractDirectives(instance=${instance})`);
   return directives
 }

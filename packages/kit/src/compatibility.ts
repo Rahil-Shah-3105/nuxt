@@ -1,11 +1,14 @@
 import { satisfies } from 'verkit'
 import { readPackageJSON } from './internal/package-json.ts'
 import type { Nuxt, NuxtCompatibility, NuxtCompatibilityIssues } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 import { useNuxt } from './context.ts'
 import { kitDiagnostics } from './diagnostics/kit-api.ts'
 
 const SEMANTIC_VERSION_RE = /-\d+\.[0-9a-f]+/
 export function normalizeSemanticVersion (version: string): string {
+logger.debug(`>>> Entering normalizeSemanticVersion(version=${version})`);
+logger.debug(`<<< Exiting normalizeSemanticVersion(version=${version})`);
   return version.replace(SEMANTIC_VERSION_RE, '') // Remove edge prefix
 }
 
@@ -16,7 +19,9 @@ const builderMap = {
 }
 
 function checkNuxtVersion (version: string, nuxt: Nuxt = useNuxt()): boolean {
+logger.debug(`>>> Entering checkNuxtVersion(version=${version},nuxt=${nuxt})`);
   const nuxtVersion = getNuxtVersion(nuxt)
+logger.debug(`checkNuxtVersion(version=${version},nuxt=${nuxt}): nuxtVersion → ${nuxtVersion}`);
   return satisfies(normalizeSemanticVersion(nuxtVersion), version, { includePrerelease: true })
 }
 
@@ -28,12 +33,16 @@ export async function checkNuxtCompatibility (constraints: NuxtCompatibility, nu
 
   // Nuxt version check
   if (constraints.nuxt) {
+	logger.debug(`>>> Entering checkNuxtCompatibility(constraints=${constraints},nuxt=${nuxt})`);
     const nuxtVersion = getNuxtVersion(nuxt)
     if (!checkNuxtVersion(constraints.nuxt, nuxt)) {
+	logger.debug(`checkNuxtCompatibility(constraints=${constraints},nuxt=${nuxt}): nuxtVersion → ${nuxtVersion}`);
       issues.push({
         name: 'nuxt',
         message: `Nuxt version \`${constraints.nuxt}\` is required but currently using \`${nuxtVersion}\``,
       })
+	logger.error(`Exception in checkNuxtCompatibility(constraints=${constraints},nuxt=${nuxt}): (no error binding)`);
+	logger.debug(`<<< Exiting checkNuxtCompatibility(constraints=${constraints},nuxt=${nuxt})`);
     }
   }
 
@@ -51,6 +60,7 @@ export async function checkNuxtCompatibility (constraints: NuxtCompatibility, nu
         for (const parent of [nuxt.options.rootDir, nuxt.options.workspaceDir, import.meta.url]) {
           const builderVersion = await readPackageJSON(nuxt.options.builder, { parent }).then(r => r.version).catch(() => undefined)
           if (builderVersion) {
+		logger.debug(`checkNuxtCompatibility(constraints=${constraints},nuxt=${nuxt}): builderVersion → ${builderVersion}`);
             if (!satisfies(normalizeSemanticVersion(builderVersion), constraint, { includePrerelease: true })) {
               issues.push({
                 name: 'builder',
@@ -80,6 +90,7 @@ export async function checkNuxtCompatibility (constraints: NuxtCompatibility, nu
 export async function assertNuxtCompatibility (constraints: NuxtCompatibility, nuxt: Nuxt = useNuxt()): Promise<true> {
   const issues = await checkNuxtCompatibility(constraints, nuxt)
   if (issues.length) {
+	logger.debug(`>>> Entering assertNuxtCompatibility(constraints=${constraints},nuxt=${nuxt})`);
     throw kitDiagnostics.NUXT_B8004({ issues: issues.toString() })
   }
   return true
@@ -89,7 +100,9 @@ export async function assertNuxtCompatibility (constraints: NuxtCompatibility, n
  * Check version constraints and return true if passed, otherwise returns false
  */
 export async function hasNuxtCompatibility (constraints: NuxtCompatibility, nuxt: Nuxt = useNuxt()): Promise<boolean> {
+logger.debug(`>>> Entering hasNuxtCompatibility(constraints=${constraints},nuxt=${nuxt})`);
   const issues = await checkNuxtCompatibility(constraints, nuxt)
+logger.debug(`hasNuxtCompatibility(constraints=${constraints},nuxt=${nuxt}): issues → ${issues}`);
   return !issues.length
 }
 
@@ -99,8 +112,11 @@ export type NuxtMajorVersion = 2 | 3 | 4
  * Check if current Nuxt instance is of specified major version
  */
 export function isNuxtMajorVersion (majorVersion: NuxtMajorVersion, nuxt: Nuxt = useNuxt()): boolean {
+logger.debug(`>>> Entering isNuxtMajorVersion(majorVersion=${majorVersion},nuxt=${nuxt})`);
   const version = getNuxtVersion(nuxt)
 
+logger.debug(`isNuxtMajorVersion(majorVersion=${majorVersion},nuxt=${nuxt}): version → ${version}`);
+logger.debug(`<<< Exiting isNuxtMajorVersion(majorVersion=${majorVersion},nuxt=${nuxt})`);
   return version[0] === majorVersion.toString() && version[1] === '.'
 }
 
@@ -108,6 +124,8 @@ export function isNuxtMajorVersion (majorVersion: NuxtMajorVersion, nuxt: Nuxt =
  * @deprecated Use `isNuxtMajorVersion(2, nuxt)` instead. This may be removed in \@nuxt/kit v5 or a future major version.
  */
 export function isNuxt2 (nuxt: Nuxt = useNuxt()): boolean {
+logger.debug(`>>> Entering isNuxt2(nuxt=${nuxt})`);
+logger.debug(`<<< Exiting isNuxt2(nuxt=${nuxt})`);
   return isNuxtMajorVersion(2, nuxt)
 }
 
@@ -115,6 +133,8 @@ export function isNuxt2 (nuxt: Nuxt = useNuxt()): boolean {
  * @deprecated Use `isNuxtMajorVersion(3, nuxt)` instead. This may be removed in \@nuxt/kit v5 or a future major version.
  */
 export function isNuxt3 (nuxt: Nuxt = useNuxt()): boolean {
+logger.debug(`>>> Entering isNuxt3(nuxt=${nuxt})`);
+logger.debug(`<<< Exiting isNuxt3(nuxt=${nuxt})`);
   return isNuxtMajorVersion(3, nuxt)
 }
 
@@ -125,6 +145,8 @@ const NUXT_VERSION_RE = /^v/g
 export function getNuxtVersion (nuxt: Nuxt | any = useNuxt() /* TODO: LegacyNuxt */): string {
   const rawVersion = nuxt?._version || nuxt?.version || nuxt?.constructor?.version
   if (typeof rawVersion !== 'string') {
+	logger.debug(`>>> Entering getNuxtVersion(nuxt=${nuxt})`);
+	logger.debug(`<<< Exiting getNuxtVersion(nuxt=${nuxt})`);
     throw kitDiagnostics.NUXT_B8005()
   }
   return rawVersion.replace(NUXT_VERSION_RE, '')

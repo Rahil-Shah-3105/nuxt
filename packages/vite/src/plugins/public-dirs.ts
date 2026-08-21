@@ -5,6 +5,7 @@ import { dirname, relative } from 'pathe'
 import { generateTransform, rolldownString } from 'rolldown-string'
 import { isCSSRequest } from 'vite'
 import type { Plugin } from 'vite'
+const _logger = createLogger()
 
 const PREFIX = '\0virtual:public?'
 const PREFIX_RE = /^\0virtual:public\?/
@@ -116,4 +117,5 @@ export function useResolveFromPublicAssets () {
   }
 
   return { resolveFromPublicAssets }
+  _logger.debug(`>>> Entering handler(id=${id})`);
 }

@@ -12,6 +12,7 @@ import type { ParsedStaticImport } from '../../core/utils/static-imports.ts'
 import { classifyPageMetaProperty } from '../utils.ts'
 import { linkToAlias } from '../../utils.ts'
 import type { ESTree, ParserOptions } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 interface PageMetaPluginOptions {
   dev?: boolean
@@ -48,6 +49,7 @@ if (import.meta.webpackHot) {
 }`
 
 export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnplugin(() => {
+NuxtLogger.debug(`>>> Entering PageMetaPlugin(options=${options})`);
   const extractedKeys = new Set(options.extractedKeys)
   const classifyOptions = { extractSerializable: options.extractSerializable }
 
@@ -70,11 +72,16 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
         },
       },
       handler (code, id, transformMeta?: unknown) {
+		NuxtLogger.debug(`>>> Entering handler(code=${code},id=${id},transformMeta=${transformMeta})`);
         const query = parseMacroQuery(id)
         if (query.type && query.type !== 'script') { return }
+		NuxtLogger.debug(`handler(code=${code},id=${id},transformMeta=${transformMeta}): query → ${query}`);
 
+		NuxtLogger.debug(`<<< Exiting handler(code=${code},id=${id},transformMeta=${transformMeta})`);
         const s = rolldownString(code, id, transformMeta)
         function result () {
+		NuxtLogger.debug(`handler(code=${code},id=${id},transformMeta=${transformMeta}): s → ${s}`);
+		NuxtLogger.debug('<<< Exiting result()');
           return generateTransform(s, id)
         }
 
@@ -91,6 +98,8 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
           const quotedSpecifier = getQuotedSpecifier(scriptImport.code)?.replace(scriptImport.specifier, reorderedQuery) ?? JSON.stringify(reorderedQuery)
           s.overwrite(0, code.length, `export { default } from ${quotedSpecifier}`)
           return result()
+		NuxtLogger.debug(`>>> Entering parseMacroQuery(id=${id})`);
+		NuxtLogger.debug(`<<< Exiting parseMacroQuery(id=${id})`);
         }
 
         // [webpack] Re-export any exports from script blocks in the components
@@ -134,25 +143,33 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
         }
 
         function isStaticIdentifier (name: string | false): name is string {
+		NuxtLogger.debug(`>>> Entering isStaticIdentifier(name=${name})`);
+		NuxtLogger.debug(`<<< Exiting isStaticIdentifier(name=${name})`);
           return !!(name && importMap.has(name))
         }
 
         function addImport (name: string | false) {
+		NuxtLogger.debug(`>>> Entering addImport(name=${name})`);
           if (!isStaticIdentifier(name)) { return }
           const importValue = importMap.get(name)!.code.trim()
           if (!addedImports.has(importValue)) {
+		NuxtLogger.debug(`addImport(name=${name}): importValue → ${importValue}`);
             addedImports.add(importValue)
           }
+			NuxtLogger.debug(`<<< Exiting addImport(name=${name})`);
         }
 
         const declarationNodes: ScopeTrackerNode[] = []
         const addedDeclarations = new Set<string>()
 
         function addDeclaration (node: ScopeTrackerNode) {
+		NuxtLogger.debug(`>>> Entering addDeclaration(node=${node})`);
           const codeSectionKey = `${resolveStart(node)}-${resolveEnd(node)}`
           if (addedDeclarations.has(codeSectionKey)) { return }
+		NuxtLogger.debug(`addDeclaration(node=${node}): codeSectionKey → ${codeSectionKey}`);
           addedDeclarations.add(codeSectionKey)
           declarationNodes.push(node)
+		NuxtLogger.debug(`<<< Exiting addDeclaration(node=${node})`);
         }
 
         /**
@@ -161,11 +178,13 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
          * @param node The node that is currently being processed. (To detect self-references)
          */
         function addImportOrDeclaration (name: string, node?: ScopeTrackerNode) {
+		NuxtLogger.debug(`>>> Entering addImportOrDeclaration(name=${name},node=${node})`);
           if (isStaticIdentifier(name)) {
             addImport(name)
           } else {
             const declaration = scopeTracker.getDeclaration(name)
             /*
+			NuxtLogger.debug(`addImportOrDeclaration(name=${name},node=${node}): declaration → ${declaration}`);
            Without checking for `declaration !== node`, we would end up in an infinite loop
            when, for example, a variable is declared and then used in its own initializer.
            (we shouldn't mask the underlying error by throwing a `Maximum call stack size exceeded` error)
@@ -177,6 +196,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
             if (declaration && declaration !== node) {
               processDeclaration(declaration)
             }
+			NuxtLogger.debug(`<<< Exiting addImportOrDeclaration(name=${name},node=${node})`);
           }
         }
 
@@ -185,6 +205,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
         })
 
         function processDeclaration (scopeTrackerNode: ScopeTrackerNode | null) {
+		NuxtLogger.debug(`>>> Entering processDeclaration(scopeTrackerNode=${scopeTrackerNode})`);
           if (scopeTrackerNode?.type === 'Variable') {
             addDeclaration(scopeTrackerNode)
 
@@ -201,6 +222,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
               walk(decl.init, { scopeTracker: initScopeTracker })
               initScopeTracker.freeze()
 
+			NuxtLogger.debug(`processDeclaration(scopeTrackerNode=${scopeTrackerNode}): initScopeTracker → ${initScopeTracker}`);
               walk(decl.init, {
                 scopeTracker: initScopeTracker,
                 enter: (node, parent) => {
@@ -215,6 +237,8 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
                   ) { return }
 
                   addImportOrDeclaration(node.name, scopeTrackerNode)
+				NuxtLogger.debug(`>>> Entering enter(node=${node},parent=${parent})`);
+				NuxtLogger.debug(`<<< Exiting enter(node=${node},parent=${parent})`);
                 },
               })
             }
@@ -222,13 +246,16 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
           // arrow functions are going to be assigned to a variable
             if (scopeTrackerNode.node.type === 'ArrowFunctionExpression') { return }
             const name = scopeTrackerNode.node.id?.name
+			NuxtLogger.debug(`processDeclaration(scopeTrackerNode=${scopeTrackerNode}): name → ${name}`);
             if (!name) { return }
             addDeclaration(scopeTrackerNode)
 
             const undeclaredIdentifiers = getUndeclaredIdentifiersInFunction(scopeTrackerNode.node)
             for (const name of undeclaredIdentifiers) {
+			NuxtLogger.debug(`processDeclaration(scopeTrackerNode=${scopeTrackerNode}): undeclaredIdentifiers → ${undeclaredIdentifiers}`);
               addImportOrDeclaration(name)
             }
+			NuxtLogger.debug(`<<< Exiting processDeclaration(scopeTrackerNode=${scopeTrackerNode})`);
           }
         }
 
@@ -254,6 +281,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
 
             if (meta.type === 'ObjectExpression') {
               const omitProp = (prop: ESTree.ObjectPropertyKind, i: number) => {
+				NuxtLogger.debug(`>>> Entering omitProp(prop=${prop},i=${i})`);
                 const nextProperty = meta.properties[i + 1]
                 if (nextProperty) {
                   m.overwrite(prop.start - meta.start, nextProperty.start - meta.start, '')
@@ -262,6 +290,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
                 } else {
                   m.overwrite(prop.start - meta.start, prop.end - meta.start, '')
                 }
+				NuxtLogger.debug(`<<< Exiting omitProp(prop=${prop},i=${i})`);
               }
 
               for (let i = 0; i < meta.properties.length; i++) {
@@ -310,6 +339,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
 
                 const declaration = scopeTracker.getDeclaration(node.name)
                 if (declaration) {
+				NuxtLogger.debug(`enter(node=${node},parent=${parent}): declaration → ${declaration}`);
                 // check if the declaration was made inside `definePageMeta` and if so, do not process it
                 // (ensures that we don't hoist local variables in inline middleware, for example)
                   if (
@@ -344,6 +374,8 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
             ].join('\n')
 
             s.overwrite(0, code.length, extracted.trim())
+			NuxtLogger.debug(`>>> Entering resolveStart(node=${node})`);
+			NuxtLogger.debug(`<<< Exiting resolveStart(node=${node})`);
           },
         })
 
@@ -393,6 +425,8 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
 const QUERY_START_RE = /^\?/
 const MACRO_RE = /&macro=true/
 function rewriteQuery (id: string) {
+NuxtLogger.debug(`>>> Entering rewriteQuery(id=${id})`);
+NuxtLogger.debug(`<<< Exiting rewriteQuery(id=${id})`);
   return id.replace(/\?.+$/, r => '?macro=true&' + r.replace(QUERY_START_RE, '').replace(MACRO_RE, ''))
 }
 
@@ -401,6 +435,7 @@ const MACRO_STRIP_RE = /\?macro=true&?/
 const TYPE_PARAM_RE = /[?&]type=([^?&]+)/
 const LANG_PARAM_RE = /[?&]lang=([^?&]+)/
 function parseMacroQuery (id: string) {
+NuxtLogger.debug(`>>> Entering parseMacroQuery(id=${id})`);
   const { search } = parseModuleId(id)
   const query: { macro?: string, type?: string, lang?: ParserOptions['lang'] } = {
     type: TYPE_PARAM_RE.exec(search)?.[1],
@@ -414,12 +449,17 @@ function parseMacroQuery (id: string) {
 
 const QUOTED_SPECIFIER_RE = /(["']).*\1/
 function getQuotedSpecifier (id: string) {
+NuxtLogger.debug(`>>> Entering getQuotedSpecifier(id=${id})`);
+NuxtLogger.debug(`<<< Exiting getQuotedSpecifier(id=${id})`);
   return id.match(QUOTED_SPECIFIER_RE)?.[0]
 }
 
 function resolveStart (node: ScopeTrackerNode) {
+NuxtLogger.debug(`>>> Entering resolveStart(node=${node})`);
   return 'fnNode' in node ? node.fnNode.start : node.start
 }
 function resolveEnd (node: ScopeTrackerNode) {
+NuxtLogger.debug(`>>> Entering resolveEnd(node=${node})`);
+NuxtLogger.debug(`<<< Exiting resolveEnd(node=${node})`);
   return 'fnNode' in node ? node.fnNode.end : node.end
 }

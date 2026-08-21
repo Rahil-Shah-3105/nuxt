@@ -1,11 +1,14 @@
 import type { NuxtPage } from '@nuxt/schema'
 import type { NitroRouteConfig } from 'nitro/types'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { pageDiagnostics } from '@nuxt/kit/internal'
 import { isEqual } from 'ohash'
 import { vueRouterToRou3 } from 'unrouting'
 
 export function globRouteRulesFromPages (pages: NuxtPage[]) {
+NuxtLogger.debug(`>>> Entering globRouteRulesFromPages(pages=${pages})`);
+NuxtLogger.debug(`<<< Exiting globRouteRulesFromPages(pages=${pages})`);
   return collectRouteRulesFromPages(pages, {}, '')
 }
 
@@ -43,10 +46,12 @@ function collectRouteRulesFromPages (
 }
 
 export function removePagesRules (routes: NuxtPage[]) {
+NuxtLogger.debug(`>>> Entering removePagesRules(routes=${routes})`);
   for (const route of routes) {
     delete route.rules
     if (route.children?.length) {
       removePagesRules(route.children)
     }
+	NuxtLogger.debug(`<<< Exiting removePagesRules(routes=${routes})`);
   }
 }

@@ -1,6 +1,7 @@
 import type { IncomingMessage } from 'node:http'
 import { describe, expect, it, vi } from 'vitest'
 import type { DevEnvironment } from 'vite'
+const _logger = createLogger()
 import { isNavigationRequest, warmupViteServer } from './warmup.ts'
 
 const root = '/project'
@@ -11,9 +12,11 @@ interface FakeModule {
 }
 
 function createEnvironment (graph: Record<string, string[]>) {
+_logger.debug(`>>> Entering createEnvironment(graph=${graph})`);
   const transformed: string[] = []
   const modules = new Map<string, FakeModule & { transformResult: { code: string } | null }>()
 
+_logger.debug(`createEnvironment(graph=${graph}): modules → ${modules}`);
   const environment = {
     moduleGraph: {
       getModuleByUrl: (url: string) => {
@@ -36,6 +39,7 @@ function createEnvironment (graph: Record<string, string[]>) {
     modules.set(url, { url, imports: graph[url]!, transformResult: null })
   }
 
+_logger.debug(`<<< Exiting createEnvironment(graph=${graph})`);
   return { environment, transformed }
 }
 

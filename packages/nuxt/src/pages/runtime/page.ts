@@ -5,6 +5,7 @@ import type { RouteLocationNormalized, RouteLocationNormalizedLoaded, RouterView
 
 import { generateRouteKey, wrapInKeepAlive } from './utils'
 import type { RouterViewSlotProps } from './utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { RouteProvider, defineRouteProvider } from '#app/components/route-provider'
 import { useNuxtApp } from '#app/nuxt'
 import { useRouter } from '#app/composables/router'
@@ -55,20 +56,27 @@ export default defineComponent({
     },
   },
   setup (props, { attrs, slots, expose }) {
+	NuxtLogger.debug(`>>> Entering setup(props=${props},attrs=${attrs},slots=${slots},expose=${expose})`);
     const nuxtApp = useNuxtApp()
     const pageRef = ref()
     const forkRoute = inject(PageRouteSymbol, null)
     const keepAliveInclude = new Set<string>()
 
+	NuxtLogger.debug(`setup(props=${props},attrs=${attrs},slots=${slots},expose=${expose}): nuxtApp → ${nuxtApp}`);
+	NuxtLogger.debug(`setup(props=${props},attrs=${attrs},slots=${slots},expose=${expose}): pageRef → ${pageRef}`);
+	NuxtLogger.debug(`setup(props=${props},attrs=${attrs},slots=${slots},expose=${expose}): forkRoute → ${forkRoute}`);
+	NuxtLogger.debug(`setup(props=${props},attrs=${attrs},slots=${slots},expose=${expose}): keepAliveInclude → ${keepAliveInclude}`);
     let previousPageKey: string | undefined | false
 
     expose({ pageRef })
 
     const _layoutMeta = inject(LayoutMetaSymbol, null)
     let vnode: VNode | undefined
+	NuxtLogger.debug(`setup(props=${props},attrs=${attrs},slots=${slots},expose=${expose}): _layoutMeta → ${_layoutMeta}`);
 
     const done = nuxtApp.deferHydration()
     let isSuspensePending = false
+	NuxtLogger.debug(`setup(props=${props},attrs=${attrs},slots=${slots},expose=${expose}): done → ${done}`);
     let hasResolvedOnce = false
     let pageStartPromise: ReturnType<typeof nuxtApp.callHook>
 
@@ -76,6 +84,7 @@ export default defineComponent({
     if (import.meta.client && nuxtApp.isHydrating) {
       const removeErrorHook = nuxtApp.hooks.hookOnce('app:error', done)
       const removeGuard = useRouter().beforeEach(() => {
+	NuxtLogger.debug(`setup(props=${props},attrs=${attrs},slots=${slots},expose=${expose}): removeErrorHook → ${removeErrorHook}`);
         removeErrorHook()
         removeGuard()
       })
@@ -90,6 +99,7 @@ export default defineComponent({
 
     if (import.meta.dev) {
       nuxtApp._isNuxtPageUsed = true
+	NuxtLogger.debug(`setup(props=${props},attrs=${attrs},slots=${slots},expose=${expose}): nuxtApp._isNuxtPageUsed → ${nuxtApp._isNuxtPageUsed}`);
     }
 
     let pageLoadingEndHookAlreadyCalled = false
@@ -104,12 +114,15 @@ export default defineComponent({
       })
     }
 
+	NuxtLogger.debug(`<<< Exiting setup(props=${props},attrs=${attrs},slots=${slots},expose=${expose})`);
     return () => {
       return h(RouterView, { name: props.name, route: props.route, ...attrs }, {
         default: markStableSlot(import.meta.server
           ? (routeProps: RouterViewSlotProps) => {
               return h(Suspense, { suspensible: true }, {
                 default () {
+				NuxtLogger.debug('>>> Entering default()');
+				NuxtLogger.debug('<<< Exiting default()');
                   return h(RouteProvider, {
                     vnode: slots.default ? normalizeSlot(slots.default, routeProps) : routeProps.Component,
                     route: routeProps.route,
@@ -173,10 +186,12 @@ export default defineComponent({
                 defaultPageTransition,
                 {
                   onAfterLeave () {
+					NuxtLogger.debug('>>> Entering onAfterLeave()');
                     nuxtApp['~transitionFinish']?.()
                     delete nuxtApp['~transitionFinish']
                     delete nuxtApp['~transitionPromise']
                     nuxtApp.callHook('page:transition:finish', routeProps.Component)
+					NuxtLogger.debug('<<< Exiting onAfterLeave()');
                   },
                 },
               ])
@@ -284,6 +299,7 @@ export default defineComponent({
               return vnode
             }),
       })
+	NuxtLogger.debug(`>>> Entering normalizeSlot(slot=${slot},data=${data})`);
     }
   },
 }) as unknown as {
@@ -306,6 +322,7 @@ export default defineComponent({
 }
 
 function haveParentRoutesRendered (fork: RouteLocationNormalizedLoaded | null, newRoute: RouteLocationNormalizedLoaded, Component?: VNode) {
+NuxtLogger.debug(`>>> Entering haveParentRoutesRendered(fork=${fork},newRoute=${newRoute},Component=${Component})`);
   if (!fork) { return false }
 
   const index = newRoute.matched.findIndex(m => m.components?.default === Component?.type)
@@ -315,17 +332,22 @@ function haveParentRoutesRendered (fork: RouteLocationNormalizedLoaded | null, n
   // at the parent's depth (see #34967), so they don't contribute a "parent render" above us.
   const newParents = newRoute.matched.slice(0, index).filter(m => m.components?.default)
   if (!newParents.length) { return false }
+NuxtLogger.debug(`haveParentRoutesRendered(fork=${fork},newRoute=${newRoute},Component=${Component}): newParents → ${newParents}`);
   const forkParents = fork.matched.filter(m => m.components?.default)
 
+NuxtLogger.debug(`haveParentRoutesRendered(fork=${fork},newRoute=${newRoute},Component=${Component}): forkParents → ${forkParents}`);
   // we only care whether the parent route components have had to rerender
   return newParents.some((c, i) => c.components?.default !== forkParents[i]?.components?.default) ||
     (Component && generateRouteKey({ route: newRoute, Component }) !== generateRouteKey({ route: fork, Component }))
+	NuxtLogger.debug(`<<< Exiting haveParentRoutesRendered(fork=${fork},newRoute=${newRoute},Component=${Component})`);
 }
 
 function hasChildrenRoutes (fork: RouteLocationNormalizedLoaded | null, newRoute: RouteLocationNormalizedLoaded, Component?: VNode) {
+NuxtLogger.debug(`>>> Entering hasChildrenRoutes(fork=${fork},newRoute=${newRoute},Component=${Component})`);
   if (!fork) { return false }
 
   const index = newRoute.matched.findIndex(m => m.components?.default === Component?.type)
+NuxtLogger.debug(`<<< Exiting hasChildrenRoutes(fork=${fork},newRoute=${newRoute},Component=${Component})`);
   return index < newRoute.matched.length - 1
 }
 
@@ -346,7 +368,9 @@ function markStableSlot<T extends (routeProps: RouterViewSlotProps) => VNode | V
 }
 
 function normalizeSlot (slot: Slot, data: RouterViewSlotProps) {
+NuxtLogger.debug(`>>> Entering normalizeSlot(slot=${slot},data=${data})`);
   const slotContent = slot(data)
+NuxtLogger.debug(`normalizeSlot(slot=${slot},data=${data}): slotContent → ${slotContent}`);
   return slotContent.length === 1 ? h(slotContent[0]!) : h(Fragment, undefined, slotContent)
 }
 
@@ -354,5 +378,7 @@ function normalizeSlot (slot: Slot, data: RouterViewSlotProps) {
 // `el` reference; returning it would put Vue on the hydration code path during a fresh mount and
 // throw `Cannot read properties of null (reading 'nodeType' / 'exposed')`. See nuxt/nuxt#23232.
 function isStaleVNode (vnode: VNode | undefined): boolean {
+NuxtLogger.debug(`>>> Entering isStaleVNode(vnode=${vnode})`);
+NuxtLogger.debug(`<<< Exiting isStaleVNode(vnode=${vnode})`);
   return !!vnode && (!!vnode.suspense?.isUnmounted || !!vnode.component?.isUnmounted)
 }

@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { hash } from 'ohash'
 
 /**
@@ -13,8 +14,10 @@ export function filterIslandProps (props: Record<string, any> | null | undefined
   if (!props) { return {} }
   const out: Record<string, any> = {}
   for (const key in props) {
+	NuxtLogger.debug(`>>> Entering filterIslandProps(props=${props})`);
     if (!key.startsWith('data-v-')) {
       out[key] = props[key]
+	NuxtLogger.debug(`<<< Exiting filterIslandProps(props=${props})`);
     }
   }
   return out
@@ -28,6 +31,8 @@ export function filterIslandProps (props: Record<string, any> | null | undefined
  * @since 4.5.0
  */
 export function serializeIslandProps (props: Record<string, any> | null | undefined): string {
+NuxtLogger.debug(`>>> Entering serializeIslandProps(props=${props})`);
+NuxtLogger.debug(`<<< Exiting serializeIslandProps(props=${props})`);
   return JSON.stringify(filterIslandProps(props))
 }
 
@@ -51,6 +56,9 @@ export function getIslandHash (input: {
 }): string {
   const props = typeof input.props === 'string' ? parseSerializedProps(input.props) : (input.props ?? {})
   return hash([input.name, props, input.context ?? {}, input.source]).replace(/[-_]/g, '')
+NuxtLogger.debug(`>>> Entering parseSerializedProps(serializedProps=${serializedProps})`);
+NuxtLogger.error(`Exception in parseSerializedProps(serializedProps=${serializedProps}): (no error binding)`);
+NuxtLogger.debug(`<<< Exiting parseSerializedProps(serializedProps=${serializedProps})`);
 }
 
 function parseSerializedProps (serializedProps: string): unknown {
@@ -59,6 +67,8 @@ function parseSerializedProps (serializedProps: string): unknown {
   try {
     return JSON.parse(serializedProps)
   } catch {
+	NuxtLogger.error(`Exception in parseSerializedProps(serializedProps=${serializedProps}): (no error binding)`);
+	NuxtLogger.debug(`<<< Exiting parseSerializedProps(serializedProps=${serializedProps})`);
     return serializedProps
   }
 }

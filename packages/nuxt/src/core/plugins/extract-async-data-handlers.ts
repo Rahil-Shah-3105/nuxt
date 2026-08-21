@@ -5,6 +5,7 @@ import type { RolldownString } from 'rolldown-string'
 import { dirname } from 'pathe'
 import { ScopeTracker, parseAndWalk, walk } from 'oxc-walker'
 import type { ESTree } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const functionsToExtract = new Set(['useAsyncData', 'useLazyAsyncData'])
 const FUNCTIONS_RE = /\buse(?:Lazy)?AsyncData\b/
@@ -20,6 +21,7 @@ export interface ExtractAsyncDataHandlersOptions {
 }
 
 export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlersOptions) => createUnplugin(() => {
+NuxtLogger.debug(`>>> Entering ExtractAsyncDataHandlersPlugin(options=${options})`);
   const asyncDatas: Record<string, { code: string, map?: SourceMapInput }> = {}
 
   let count = 0
@@ -28,7 +30,9 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
     name: 'nuxt:extract-async-data-handlers',
     enforce: 'post',
     resolveId (source) {
+	NuxtLogger.debug(`>>> Entering resolveId(source=${source})`);
       if (source in asyncDatas) {
+		NuxtLogger.debug(`<<< Exiting resolveId(source=${source})`);
         return source
       }
     },
@@ -37,7 +41,9 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
         id: ASYNC_DATA_CHUNK_RE,
       },
       handler (id) {
+		NuxtLogger.debug(`>>> Entering handler(id=${id})`);
         if (id in asyncDatas) {
+		NuxtLogger.debug(`<<< Exiting handler(id=${id})`);
           return asyncDatas[id]
         }
       },
@@ -51,6 +57,7 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
         code: { include: FUNCTIONS_RE },
       },
       handler (code, id, meta?: unknown) {
+		NuxtLogger.debug(`>>> Entering handler(code=${code},id=${id},meta=${meta})`);
         const { 0: script = code, index: codeIndex = 0 } = code.match(SCRIPT_RE) || { index: 0, 0: code }
 
         let s: RolldownString | undefined
@@ -59,9 +66,11 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
         const parseResult = parseAndWalk(script, id, { scopeTracker })
         scopeTracker.freeze()
 
+		NuxtLogger.debug(`handler(code=${code},id=${id},meta=${meta}): scopeTracker → ${scopeTracker}`);
         walk(parseResult.program, {
           scopeTracker,
           enter (node) {
+			NuxtLogger.debug(`>>> Entering enter(node=${node})`);
             if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier' || !functionsToExtract.has(node.callee.name)) {
               return
             }
@@ -70,6 +79,7 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
 
             const fetcherFunction = callExpression.arguments.find((fn): fn is ESTree.Function | ESTree.ArrowFunctionExpression => fn.type === 'ArrowFunctionExpression' || fn.type === 'FunctionExpression')
 
+			NuxtLogger.debug(`enter(node=${node}): fetcherFunction → ${fetcherFunction}`);
             if (!fetcherFunction || (fetcherFunction.type !== 'ArrowFunctionExpression' && fetcherFunction.type !== 'FunctionExpression') || !fetcherFunction.body) {
               return
             }
@@ -79,6 +89,8 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
             const referencedVariables = new Set<string>()
             const imports = new Set<string>()
 
+			NuxtLogger.debug(`enter(node=${node}): referencedVariables → ${referencedVariables}`);
+			NuxtLogger.debug(`enter(node=${node}): imports → ${imports}`);
             // Walk the function body to find all identifiers
             walk(fetcherFunction.body, {
               scopeTracker,
@@ -109,6 +121,7 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
 
                 const declaration = scopeTracker.getDeclaration(innerNode.name)
                 if (!declaration) {
+				NuxtLogger.debug(`enter(innerNode=${innerNode},parent=${parent}): declaration → ${declaration}`);
                   return
                 }
 
@@ -123,6 +136,7 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
                   if (declaration.start < functionBodyStart || declaration.end > functionBodyEnd) {
                     referencedVariables.add(innerNode.name)
                   }
+					NuxtLogger.debug(`<<< Exiting enter(innerNode=${innerNode},parent=${parent})`);
                 }
               },
             })
@@ -161,6 +175,7 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
             const suffix = ` }`
 
             if (isBlockStatement) {
+			NuxtLogger.debug('>>> Entering function()');
               // For block statements, we need to extract the content inside the braces
               chunk.overwrite(0, startOffset + 1, preface)
               chunk.overwrite(endOffset - 1, code.length, suffix)
@@ -169,6 +184,7 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
               chunk.overwrite(0, startOffset, preface)
               chunk.overwrite(endOffset, code.length, suffix)
             }
+			NuxtLogger.debug('<<< Exiting function()');
 
             asyncDatas[key] = {
               code: chunk.toString(),

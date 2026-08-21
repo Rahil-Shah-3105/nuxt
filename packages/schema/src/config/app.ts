@@ -5,6 +5,7 @@ import { defineResolvers } from '../utils/definition.ts'
 import { schemaDiagnostics } from '../diagnostics.ts'
 import type { AppHeadMetaObject } from '../types/head.ts'
 import type { NuxtAppConfig, ViewTransitionOptions } from '../types/config.ts'
+import logger from "../utils/logger.js";
 
 export default defineResolvers({
   vue: {
@@ -18,6 +19,8 @@ export default defineResolvers({
     compilerOptions: {},
     runtimeCompiler: {
       $resolve: (val) => {
+		logger.debug(`>>> Entering resolve(val=${val},get=${get})`);
+		logger.debug(`<<< Exiting resolve(val=${val},get=${get})`);
         return typeof val === 'boolean' ? val : false
       },
     },

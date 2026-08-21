@@ -1,5 +1,6 @@
 import { defineAsyncComponent, defineComponent, h, hydrateOnIdle, hydrateOnInteraction, hydrateOnMediaQuery, hydrateOnVisible, mergeProps, provide } from 'vue'
 import type { AsyncComponentLoader, ComponentObjectPropsOptions, DefineSetupFnComponent, ExtractPropTypes, HydrationStrategy } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useNuxtApp } from '#app/nuxt'
 import { neverHydratedSymbol } from '#app/composables/lazy-hydration'
 
@@ -17,12 +18,14 @@ function defineLazyComponent<P extends ComponentObjectPropsOptions, Props extend
       props,
       emits: ['hydrated'],
       setup (props, ctx) {
+		NuxtLogger.debug(`>>> Entering setup(props=${props},ctx=${ctx})`);
         if (import.meta.server) {
           if (never) {
             provide(neverHydratedSymbol, true)
           }
           const nuxtApp = useNuxtApp()
           nuxtApp.hook('app:rendered', ({ ssrContext }) => {
+		NuxtLogger.debug(`setup(props=${props},ctx=${ctx}): nuxtApp → ${nuxtApp}`);
             // track lazy hydrated components so prefetch/preload tags are not rendered for them
             // but keep them in modules so CSS links are still rendered
             ssrContext!['~lazyHydratedModules'] ||= new Set()
@@ -40,6 +43,7 @@ function defineLazyComponent<P extends ComponentObjectPropsOptions, Props extend
           loader: () => Promise.resolve(child),
         })
         const onVnodeMounted = () => { ctx.emit('hydrated') }
+		NuxtLogger.debug(`<<< Exiting setup(props=${props},ctx=${ctx})`);
         return () => h(comp, mergeProps(ctx.attrs, { onVnodeMounted }), ctx.slots)
       },
     }) as unknown as DefineSetupFnComponent<Props, LazyHydrationEmits>

@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { extname } from 'pathe'
 
 /**
@@ -9,6 +10,7 @@ import { extname } from 'pathe'
 export function parseModuleId (id: string): { pathname: string, search: string } {
   const qIndex = id.indexOf('?')
   if (qIndex === -1) {
+	NuxtLogger.debug(`>>> Entering parseModuleId(id=${id})`);
     return { pathname: id, search: '' }
   }
   return { pathname: id.slice(0, qIndex), search: id.slice(qIndex) }
@@ -21,6 +23,7 @@ const SETUP_QUERY_RE = /[?&]setup(?:=|&|$)/
 const TYPE_QUERY_RE = /[?&]type=([^&]*)/
 
 export function isVue (id: string, opts: { type?: Array<'template' | 'script' | 'style'> } = {}) {
+NuxtLogger.debug(`>>> Entering isVue(id=${id},opts=${opts})`);
   const { search } = parseModuleId(id)
 
   // Bare `.vue` file (in Vite)
@@ -49,12 +52,14 @@ export function isVue (id: string, opts: { type?: Array<'template' | 'script' | 
 
   if (opts.type) {
     const type = SETUP_QUERY_RE.test(search) ? 'script' : TYPE_QUERY_RE.exec(search)?.[1] as 'script' | 'template' | 'style' | undefined
+	NuxtLogger.debug(`isVue(id=${id},opts=${opts}): type → ${type}`);
     if (!type || !opts.type.includes(type)) {
       return false
     }
   }
 
   // Query `?vue&type=template` (in Webpack or external template)
+NuxtLogger.debug(`<<< Exiting isVue(id=${id},opts=${opts})`);
   return true
 }
 
@@ -64,8 +69,10 @@ const JS_RE = /\.(?:[cm]?[jt]s|[jt]sx)$/
 export const VUE_ID_RE = /\.vue(?:\?|$)/
 
 export function isJS (id: string) {
+NuxtLogger.debug(`>>> Entering isJS(id=${id})`);
   // JavaScript files
   const { pathname } = parseModuleId(id)
+NuxtLogger.debug(`<<< Exiting isJS(id=${id})`);
   return JS_RE.test(pathname)
 }
 
@@ -73,6 +80,7 @@ export function getLoader (id: string): 'vue' | 'ts' | 'tsx' | null {
   const { pathname } = parseModuleId(id)
   const ext = extname(pathname)
   if (ext === '.vue') {
+	NuxtLogger.debug(`>>> Entering getLoader(id=${id})`);
     return 'vue'
   }
   if (!JS_RE.test(ext)) {

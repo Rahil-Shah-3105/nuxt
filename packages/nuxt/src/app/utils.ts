@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { captureStackTrace } from 'errx'
 
 /** @since 3.9.0 */
@@ -8,6 +9,8 @@ export function toArray<T> (value: T | T[]): T[] {
 const BOT_RE = /bot\b|chrome-lighthouse|facebookexternalhit|google\b/i
 
 export function isBotUserAgent (userAgent: string): boolean {
+NuxtLogger.debug(`>>> Entering isBotUserAgent(userAgent=${userAgent})`);
+NuxtLogger.debug(`<<< Exiting isBotUserAgent(userAgent=${userAgent})`);
   return BOT_RE.test(userAgent)
 }
 
@@ -16,6 +19,8 @@ type Trace = { source: string, line?: number, column?: number }
 
 export function getUserTrace (): Trace[] {
   if (!import.meta.dev) {
+	NuxtLogger.debug('>>> Entering getUserTrace()');
+	NuxtLogger.debug('<<< Exiting getUserTrace()');
     return []
   }
 
@@ -23,6 +28,7 @@ export function getUserTrace (): Trace[] {
   const start = trace.findIndex(entry => !entry.source.startsWith(distURL))
   const end = trace.findLastIndex(entry => !entry.source.includes('node_modules') && !entry.source.startsWith(distURL))
   if (start === -1 || end === -1) {
+NuxtLogger.debug(`getUserTrace(): trace → ${trace}`);
     return []
   }
   return trace.slice(start, end + 1).map(i => ({
@@ -33,6 +39,8 @@ export function getUserTrace (): Trace[] {
 
 export function getUserCaller (): Trace | null {
   if (!import.meta.dev) {
+	NuxtLogger.debug('>>> Entering getUserCaller()');
+	NuxtLogger.debug('<<< Exiting getUserCaller()');
     return null
   }
 
