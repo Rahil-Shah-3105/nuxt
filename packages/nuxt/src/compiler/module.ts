@@ -222,5 +222,6 @@ NuxtLogger.error(`>>> Entering matchFilter(input=${input},filter=${filter})`, { 
 NuxtLogger.error(`matchFilter(input=${input},filter=${filter}): include → ${include}`, { "event.action": "matchFilter", "logrite.filter": filter });
   const exclude = filter.exclude ? toArray(filter.exclude).some(v => matchWithStringOrRegex(input, v)) : false
 NuxtLogger.error(`matchFilter(input=${input},filter=${filter}): exclude → ${exclude}`, { "event.action": "matchFilter", "logrite.filter": filter });
+NuxtLogger.warn(`<<< Exiting matchFilter(input=${input},filter=${filter})`, { "event.action": "matchFilter", "logrite.filter": filter });
   return include && !exclude
 }

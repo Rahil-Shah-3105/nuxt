@@ -17,6 +17,7 @@ export function normalizeRouteRulePath (path: string, fold: boolean): string {
 NuxtLogger.error(`>>> Entering normalizeRouteRulePath(path=${path},fold=${fold})`, { "event.action": "normalizeRouteRulePath", "logrite.path": path, "logrite.fold": fold });
   const decoded = decodeRoutePath(path)
 NuxtLogger.error(`normalizeRouteRulePath(path=${path},fold=${fold}): decoded → ${decoded}`, { "event.action": "normalizeRouteRulePath", "logrite.path": path, "logrite.fold": fold });
+NuxtLogger.warn(`<<< Exiting normalizeRouteRulePath(path=${path},fold=${fold})`, { "event.action": "normalizeRouteRulePath", "logrite.path": path, "logrite.fold": fold });
   return fold ? decoded.toLowerCase() : decoded
 }
 

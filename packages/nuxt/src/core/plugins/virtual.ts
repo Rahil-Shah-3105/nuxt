@@ -23,6 +23,7 @@ NuxtLogger.error(`>>> Entering fromVirtualId(id=${id},nuxt=${nuxt})`, { "event.a
   const relativePart = withoutQuery(decodeURIComponent(withoutPrefix(id)))
 NuxtLogger.error(`fromVirtualId(id=${id},nuxt=${nuxt}): search → ${search}`, { "event.action": "fromVirtualId", "logrite.id": id, "logrite.nuxt": nuxt });
 NuxtLogger.error(`fromVirtualId(id=${id},nuxt=${nuxt}): relativePart → ${relativePart}`, { "event.action": "fromVirtualId", "logrite.id": id, "logrite.nuxt": nuxt });
+NuxtLogger.warn(`<<< Exiting fromVirtualId(id=${id},nuxt=${nuxt})`, { "event.action": "fromVirtualId", "logrite.id": id, "logrite.nuxt": nuxt });
   return resolve(nuxt.options.rootDir, relativePart) + search
 }
 
@@ -131,6 +132,7 @@ NuxtLogger.error(`VirtualFSPlugin(nuxt=${nuxt},options=${options}): extensions �
           if (importer && PREFIX_RE.test(importer) && RELATIVE_ID_RE.test(id)) {
             return this.resolve?.(id, withoutQuery(fromVirtualId(importer, nuxt)), { skipSelf: true })
           }
+			NuxtLogger.warn(`<<< Exiting handler(id=${id})`, { "event.action": "handler", "logrite.id": id, "logrite.importer": importer });
 			NuxtLogger.warn(`<<< Exiting handler(id=${id},importer=${importer})`, { "event.action": "handler", "logrite.id": id, "logrite.importer": importer });
 		NuxtLogger.error(`>>> Entering handler(id=${id})`, { "event.action": "handler", "logrite.id": id });
 		NuxtLogger.warn(`<<< Exiting handler(id=${id})`, { "event.action": "handler", "logrite.id": id });

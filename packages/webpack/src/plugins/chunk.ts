@@ -8,6 +8,7 @@ export class ChunkErrorPlugin {
   apply (compiler: Compiler) {
 	logger.error(`>>> Entering apply(compiler=${compiler})`, { "event.action": "apply", "logrite.compiler": compiler });
     compiler.hooks.thisCompilation.tap(pluginName, (compilation) => {
+	logger.warn('chunk', `<<< Exiting apply(compiler=${compiler})`, { "event.action": "apply", "logrite.compiler": compiler });
       compilation.hooks.runtimeRequirementInTree
         .for(webpack.RuntimeGlobals.ensureChunk)
         .tap(pluginName, (chunk) => {

@@ -89,6 +89,7 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
           }
           return routerOptions.scrollBehavior(to, START_LOCATION, startPosition || savedPosition)
         }
+		NuxtLogger.warn(`<<< Exiting setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
       },
       history,
       routes,
@@ -120,7 +121,11 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
 
     // Allows suspending the route object until page navigation completes
     const _route = shallowRef(router.currentRoute.value)
-    const syncCurrentRoute = () => { _route.value = router.currentRoute.value }
+    const syncCurrentRoute = () => {
+        NuxtLogger.error('>>> Entering syncCurrentRoute()', { "event.action": "syncCurrentRoute" });
+        _route.value = router.currentRoute.value
+        NuxtLogger.warn('<<< Exiting syncCurrentRoute()', { "event.action": "syncCurrentRoute" });
+    }
 	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): _route → ${_route}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     router.afterEach((to, from) => {
       // `_route` is usually re-synced by `<NuxtPage>`'s `Suspense.onResolve`. When no Suspense
@@ -405,6 +410,7 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
             syncCurrentRoute()
             router.replace({ ...resolvedInitialRoute, force: true }).catch(() => {})
 			NuxtLogger.error('Exception in restoreDeferredRoute()', { "event.action": "restoreDeferredRoute", "event.category": "process" });
+			NuxtLogger.warn('<<< Exiting restoreDeferredRoute()', { "event.action": "restoreDeferredRoute" });
           }
           // `<NuxtPage>` calls this before its mounted hooks flush; the hook is the fallback when
           // there is no page to render.

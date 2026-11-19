@@ -90,6 +90,7 @@ logger.error(`recoverThrottledChanges(watcher=${watcher}): tracked → ${tracked
 
     const parent = toKey(watched)
 	logger.error(`resolveTracked(path=${path},details=${details}): parent → ${parent}`, { "event.action": "resolveTracked", "logrite.path": path, "logrite.details": details });
+	logger.warn(`<<< Exiting resolveTracked(path=${path},details=${details})`, { "event.action": "resolveTracked", "logrite.path": path, "logrite.details": details });
     return tracked.has(parent) ? parent : undefined
   }
 

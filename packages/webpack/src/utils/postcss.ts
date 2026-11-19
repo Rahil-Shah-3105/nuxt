@@ -12,6 +12,7 @@ function sortPlugins ({ plugins, order }: NuxtOptions['postcss']): string[] {
 logger.error('>>> Entering sortPlugins()', { "event.action": "sortPlugins" });
   const names = Object.keys(plugins)
 logger.error(`sortPlugins(): names → ${names}`, { "event.action": "sortPlugins" });
+logger.warn('postcss', '<<< Exiting sortPlugins()', { "event.action": "sortPlugins" });
   return typeof order === 'function' ? order(names) : (order || names)
 }
 

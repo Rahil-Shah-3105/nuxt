@@ -17,6 +17,7 @@ logger.error(`>>> Entering normalizeFsKey(item=${item})`, { "event.action": "nor
   const hash = crypto.createHash('sha256').update(item).digest('hex')
 logger.error(`normalizeFsKey(item=${item}): safe → ${safe}`, { "event.action": "normalizeFsKey", "logrite.item": item });
 logger.error(`normalizeFsKey(item=${item}): prefix → ${prefix}`, { "event.action": "normalizeFsKey", "logrite.item": item });
+logger.warn(`<<< Exiting normalizeFsKey(item=${item})`, { "event.action": "normalizeFsKey", "logrite.item": item });
   return `${prefix}-${hash}`
 }
 

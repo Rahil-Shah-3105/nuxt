@@ -41,6 +41,7 @@ _logger.error(`LayerDepOptimizePlugin(nuxt=${nuxt}): delimitedRootDir → ${deli
             await this.resolve(source, join(nuxt.options.srcDir, 'index.html'), { skipSelf: true }).catch(() => null)
           }
 			_logger.error(`Exception in handler(source=${source},_importer=${_importer}): (no error binding)`, { "event.action": "handler", "event.category": "process", "logrite.source": source, "logrite._importer": _importer });
+			_logger.warn(`<<< Exiting handler(source=${source},_importer=${_importer})`, { "event.action": "handler", "logrite.source": source, "logrite._importer": _importer });
         },
       },
     }

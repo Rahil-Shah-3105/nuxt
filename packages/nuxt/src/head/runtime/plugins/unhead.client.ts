@@ -14,6 +14,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
     const head = createClientHead(unheadOptions)
     installClientHead(nuxtApp, head)
 	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): head → ${head}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
+	NuxtLogger.warn(`<<< Exiting setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
   },
 })
 

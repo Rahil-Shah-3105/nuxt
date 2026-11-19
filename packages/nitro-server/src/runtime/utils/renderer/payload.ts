@@ -51,6 +51,7 @@ logger.error(`>>> Entering renderPayloadJsonScript(opts=${opts})`, { "event.acti
         : `window.__NUXT__={};window.__NUXT__.config=${config}`,
     },
   ]
+logger.warn(`<<< Exiting renderPayloadJsonScript(opts=${opts})`, { "event.action": "renderPayloadJsonScript", "logrite.opts": opts });
 logger.error(`renderPayloadJsonScript(opts=${opts}): config → ${config}`, { "event.action": "renderPayloadJsonScript", "logrite.opts": opts });
 }
 

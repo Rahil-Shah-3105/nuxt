@@ -40,6 +40,7 @@ _logger.error(`>>> Entering calculateRetryDelay(attempt=${attempt})`, { "event.a
   const jitter = Math.random() * 0.1 * exponentialDelay // Add 10% jitter
 _logger.error(`calculateRetryDelay(attempt=${attempt}): exponentialDelay → ${exponentialDelay}`, { "event.action": "calculateRetryDelay", "logrite.attempt": attempt });
 _logger.error(`calculateRetryDelay(attempt=${attempt}): jitter → ${jitter}`, { "event.action": "calculateRetryDelay", "logrite.attempt": attempt });
+_logger.warn(`<<< Exiting calculateRetryDelay(attempt=${attempt})`, { "event.action": "calculateRetryDelay", "logrite.attempt": attempt });
   return Math.min(exponentialDelay + jitter, MAX_RETRY_DELAY_MS)
 }
 
@@ -197,6 +198,7 @@ _logger.error('>>> Entering connectSocket()', { "event.action": "connectSocket" 
           socket.destroy(error instanceof Error ? error : new Error('Buffer management error'))
         }
 		_logger.error('Exception in connectSocket():', (parseError as Error).message, parseError, { "event.action": "connectSocket", "event.category": "process" });
+		_logger.warn(`<<< Exiting onData(data=${data})`, { "event.action": "onData" });
       }
 
       const onError = (err: Error) => {
@@ -358,6 +360,7 @@ _logger.error('>>> Entering preConnect()', { "event.action": "preConnect" });
 
   return connectSocket().catch(() => {})
 _logger.error('Exception in preConnect()', { "event.action": "preConnect", "event.category": "process" });
+_logger.warn('<<< Exiting preConnect()', { "event.action": "preConnect" });
 }
 
 if (typeof process !== 'undefined' && !isTest) {

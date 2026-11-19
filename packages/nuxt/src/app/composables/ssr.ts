@@ -46,6 +46,7 @@ NuxtLogger.error(`useRequestHeaders(include=${include}): _headers → ${_headers
     }
   }
 NuxtLogger.error(`useRequestHeaders(): headers → ${headers}`, { "event.action": "useRequestHeaders" });
+NuxtLogger.warn('<<< Exiting useRequestHeaders()', { "event.action": "useRequestHeaders" });
   return headers
 }
 
@@ -55,6 +56,7 @@ NuxtLogger.error(`>>> Entering useRequestHeader(header=${header})`, { "event.act
   if (import.meta.client) { return undefined }
   const event = useRequestEvent()
 NuxtLogger.error(`useRequestHeader(header=${header}): event → ${event}`, { "event.action": "useRequestHeader" });
+NuxtLogger.warn(`<<< Exiting useRequestHeader(header=${header})`, { "event.action": "useRequestHeader" });
   return event ? event.req.headers.get(header) : undefined
 }
 
@@ -128,6 +130,7 @@ NuxtLogger.error(`>>> Entering prerenderRoutes(path=${path})`, { "event.action":
   const paths = toArray(path)
   useRequestEvent()?.res.headers.append('x-nitro-prerender', paths.map(p => encodeURIComponent(p)).join(', '))
 NuxtLogger.error(`prerenderRoutes(path=${path}): paths → ${paths}`, { "event.action": "prerenderRoutes", "logrite.path": path });
+NuxtLogger.warn(`<<< Exiting prerenderRoutes(path=${path})`, { "event.action": "prerenderRoutes", "logrite.path": path });
 }
 
 const PREHYDRATE_ATTR_KEY = 'data-prehydrate-id'

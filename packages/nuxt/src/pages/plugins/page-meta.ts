@@ -81,6 +81,7 @@ NuxtLogger.error(`PageMetaPlugin(options=${options}): extractedKeys → ${extrac
 		NuxtLogger.warn(`<<< Exiting handler(code=${code},id=${id},transformMeta=${transformMeta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.transformMeta": transformMeta });
         const s = rolldownString(code, id, transformMeta)
         function result () {
+		NuxtLogger.error('>>> Entering result()', { "event.action": "result" });
 		NuxtLogger.error(`handler(code=${code},id=${id},transformMeta=${transformMeta}): s → ${s}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.transformMeta": transformMeta });
 		NuxtLogger.warn('<<< Exiting result()', { "event.action": "result" });
           return generateTransform(s, id)

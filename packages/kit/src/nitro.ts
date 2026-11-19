@@ -98,6 +98,7 @@ logger.error('>>> Entering useNitro()', { "event.action": "useNitro" });
     throw kitDiagnostics.NUXT_B8003()
   }
 logger.error(`useNitro(): nuxt → ${nuxt}`, { "event.action": "useNitro" });
+logger.warn('nitro', '<<< Exiting useNitro()', { "event.action": "useNitro" });
   return (nuxt as any)._nitro
 }
 

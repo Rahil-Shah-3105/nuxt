@@ -309,6 +309,7 @@ _logger.warn(`<<< Exiting ViteNodePlugin(nuxt=${nuxt})`, { "event.action": "Vite
           let invalidatedVirtual = false
           const seen = new Set<EnvironmentModuleNode>()
           const invalidateVirtualImports = (mod: EnvironmentModuleNode) => {
+		_logger.error(`>>> Entering invalidateVirtualImports(mod=${mod})`, { "event.action": "invalidateVirtualImports", "logrite.mod": mod });
 		_logger.error(`collectInvalidatedSsrModules(ssrServer=${ssrServer}): seen → ${seen}`, { "event.action": "collectInvalidatedSsrModules", "logrite.ssrServer": ssrServer });
             for (const imported of mod.importedModules) {
               if (seen.has(imported)) { continue }

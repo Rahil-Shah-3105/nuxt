@@ -47,6 +47,7 @@ _logger.error(`>>> Entering isNavigationRequest(req=${req})`, { "event.action": 
     return mode === 'navigate'
   }
 _logger.error(`isNavigationRequest(req=${req}): mode → ${mode}`, { "event.action": "isNavigationRequest" });
+_logger.warn(`<<< Exiting isNavigationRequest(req=${req})`, { "event.action": "isNavigationRequest" });
   return !!req.headers.accept?.includes('text/html')
 }
 
@@ -58,6 +59,7 @@ _logger.error(`>>> Entering fileToUrl(file=${file},root=${root})`, { "event.acti
     return join('/@fs/', normalize(file))
   }
 _logger.error(`fileToUrl(file=${file},root=${root}): url → ${url}`, { "event.action": "fileToUrl", "logrite.file": file, "logrite.root": root });
+_logger.warn(`<<< Exiting fileToUrl(file=${file},root=${root})`, { "event.action": "fileToUrl", "logrite.file": file, "logrite.root": root });
   return '/' + normalize(url)
 }
 
@@ -77,6 +79,7 @@ _logger.error(`normaliseURL(url=${url},base=${base}): queryIndex → ${queryInde
   const params = url.slice(queryIndex + 1).split('&').filter(param => param && param !== 'import' && param !== 'import=')
   const path = url.slice(0, queryIndex)
 _logger.error(`normaliseURL(url=${url},base=${base}): path → ${path}`, { "event.action": "normaliseURL", "logrite.url": url, "logrite.base": base });
+_logger.warn(`<<< Exiting normaliseURL(url=${url},base=${base})`, { "event.action": "normaliseURL", "logrite.url": url, "logrite.base": base });
   return params.length ? `${path}?${params.join('&')}` : path
 }
 

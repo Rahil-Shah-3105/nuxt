@@ -97,6 +97,7 @@ NuxtLogger.error(`>>> Entering definePageMeta(meta=${meta})`, { "event.action": 
     }
     warnRuntimeUsage('definePageMeta')
   }
+NuxtLogger.warn(`<<< Exiting definePageMeta(meta=${meta})`, { "event.action": "definePageMeta", "logrite.meta": meta });
 }
 
 /**

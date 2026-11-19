@@ -28,6 +28,7 @@ const ROUTE_KEY_PARENTHESES_RE = /(:\w+)\([^)]+\)/g
 const ROUTE_KEY_SYMBOLS_RE = /(:\w+)[?+*]/g
 const ROUTE_KEY_NORMAL_RE = /:\w+/g
 const interpolatePath = (route: RouteLocationNormalizedLoaded, match: RouteLocationMatched) => {
+NuxtLogger.warn(`<<< Exiting interpolatePath(route=${route},match=${match})`, { "event.action": "interpolatePath", "logrite.route": route, "logrite.match": match });
   return match.path
     .replace(ROUTE_KEY_PARENTHESES_RE, '$1')
     .replace(ROUTE_KEY_SYMBOLS_RE, '$1')
@@ -41,6 +42,7 @@ NuxtLogger.error(`>>> Entering generateRouteKey(routeProps=${routeProps},overrid
   const source = override ?? matchedRoute?.meta.key ?? (matchedRoute && interpolatePath(routeProps.route, matchedRoute))
 NuxtLogger.error(`generateRouteKey(routeProps=${routeProps},override=${override}): matchedRoute → ${matchedRoute}`, { "event.action": "generateRouteKey", "logrite.routeProps": routeProps, "logrite.override": override });
 NuxtLogger.error(`generateRouteKey(routeProps=${routeProps},override=${override}): source → ${source}`, { "event.action": "generateRouteKey", "logrite.routeProps": routeProps, "logrite.override": override });
+NuxtLogger.warn(`<<< Exiting generateRouteKey(routeProps=${routeProps},override=${override})`, { "event.action": "generateRouteKey", "logrite.routeProps": routeProps, "logrite.override": override });
   return typeof source === 'function' ? source(routeProps.route) : source
 }
 

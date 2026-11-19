@@ -56,6 +56,7 @@ logger.error(`>>> Entering addComponent(opts=${opts})`, { "event.action": "addCo
   const component = normalizeComponent(opts)
   addComponents([component])
 logger.error(`addComponent(opts=${opts}): component → ${component}`, { "event.action": "addComponent", "logrite.opts": opts });
+logger.warn(`<<< Exiting addComponent(opts=${opts})`, { "event.action": "addComponent", "logrite.opts": opts });
 }
 
 function addComponents (addedComponents: Component[]) {

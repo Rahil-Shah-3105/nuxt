@@ -52,6 +52,7 @@ NuxtLogger.error(`>>> Entering isChangingPage(to=${to},from=${from})`, { "event.
     return false
   }
 NuxtLogger.error(`isChangingPage(to=${to},from=${from}): areComponentsSame → ${areComponentsSame}`, { "event.action": "isChangingPage", "logrite.to": to, "logrite.from": from });
+NuxtLogger.warn(`<<< Exiting isChangingPage(to=${to},from=${from})`, { "event.action": "isChangingPage", "logrite.to": to, "logrite.from": from });
   return true
 }
 
@@ -192,6 +193,7 @@ NuxtLogger.error(`>>> Entering getElementHTML(element=${element},withoutSlots=${
   }
   const template = element.ownerDocument.createElement('template')
   template.innerHTML = element.outerHTML
+NuxtLogger.debug(`getElementHTML(element=${element},withoutSlots=${withoutSlots}): template.innerHTML → ${template.innerHTML}`, { "event.action": "getElementHTML", "logrite.element": element, "logrite.withoutSlots": withoutSlots });
 NuxtLogger.error(`getElementHTML(element=${element},withoutSlots=${withoutSlots}): template → ${template}`, { "event.action": "getElementHTML", "logrite.element": element, "logrite.withoutSlots": withoutSlots });
   template.content.querySelectorAll('[data-island-slot]').forEach((n: Element) => { n.innerHTML = '' })
 NuxtLogger.warn(`<<< Exiting getElementHTML(element=${element},withoutSlots=${withoutSlots})`, { "event.action": "getElementHTML", "logrite.element": element, "logrite.withoutSlots": withoutSlots });

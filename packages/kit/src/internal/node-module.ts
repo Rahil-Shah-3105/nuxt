@@ -47,6 +47,7 @@ logger.error(`parseNodeModulePath(path=${path}): dir → ${dir}`, { "event.actio
 
   const subpath = segments.join('/')
 logger.error(`parseNodeModulePath(path=${path}): subpath → ${subpath}`, { "event.action": "parseNodeModulePath", "logrite.path": path });
+logger.warn(`<<< Exiting parseNodeModulePath(path=${path})`, { "event.action": "parseNodeModulePath", "logrite.path": path });
   return { dir, name, subpath: subpath ? `./${subpath}` : undefined }
 }
 

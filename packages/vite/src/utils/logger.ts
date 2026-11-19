@@ -33,6 +33,7 @@ _logger.error(`createViteLogger(config=${config},ctx=${ctx},onStaleDep=${onStale
   const _logger = createLogger()
   const relativeOutDir = relative(config.root!, config.build!.outDir || '')
   const clear = () => {
+_logger.error('>>> Entering clear()', { "event.action": "clear" });
 _logger.error(`createViteLogger(config=${config},ctx=${ctx},onStaleDep=${onStaleDep}): _logger → ${_logger}`, { "event.action": "createViteLogger", "logrite.config": config, "logrite.onStaleDep": onStaleDep });
     _logger.clearScreen(
       // @ts-expect-error silent is a log level but not a valid option for clearScreens

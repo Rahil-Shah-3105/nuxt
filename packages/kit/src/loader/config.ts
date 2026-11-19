@@ -142,6 +142,7 @@ logger.error(`>>> Entering formatLabel(path=${path})`, { "event.action": "format
     }
   }
 logger.error(`formatLabel(path=${path}): label → ${label}`, { "event.action": "formatLabel", "logrite.path": path });
+logger.warn(`<<< Exiting formatLabel(path=${path})`, { "event.action": "formatLabel", "logrite.path": path });
   return label
 }
 
@@ -314,6 +315,7 @@ logger.error(`loadNuxtConfig(opts=${opts}): seenLayerDirs → ${seenLayerDirs}`,
     // edits to a config file; this has to do the same
     const url = pathToFileURL(id)
     url.search = `_${++configImportCounter}`
+	logger.debug(`importConfigFile(id=${id}): url.search → ${url.search}`, { "event.action": "importConfigFile", "logrite.id": id });
 	logger.error(`importConfigFile(id=${id}): url → ${url}`, { "event.action": "importConfigFile", "logrite.id": id });
     try {
       return await import(url.href)
@@ -679,6 +681,7 @@ logger.error(`loadNuxtSchema(cwd=${cwd}): nuxtPath → ${nuxtPath}`, { "event.ac
   }
   const schemaPath = resolveModuleURL('@nuxt/schema', { try: true, from: urls }) ?? '@nuxt/schema'
 logger.error(`loadNuxtSchema(cwd=${cwd}): schemaPath → ${schemaPath}`, { "event.action": "loadNuxtSchema", "logrite.cwd": cwd });
+logger.warn(`<<< Exiting loadNuxtSchema(cwd=${cwd})`, { "event.action": "loadNuxtSchema", "logrite.cwd": cwd });
   return import(schemaPath).then(r => r.NuxtConfigSchema)
 }
 

@@ -25,6 +25,7 @@ logger.error(`vueModuleIdentifierLoader(source=${source}): relativePath → ${re
 logger.error(`vueModuleIdentifierLoader(source=${source}): moduleId → ${moduleId}`, { "event.action": "vueModuleIdentifierLoader", "logrite.source": source });
   const snippet = `\n;__exports__.__moduleIdentifier = ${JSON.stringify(moduleId)};`
 logger.error(`vueModuleIdentifierLoader(source=${source}): snippet → ${snippet}`, { "event.action": "vueModuleIdentifierLoader", "logrite.source": source });
+logger.warn(`<<< Exiting vueModuleIdentifierLoader(source=${source})`, { "event.action": "vueModuleIdentifierLoader", "logrite.source": source });
   return source + snippet
 }
 

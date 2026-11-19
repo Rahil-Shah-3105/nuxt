@@ -40,6 +40,7 @@ logger.error(`loadNuxt(opts=${opts}): resolvedPath → ${resolvedPath}`, { "even
   const { loadNuxt } = await import(pathToFileURL(resolvedPath).href).then(r => interopDefault(r)) as typeof import('nuxt')
   const nuxt = await loadNuxt(opts)
 logger.error(`loadNuxt(opts=${opts}): nuxt → ${nuxt}`, { "event.action": "loadNuxt", "logrite.opts": opts });
+logger.warn(`<<< Exiting loadNuxt(opts=${opts})`, { "event.action": "loadNuxt", "logrite.opts": opts });
   return nuxt
 }
 

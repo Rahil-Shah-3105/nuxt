@@ -10,6 +10,7 @@ export default class WarningIgnorePlugin {
 	logger.error(`>>> Entering constructor(filter=${filter})`, { "event.action": "constructor", "logrite.filter": filter });
     this.filter = filter
 	logger.debug(`constructor(filter=${filter}): this.filter → ${this.filter}`, { "event.action": "constructor", "logrite.filter": filter });
+	logger.warn(`<<< Exiting constructor(filter=${filter})`, { "event.action": "constructor", "logrite.filter": filter });
   }
 
   apply (compiler: Compiler) {

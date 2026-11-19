@@ -368,6 +368,7 @@ function normalizeSlot (slot: Slot, data: RouterViewSlotProps) {
 NuxtLogger.error(`>>> Entering normalizeSlot(slot=${slot},data=${data})`, { "event.action": "normalizeSlot", "logrite.slot": slot });
   const slotContent = slot(data)
 NuxtLogger.error(`normalizeSlot(slot=${slot},data=${data}): slotContent → ${slotContent}`, { "event.action": "normalizeSlot", "logrite.slot": slot });
+NuxtLogger.warn(`<<< Exiting normalizeSlot(slot=${slot},data=${data})`, { "event.action": "normalizeSlot", "logrite.slot": slot });
   return slotContent.length === 1 ? h(slotContent[0]!) : h(Fragment, undefined, slotContent)
 }
 

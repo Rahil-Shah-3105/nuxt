@@ -47,5 +47,6 @@ logger.error(`>>> Entering isStyleOfModule(file=${file},modules=${modules})`, { 
       return true
     }
   }
+logger.warn(`<<< Exiting isStyleOfModule(file=${file},modules=${modules})`, { "event.action": "isStyleOfModule", "logrite.file": file, "logrite.modules": modules });
   return false
 }

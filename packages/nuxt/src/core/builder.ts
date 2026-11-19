@@ -212,6 +212,7 @@ NuxtLogger.error(`createWatcher(): layerDirs → ${layerDirs}`, { "event.action"
   const restartPaths = new Set<string>()
   const srcDir = nuxt.options.srcDir.replace(/\/?$/, '/')
   for (const pattern of nuxt.options.watch) {
+NuxtLogger.error(`createWatcher(): srcDir → ${srcDir}`, { "event.action": "createWatcher" });
 NuxtLogger.error(`createWatcher(): restartPaths → ${restartPaths}`, { "event.action": "createWatcher" });
     if (typeof pattern !== 'string') { continue }
     const path = resolve(nuxt.options.srcDir, pattern)
@@ -256,6 +257,7 @@ NuxtLogger.error(`createGranularWatcher(): isIgnored → ${isIgnored}`, { "event
   const ignoredDirs = new Set([...nuxt.options.modulesDir, nuxt.options.buildDir])
   const pathsToWatch = resolvePathsToWatch(nuxt)
   for (const dir of pathsToWatch) {
+NuxtLogger.error(`createGranularWatcher(): pathsToWatch → ${pathsToWatch}`, { "event.action": "createGranularWatcher" });
 NuxtLogger.error(`createGranularWatcher(): ignoredDirs → ${ignoredDirs}`, { "event.action": "createGranularWatcher" });
     pending++
     const watcher = chokidarWatch(dir, { ...nuxt.options.watchers.chokidar, ignoreInitial: false, depth: 0, ignored: [isIgnored, /[\\/]node_modules[\\/]/] })
@@ -467,5 +469,6 @@ NuxtLogger.error(`>>> Entering resolvePathsToWatch(nuxt=${nuxt},opts=${opts})`, 
     }
   }
 NuxtLogger.error(`resolvePathsToWatch(nuxt=${nuxt},opts=${opts}): pathsToWatch → ${pathsToWatch}`, { "event.action": "resolvePathsToWatch", "logrite.nuxt": nuxt, "logrite.opts": opts });
+NuxtLogger.warn(`<<< Exiting resolvePathsToWatch(nuxt=${nuxt},opts=${opts})`, { "event.action": "resolvePathsToWatch", "logrite.nuxt": nuxt, "logrite.opts": opts });
   return pathsToWatch
 }

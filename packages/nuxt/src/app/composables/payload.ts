@@ -62,6 +62,7 @@ NuxtLogger.error(`>>> Entering preloadPayload(url=${url},opts=${opts})`, { "even
     } else {
       const linkEl = document.createElement('link')
       linkEl.rel = rel
+	NuxtLogger.debug(`preloadPayload(url=${url},opts=${opts}): linkEl.rel → ${linkEl.rel}`, { "event.action": "preloadPayload", "logrite.url": url, "logrite.opts": opts });
 	NuxtLogger.error(`preloadPayload(url=${url},opts=${opts}): linkEl → ${linkEl}`, { "event.action": "preloadPayload", "logrite.url": url, "logrite.opts": opts });
 	NuxtLogger.debug(`preloadPayload(url=${url},opts=${opts}): linkEl.crossOrigin → ${linkEl.crossOrigin}`, { "event.action": "preloadPayload", "logrite.url": url, "logrite.opts": opts });
 	NuxtLogger.debug(`preloadPayload(url=${url},opts=${opts}): linkEl.href → ${linkEl.href}`, { "event.action": "preloadPayload", "logrite.url": url, "logrite.opts": opts });
@@ -148,6 +149,7 @@ NuxtLogger.error(`>>> Entering _importPayload(payloadURL=${payloadURL},cache=${c
 	NuxtLogger.error(`Exception in _importPayload(payloadURL=${payloadURL},cache=${cache}): ${(err as Error).message}`, err, { "event.action": "_importPayload", "event.category": "process", "logrite.payloadURL": payloadURL, "logrite.cache": cache });
     stateDiagnostics.NUXT_E7002({ url: payloadURL, cause: err })
   }
+NuxtLogger.warn(`<<< Exiting _importPayload(payloadURL=${payloadURL},cache=${cache})`, { "event.action": "_importPayload", "logrite.payloadURL": payloadURL, "logrite.cache": cache });
   return null
 NuxtLogger.error(`_importPayload(payloadURL=${payloadURL}, cache=${cache}): API call took ${Date.now() - _start__importPayload_103} ms`, { "event.action": "_importPayload", "event.category": "network", "logrite.payloadURL": payloadURL, "logrite.cache": cache });
 }
@@ -217,6 +219,7 @@ NuxtLogger.error(`shouldLoadPayload(url=${url}): res → ${res}`, { "event.actio
 
   const prerendered = await _isPrerenderedInManifest(url)
 NuxtLogger.error(`shouldLoadPayload(url=${url}): prerendered → ${prerendered}`, { "event.action": "shouldLoadPayload", "logrite.url": url });
+NuxtLogger.warn(`<<< Exiting shouldLoadPayload(url=${url})`, { "event.action": "shouldLoadPayload", "logrite.url": url });
   return prerendered
 }
 
@@ -231,6 +234,7 @@ NuxtLogger.error(`>>> Entering isPrerendered(url=${url})`, { "event.action": "is
 
   const prerendered = await _isPrerenderedInManifest(url)
 NuxtLogger.error(`isPrerendered(url=${url}): prerendered → ${prerendered}`, { "event.action": "isPrerendered", "logrite.url": url });
+NuxtLogger.warn(`<<< Exiting isPrerendered(url=${url})`, { "event.action": "isPrerendered", "logrite.url": url });
   return prerendered
 }
 

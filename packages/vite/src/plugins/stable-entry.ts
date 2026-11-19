@@ -60,6 +60,7 @@ _logger.error(`>>> Entering StableEntryPlugin(nuxt=${nuxt})`, { "event.action": 
       }
       entryFileName = entry
 	_logger.error(`writeBundle(_options=${_options},bundle=${bundle}): prefix → ${prefix}`, { "event.action": "writeBundle", "logrite._options": _options, "logrite.bundle": bundle });
+	_logger.warn(`<<< Exiting writeBundle(_options=${_options},bundle=${bundle})`, { "event.action": "writeBundle", "logrite._options": _options, "logrite.bundle": bundle });
     },
   }
 }
@@ -84,5 +85,6 @@ _logger.error(`>>> Entering isSupported(target=${target})`, { "event.action": "i
   }
   const version = Number(_version)
 _logger.error(`isSupported(target=${target}): version → ${version}`, { "event.action": "isSupported", "logrite.target": target });
+_logger.warn(`<<< Exiting isSupported(target=${target})`, { "event.action": "isSupported", "logrite.target": target });
   return Number.isNaN(version) || Number(version) >= constraint
 }

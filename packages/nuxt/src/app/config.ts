@@ -95,6 +95,7 @@ NuxtLogger.error(`>>> Entering updateAppConfig(appConfig=${appConfig})`, { "even
   const _appConfig = useAppConfig()
   deepAssign(_appConfig, appConfig)
 NuxtLogger.error(`updateAppConfig(appConfig=${appConfig}): _appConfig → ${_appConfig}`, { "event.action": "updateAppConfig", "logrite.appConfig": appConfig });
+NuxtLogger.warn(`<<< Exiting updateAppConfig(appConfig=${appConfig})`, { "event.action": "updateAppConfig", "logrite.appConfig": appConfig });
 }
 
 // HMR Support

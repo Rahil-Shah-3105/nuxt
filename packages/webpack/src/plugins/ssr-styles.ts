@@ -69,6 +69,7 @@ logger.error(`>>> Entering getVueLoaderScopeId(filePath=${filePath},source=${sou
   const shortFilePath = normalize(rawShortFilePath).replace(/\\/g, '/')
 logger.error(`getVueLoaderScopeId(filePath=${filePath},source=${source},rootContext=${rootContext}): rawShortFilePath → ${rawShortFilePath}`, { "event.action": "getVueLoaderScopeId", "logrite.filePath": filePath, "logrite.source": source, "logrite.rootContext": rootContext });
 logger.error(`getVueLoaderScopeId(filePath=${filePath},source=${source},rootContext=${rootContext}): shortFilePath → ${shortFilePath}`, { "event.action": "getVueLoaderScopeId", "logrite.filePath": filePath, "logrite.source": source, "logrite.rootContext": rootContext });
+logger.warn(`<<< Exiting getVueLoaderScopeId(filePath=${filePath},source=${source},rootContext=${rootContext})`, { "event.action": "getVueLoaderScopeId", "logrite.filePath": filePath, "logrite.source": source, "logrite.rootContext": rootContext });
   return getVueLoaderHash(`${shortFilePath}\n${source.replace(/\r\n/g, '\n')}`)
 }
 

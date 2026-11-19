@@ -176,6 +176,7 @@ NuxtLogger.error(`>>> Entering fullyUnwrap(value=${value})`, { "event.action": "
     target = onChange.target(current as Record<string, any>)
   }
 NuxtLogger.error(`fullyUnwrap(value=${value}): target → ${target}`, { "event.action": "fullyUnwrap", "logrite.value": value });
+NuxtLogger.warn(`<<< Exiting fullyUnwrap(value=${value})`, { "event.action": "fullyUnwrap", "logrite.value": value });
   return current
 }
 
@@ -207,6 +208,7 @@ NuxtLogger.error(`>>> Entering stripDebugProxies(value=${value},seen=${seen})`, 
     stripDebugProxies(unwrapped, seen)
   }
 	NuxtLogger.error(`stripDebugProxies(value=${value},seen=${seen}): unwrapped → ${unwrapped}`, { "event.action": "stripDebugProxies", "logrite.value": value, "logrite.seen": seen });
+	NuxtLogger.warn(`<<< Exiting stripDebugProxies(value=${value},seen=${seen})`, { "event.action": "stripDebugProxies", "logrite.value": value, "logrite.seen": seen });
 }
 
 const fallbackCompatibilityDate = '2025-07-15' as DateString

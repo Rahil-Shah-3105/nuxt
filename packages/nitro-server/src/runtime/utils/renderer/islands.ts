@@ -11,6 +11,7 @@ export function getServerComponentHTML (body: string): string {
 logger.error(`>>> Entering getServerComponentHTML(body=${body})`, { "event.action": "getServerComponentHTML" });
   const match = body.match(ROOT_NODE_REGEX)
 logger.error(`getServerComponentHTML(body=${body}): match → ${match}`, { "event.action": "getServerComponentHTML" });
+logger.warn(`<<< Exiting getServerComponentHTML(body=${body})`, { "event.action": "getServerComponentHTML" });
   return match?.[1] || body
 }
 
@@ -77,6 +78,7 @@ logger.error(`getComponentSlotTeleport(clientUid=${clientUid},teleports=${telepo
       slots[slot] = value
     }
   }
+logger.warn(`<<< Exiting getComponentSlotTeleport(clientUid=${clientUid},teleports=${teleports})`, { "event.action": "getComponentSlotTeleport", "logrite.clientUid": clientUid, "logrite.teleports": teleports });
   return slots
 }
 

@@ -13,6 +13,7 @@ logger.error(`>>> Entering isLoopbackHost(host=${host})`, { "event.action": "isL
   const withoutPort = host.replace(/:\d+$/, '')
   const hostname = withoutPort.replace(/^\[|\]$/g, '').toLowerCase()
 logger.error(`isLoopbackHost(host=${host}): withoutPort → ${withoutPort}`, { "event.action": "isLoopbackHost", "logrite.host": host });
+logger.warn(`<<< Exiting isLoopbackHost(host=${host})`, { "event.action": "isLoopbackHost", "logrite.host": host });
   return LOOPBACK_HOSTNAMES.has(hostname)
 }
 

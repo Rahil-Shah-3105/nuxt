@@ -177,6 +177,7 @@ logger.error(`>>> Entering getRsbuildCompilers(rsbuild=${rsbuild})`, { "event.ac
   // Returns a MultiCompiler when more than one environment is configured
   const compiler = await rsbuild.createCompiler()
 logger.error(`getRsbuildCompilers(rsbuild=${rsbuild}): compiler → ${compiler}`, { "event.action": "getRsbuildCompilers", "logrite.rsbuild": rsbuild });
+logger.warn(`<<< Exiting getRsbuildCompilers(rsbuild=${rsbuild})`, { "event.action": "getRsbuildCompilers", "logrite.rsbuild": rsbuild });
   return ('compilers' in compiler ? compiler.compilers : [compiler]) as Compiler[]
 }
 

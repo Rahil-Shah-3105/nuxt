@@ -82,6 +82,7 @@ function getMemorySnapshot (): MemorySnapshot {
 NuxtLogger.error('>>> Entering getMemorySnapshot()', { "event.action": "getMemorySnapshot" });
   const mem = process.memoryUsage()
 NuxtLogger.error(`getMemorySnapshot(): mem → ${mem}`, { "event.action": "getMemorySnapshot" });
+NuxtLogger.warn('<<< Exiting getMemorySnapshot()', { "event.action": "getMemorySnapshot" });
   return { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal }
 }
 
@@ -92,6 +93,7 @@ NuxtLogger.error('>>> Entering getRetainedMemorySnapshot()', { "event.action": "
   }
   const mem = process.memoryUsage()
 NuxtLogger.error(`getRetainedMemorySnapshot(): mem → ${mem}`, { "event.action": "getRetainedMemorySnapshot" });
+NuxtLogger.warn('<<< Exiting getRetainedMemorySnapshot()', { "event.action": "getRetainedMemorySnapshot" });
   return { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal }
 }
 
@@ -125,6 +127,7 @@ NuxtLogger.error(`pad(str=${str},width=${width},align=${align}): stripped → ${
   if (diff <= 0) { return str }
   const padding = ' '.repeat(diff)
 NuxtLogger.error(`pad(str=${str},width=${width},align=${align}): padding → ${padding}`, { "event.action": "pad", "logrite.str": str, "logrite.width": width, "logrite.align": align });
+NuxtLogger.warn(`<<< Exiting pad(str=${str},width=${width},align=${align})`, { "event.action": "pad", "logrite.str": str, "logrite.width": width, "logrite.align": align });
   return align === 'right' ? padding + str : str + padding
 }
 
@@ -307,6 +310,7 @@ export class NuxtPerfProfiler {
     if (startTime != null && durationMs > 0.1) {
       this.#bundlerPluginSpans.push({ pluginName, hookName, startTime, durationMs })
     }
+	NuxtLogger.warn(`<<< Exiting recordBundlerPluginHook(pluginName=${pluginName},hookName=${hookName},durationMs=${durationMs},startTime=${startTime})`, { "event.action": "recordBundlerPluginHook", "logrite.pluginName": pluginName, "logrite.hookName": hookName, "logrite.durationMs": durationMs, "logrite.startTime": startTime });
   }
 
   collectModuleTimings (installedModules: Array<{ meta?: { name?: string }, timings?: Record<string, number | undefined> }>): void {
@@ -423,6 +427,7 @@ export class NuxtPerfProfiler {
           const aTotal = Object.values(a.hooks).reduce((s, h) => s + h.totalTime, 0)
           const bTotal = Object.values(b.hooks).reduce((s, h) => s + h.totalTime, 0)
 		NuxtLogger.error(`getReport(): aTotal → ${aTotal}`, { "event.action": "getReport" });
+		NuxtLogger.error(`getReport(): bTotal → ${bTotal}`, { "event.action": "getReport" });
           return bTotal - aTotal
         }),
       timestamp: new Date().toISOString(),
@@ -669,6 +674,7 @@ export class NuxtPerfProfiler {
     const viteSpans = this.#bundlerPluginSpans.filter(s => !s.pluginName.startsWith('nitro:'))
     const nitroSpans = this.#bundlerPluginSpans.filter(s => s.pluginName.startsWith('nitro:'))
 
+	NuxtLogger.error(`getTraceEvents(): nitroSpans → ${nitroSpans}`, { "event.action": "getTraceEvents" });
 	NuxtLogger.error(`getTraceEvents(): viteSpans → ${viteSpans}`, { "event.action": "getTraceEvents" });
     const emitPluginSpans = (spans: typeof viteSpans, label: string, baseTid: number) => {
 	NuxtLogger.error(`>>> Entering emitPluginSpans(spans=${spans},label=${label},baseTid=${baseTid})`, { "event.action": "emitPluginSpans", "logrite.spans": spans, "logrite.label": label, "logrite.baseTid": baseTid });
@@ -833,6 +839,7 @@ export class NuxtPerfProfiler {
         })
       }
     }
+	NuxtLogger.warn(`<<< Exiting computeSlowHooks(reportedPhaseNames=${reportedPhaseNames})`, { "event.action": "computeSlowHooks", "logrite.reportedPhaseNames": reportedPhaseNames });
     return hooks.sort((a, b) => b.ownDuration - a.ownDuration)
   }
 }

@@ -18,6 +18,7 @@ _logger.error(`>>> Entering DevStyleSSRPlugin(options=${options})`, { "event.act
     transform (code, id) {
 	_logger.error(`>>> Entering transform(code=${code},id=${id})`, { "event.action": "transform", "logrite.code": code, "logrite.id": id });
       if (!isCSS(id) || !code.includes('import.meta.hot')) {
+		_logger.warn(`<<< Exiting transform(code=${code},id=${id})`, { "event.action": "transform", "logrite.code": code, "logrite.id": id });
         return
       }
 

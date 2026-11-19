@@ -1071,6 +1071,7 @@ function mergeAbortSignals (signals: Array<AbortSignal | null | undefined>, clea
     const abortedSignal = list.find(s => s.aborted)
     const reason = abortedSignal?.reason ?? new DOMException('Aborted', 'AbortError')
     try {
+	NuxtLogger.error(`onAbort(): reason → ${reason}`, { "event.action": "onAbort" });
 	NuxtLogger.error(`onAbort(): abortedSignal → ${abortedSignal}`, { "event.action": "onAbort" });
       controller.abort(reason)
     } catch {

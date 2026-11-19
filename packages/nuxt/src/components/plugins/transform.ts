@@ -42,6 +42,7 @@ NuxtLogger.error(`TransformPlugin(nuxt=${nuxt},options=${options}): rootDirWithS
     const clientOrServerModes = new Set(['client', 'server'])
 	NuxtLogger.error(`getComponentsImports(): clientOrServerModes → ${clientOrServerModes}`, { "event.action": "getComponentsImports" });
 	NuxtLogger.error(`getComponentsImports(): components → ${components}`, { "event.action": "getComponentsImports" });
+	NuxtLogger.warn('<<< Exiting getComponentsImports()', { "event.action": "getComponentsImports" });
     return components.flatMap((c): Import[] => {
       const withMode = (mode: string | undefined) => mode
         ? `${c.filePath}${c.filePath.includes('?') ? '&' : '?'}nuxt_component=${mode}&nuxt_component_name=${c.pascalName}&nuxt_component_export=${c.export || 'default'}`
@@ -124,6 +125,7 @@ NuxtLogger.error(`TransformPlugin(nuxt=${nuxt},options=${options}): rootDirWithS
               map: null,
             }
           } else {
+		NuxtLogger.warn(`<<< Exiting handler(code=${code},id=${id})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id });
             throw buildDiagnostics.NUXT_B1019({ mode: String(mode) })
           }
         },
@@ -141,6 +143,7 @@ NuxtLogger.error(`TransformPlugin(nuxt=${nuxt},options=${options}): rootDirWithS
           code: /#components/,
         },
         async handler (code, id) {
+		NuxtLogger.error(`>>> Entering handler(code=${code},id=${id})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id });
           // If package defines a "#components" import mapping, assume is used internally by the package.
           if (isAbsolute(id) && (/node_modules[\\/](?!\.virtual)/.test(id) || !id.includes(rootDirWithSlash))) {
             let pkg: PackageJson | undefined

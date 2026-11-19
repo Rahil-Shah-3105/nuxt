@@ -16,6 +16,7 @@ _logger.error(`>>> Entering formatIncludeSnippet(deps=${deps},cjsDeps=${cjsDeps}
     return `        '${d}',${comment}`
   })
 _logger.error(`formatIncludeSnippet(deps=${deps},cjsDeps=${cjsDeps}): lines → ${lines}`, { "event.action": "formatIncludeSnippet", "logrite.deps": deps, "logrite.cjsDeps": cjsDeps });
+_logger.warn(`<<< Exiting formatIncludeSnippet(deps=${deps},cjsDeps=${cjsDeps})`, { "event.action": "formatIncludeSnippet", "logrite.deps": deps, "logrite.cjsDeps": cjsDeps });
   return `[\n${lines.join('\n')}\n      ]`
 }
 
@@ -90,10 +91,12 @@ _logger.error(`>>> Entering OptimizeDepsHintPlugin(nuxt=${nuxt})`, { "event.acti
   const moduleStale = new Set<string>()
   let pending = new Set<string>()
   let hintTimer: ReturnType<typeof setTimeout> | null = null
+_logger.error(`getUserInclude(): userStale → ${userStale}`, { "event.action": "getUserInclude" });
 _logger.error(`getUserInclude(): discovered → ${discovered}`, { "event.action": "getUserInclude" });
   let hasShownStaleHint = false
   let hasShownFullHint = false
 
+_logger.warn(`<<< Exiting OptimizeDepsHintPlugin(nuxt=${nuxt})`, { "event.action": "OptimizeDepsHintPlugin", "logrite.nuxt": nuxt });
   const getSnippetDeps = () => [...new Set([...getUserInclude().filter(d => !userStale.has(d)), ...discovered])]
 
   let getCjsDeps: () => Set<string> = () => new Set()

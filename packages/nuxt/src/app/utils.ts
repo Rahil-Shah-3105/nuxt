@@ -27,6 +27,7 @@ NuxtLogger.error('>>> Entering getUserTrace()', { "event.action": "getUserTrace"
   const start = trace.findIndex(entry => !entry.source.startsWith(distURL))
   const end = trace.findLastIndex(entry => !entry.source.includes('node_modules') && !entry.source.startsWith(distURL))
   if (start === -1 || end === -1) {
+NuxtLogger.error(`getUserTrace(): end → ${end}`, { "event.action": "getUserTrace" });
 NuxtLogger.error(`getUserTrace(): trace → ${trace}`, { "event.action": "getUserTrace" });
     return []
   }

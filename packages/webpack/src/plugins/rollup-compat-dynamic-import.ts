@@ -117,6 +117,7 @@ export class RollupCompatDynamicImportPlugin implements WebpackPluginInstance {
     const helperContent = this.generateHelperContent(chunkFiles)
     compilation.emitAsset(HELPER_FILENAME, new compilation.compiler.webpack.sources.RawSource(helperContent))
 	logger.error(`generateDynamicImportHelper(compilation=${compilation}): helperContent → ${helperContent}`, { "event.action": "generateDynamicImportHelper", "logrite.compilation": compilation });
+	logger.warn(`<<< Exiting generateDynamicImportHelper(compilation=${compilation})`, { "event.action": "generateDynamicImportHelper", "logrite.compilation": compilation });
   }
 
   private generateHelperContent (chunkFiles: string[]): string {

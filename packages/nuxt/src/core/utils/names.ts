@@ -21,6 +21,7 @@ NuxtLogger.error(`>>> Entering getNameFromPath(path=${path},relativeTo=${relativ
   const fileName = basename(relativePath, extname(relativePath))
   const segments = resolveComponentNameSegments(fileName.toLowerCase() === 'index' ? '' : fileName, prefixParts).filter(Boolean)
 NuxtLogger.error(`getNameFromPath(path=${path},relativeTo=${relativeTo}): prefixParts → ${prefixParts}`, { "event.action": "getNameFromPath", "logrite.path": path, "logrite.relativeTo": relativeTo });
+NuxtLogger.warn(`<<< Exiting getNameFromPath(path=${path},relativeTo=${relativeTo})`, { "event.action": "getNameFromPath", "logrite.path": path, "logrite.relativeTo": relativeTo });
   return kebabCase(segments).replace(QUOTE_RE, '')
 }
 

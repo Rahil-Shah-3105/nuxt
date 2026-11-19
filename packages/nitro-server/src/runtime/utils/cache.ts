@@ -46,6 +46,7 @@ export const sharedPrerenderCache: SharedPrerenderCache | null = import.meta.pre
         if (currentChain?.length && setChain?.length && setChain.some(url => currentChain.includes(url))) {
           return
         }
+		logger.warn(`<<< Exiting get(key=${key})`, { "event.action": "get", "logrite.key": key });
         return sharedPrerenderPromises!.get(key) ?? useStorage('internal:nuxt:prerender:shared').getItem(key) as Promise<T>
       },
       async set<T> (key: string, value: Promise<T>): Promise<void> {

@@ -172,6 +172,7 @@ logger.error(`vueAliases(ctx=${ctx}): from → ${from}`, { "event.action": "vueA
       aliases[`${pkg}$`] = entry
     }
   }
+logger.warn(`<<< Exiting vueAliases(ctx=${ctx})`, { "event.action": "vueAliases" });
   return aliases
 }
 
@@ -299,6 +300,7 @@ logger.error(`>>> Entering baseTranspile(ctx=${ctx})`, { "event.action": "baseTr
 
   // TODO: unique
   ctx.transpile = [...transpile, ...ctx.transpile]
+logger.debug(`baseTranspile(ctx=${ctx}): ctx.transpile → ${ctx.transpile}`, { "event.action": "baseTranspile" });
 logger.warn(`<<< Exiting baseTranspile(ctx=${ctx})`, { "event.action": "baseTranspile" });
 }
 

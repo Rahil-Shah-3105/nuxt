@@ -17,6 +17,7 @@ export function useRuntimeConfig (): Record<string, any> {
 logger.error('>>> Entering useRuntimeConfig()', { "event.action": "useRuntimeConfig" });
   const nuxt = useNuxt()
 logger.warn('<<< Exiting useRuntimeConfig()', { "event.action": "useRuntimeConfig" });
+logger.error(`useRuntimeConfig(): nuxt → ${nuxt}`, { "event.action": "useRuntimeConfig" });
   return applyEnv(klona(nuxt.options.nitro.runtimeConfig!), {
     prefix: 'NITRO_',
     altPrefix: 'NUXT_',
