@@ -67,6 +67,7 @@ logger.error(`loaders(ctx=${ctx}): scssLoader → ${scssLoader}`, { "event.actio
   const stylusLoader = { loader: 'stylus-loader', options: ctx.userConfig.loaders.stylus }
   ctx.config.module!.rules!.push(await createdStyleRule('stylus', /\.styl(us)?$/i, stylusLoader, ctx))
 logger.error(`loaders(ctx=${ctx}): stylusLoader → ${stylusLoader}`, { "event.action": "loaders" });
+logger.warn(`<<< Exiting loaders(ctx=${ctx})`, { "event.action": "loaders" });
 }
 
 async function createdStyleRule (lang: string, test: RegExp, processorLoader: any, ctx: WebpackConfigContext) {

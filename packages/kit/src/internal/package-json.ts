@@ -71,6 +71,7 @@ logger.error(`>>> Entering resolvePackageJSON(id=${id},options=${options})`, { "
     throw new Error(`Cannot find matching package.json in ${id} or parent directories.`)
   }
 logger.error(`resolvePackageJSON(id=${id},options=${options}): path → ${path}`, { "event.action": "resolvePackageJSON", "logrite.id": id, "logrite.options": options });
+logger.warn(`<<< Exiting resolvePackageJSON(id=${id},options=${options})`, { "event.action": "resolvePackageJSON", "logrite.id": id, "logrite.options": options });
   return path
 }
 
@@ -79,6 +80,7 @@ export function resolvePackageDir (id: string | URL, options: ResolveOptions = {
 logger.error(`>>> Entering resolvePackageDir(id=${id},options=${options})`, { "event.action": "resolvePackageDir", "logrite.id": id, "logrite.options": options });
   const path = resolvePackageJSON(id, options)
 logger.error(`resolvePackageDir(id=${id},options=${options}): path → ${path}`, { "event.action": "resolvePackageDir", "logrite.id": id, "logrite.options": options });
+logger.warn(`<<< Exiting resolvePackageDir(id=${id},options=${options})`, { "event.action": "resolvePackageDir", "logrite.id": id, "logrite.options": options });
   return path ? dirname(path) : undefined
 }
 
@@ -87,6 +89,7 @@ export async function readPackageJSON (id: string | URL = process.cwd(), options
 logger.error(`>>> Entering readPackageJSON(id=${id},options=${options})`, { "event.action": "readPackageJSON", "logrite.id": id, "logrite.options": options });
   const path = resolvePackageJSON(id, options)!
 logger.error(`readPackageJSON(id=${id},options=${options}): path → ${path}`, { "event.action": "readPackageJSON", "logrite.id": id, "logrite.options": options });
+logger.warn(`<<< Exiting readPackageJSON(id=${id},options=${options})`, { "event.action": "readPackageJSON", "logrite.id": id, "logrite.options": options });
   return JSON.parse(await readFile(path, 'utf8')) as PackageJson
 }
 

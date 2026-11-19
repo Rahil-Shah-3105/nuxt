@@ -47,6 +47,7 @@ _logger.error(`>>> Entering resolveGlobalCss(nuxt=${nuxt})`, { "event.action": "
     }
   }
 _logger.error(`resolveGlobalCss(nuxt=${nuxt}): out → ${out}`, { "event.action": "resolveGlobalCss", "logrite.nuxt": nuxt });
+_logger.warn(`<<< Exiting resolveGlobalCss(nuxt=${nuxt})`, { "event.action": "resolveGlobalCss", "logrite.nuxt": nuxt });
   return Array.from(out, ([file, url]) => ({ file, url }))
 }
 

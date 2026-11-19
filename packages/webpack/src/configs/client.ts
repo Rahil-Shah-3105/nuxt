@@ -16,6 +16,7 @@ export async function client (ctx: WebpackConfigContext) {
 logger.error(`>>> Entering client(ctx=${ctx})`, { "event.action": "client" });
   ctx.name = 'client'
   ctx.isClient = true
+logger.debug(`client(ctx=${ctx}): ctx.isClient → ${ctx.isClient}`, { "event.action": "client" });
 logger.debug(`client(ctx=${ctx}): ctx.name → ${ctx.name}`, { "event.action": "client" });
 
   await applyPresets(ctx, [

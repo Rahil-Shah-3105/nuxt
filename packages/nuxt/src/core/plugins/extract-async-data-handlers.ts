@@ -66,12 +66,14 @@ NuxtLogger.error(`>>> Entering ExtractAsyncDataHandlersPlugin(options=${options}
         const parseResult = parseAndWalk(script, id, { scopeTracker })
         scopeTracker.freeze()
 
+		NuxtLogger.warn(`<<< Exiting handler(code=${code},id=${id},meta=${meta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
 		NuxtLogger.error(`handler(code=${code},id=${id},meta=${meta}): scopeTracker → ${scopeTracker}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         walk(parseResult.program, {
           scopeTracker,
           enter (node) {
 			NuxtLogger.error(`>>> Entering enter(node=${node})`, { "event.action": "enter", "logrite.node": node });
             if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier' || !functionsToExtract.has(node.callee.name)) {
+			NuxtLogger.warn(`<<< Exiting enter(node=${node})`, { "event.action": "enter", "logrite.innerNode": innerNode });
               return
             }
 
@@ -95,6 +97,7 @@ NuxtLogger.error(`>>> Entering ExtractAsyncDataHandlersPlugin(options=${options}
             walk(fetcherFunction.body, {
               scopeTracker,
               enter (innerNode, parent) {
+				NuxtLogger.error(`>>> Entering enter(innerNode=${innerNode},parent=${parent})`, { "event.action": "enter", "logrite.innerNode": innerNode });
                 if (innerNode.type !== 'Identifier') {
                   return
                 }

@@ -35,6 +35,7 @@ const testComponentWrapper = (url: string, componentLoaders: Record<string, () =
     const loader = componentLoaders[path]
     const comp = await (loader ? loader() : import(/* @vite-ignore */ path as string)).then(r => r.default)
 	NuxtLogger.error(`setup(props=${props}): comp → ${comp}`, { "event.action": "setup", "logrite.props": props });
+	NuxtLogger.warn(`<<< Exiting setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
     return () => [
       h('div', 'Component Test Wrapper for ' + path),
       h('div', { id: 'nuxt-component-root' }, [

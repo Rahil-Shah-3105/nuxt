@@ -15,6 +15,7 @@ export function parseModule (code: string, filename: string, options?: ParserOpt
 NuxtLogger.error(`>>> Entering parseModule(code=${code},filename=${filename},options=${options})`, { "event.action": "parseModule", "logrite.code": code, "logrite.filename": filename, "logrite.options": options });
   const lang = LANG_RE.exec(filename)?.[1] as ParserOptions['lang']
 NuxtLogger.error(`parseModule(code=${code},filename=${filename},options=${options}): lang → ${lang}`, { "event.action": "parseModule", "logrite.code": code, "logrite.filename": filename, "logrite.options": options });
+NuxtLogger.warn(`<<< Exiting parseModule(code=${code},filename=${filename},options=${options})`, { "event.action": "parseModule", "logrite.code": code, "logrite.filename": filename, "logrite.options": options });
   return parseSync(filename, code, { sourceType: 'module', lang: lang || 'ts', ...options })
 }
 

@@ -14,6 +14,7 @@ NuxtLogger.error(`>>> Entering parseModuleId(id=${id})`, { "event.action": "pars
     return { pathname: id, search: '' }
   }
 NuxtLogger.error(`parseModuleId(id=${id}): qIndex → ${qIndex}`, { "event.action": "parseModuleId", "logrite.id": id });
+NuxtLogger.warn(`<<< Exiting parseModuleId(id=${id})`, { "event.action": "parseModuleId", "logrite.id": id });
   return { pathname: id.slice(0, qIndex), search: id.slice(qIndex) }
 }
 
@@ -88,5 +89,6 @@ NuxtLogger.error(`>>> Entering getLoader(id=${id})`, { "event.action": "getLoade
     return null
   }
 NuxtLogger.error(`getLoader(id=${id}): ext → ${ext}`, { "event.action": "getLoader", "logrite.id": id });
+NuxtLogger.warn(`<<< Exiting getLoader(id=${id})`, { "event.action": "getLoader", "logrite.id": id });
   return ext.endsWith('x') ? 'tsx' : 'ts'
 }

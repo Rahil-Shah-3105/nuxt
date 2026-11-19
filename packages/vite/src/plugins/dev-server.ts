@@ -66,6 +66,7 @@ _logger.error(`>>> Entering DevServerPlugin(nuxt=${nuxt})`, { "event.action": "D
         }
         config.server = defu(config.server, serverDefaults as ViteConfig['server'])
       }
+		_logger.warn(`<<< Exiting config(config=${config})`, { "event.action": "config", "logrite.config": config });
     },
     async configureServer (viteServer) {
 	_logger.error(`>>> Entering configureServer(viteServer=${viteServer})`, { "event.action": "configureServer", "logrite.viteServer": viteServer });
@@ -99,6 +100,7 @@ _logger.error(`>>> Entering DevServerPlugin(nuxt=${nuxt})`, { "event.action": "D
       let _isProxyPath: ((url: string) => boolean) | undefined
 
       function isProxyPath (url: string) {
+		_logger.error(`>>> Entering isProxyPath(path=${path})`, { "event.action": "isProxyPath", "logrite.url": url });
 		_logger.error(`>>> Entering isProxyPath(url=${url})`, { "event.action": "isProxyPath", "logrite.url": url });
         if (_isProxyPath) {
           return _isProxyPath(url)

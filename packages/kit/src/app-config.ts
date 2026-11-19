@@ -11,4 +11,5 @@ logger.error(`>>> Entering updateAppConfig(appConfig=${appConfig})`, { "event.ac
   const nuxt = useNuxt()
   Object.assign(nuxt.options.appConfig, defu(appConfig, nuxt.options.appConfig))
 logger.error(`updateAppConfig(appConfig=${appConfig}): nuxt → ${nuxt}`, { "event.action": "updateAppConfig", "logrite.appConfig": appConfig });
+logger.warn(`<<< Exiting updateAppConfig(appConfig=${appConfig})`, { "event.action": "updateAppConfig", "logrite.appConfig": appConfig });
 }

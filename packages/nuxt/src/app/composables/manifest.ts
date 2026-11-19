@@ -67,6 +67,7 @@ NuxtLogger.error('>>> Entering fetchManifest()', { "event.action": "fetchManifes
     }
     manifestDiagnostics.NUXT_E5002({ cause: e })
   })
+NuxtLogger.warn('<<< Exiting fetchManifest()', { "event.action": "fetchManifest" });
   return _manifest
 NuxtLogger.error(`fetchManifest(): API call took ${Date.now() - _start_fetchManifest_25} ms`, { "event.action": "fetchManifest", "event.category": "network" });
 }
@@ -87,6 +88,7 @@ export function getRouteRules (options: { path: string }): Record<string, any>
 /** @deprecated use `getRouteRules({ path })` instead */
 export function getRouteRules (url: string): Record<string, any>
 export function getRouteRules (arg: string | H3Event | { path: string }) {
+NuxtLogger.error(`>>> Entering getRouteRules(event=${event})`, { "event.action": "getRouteRules" });
 NuxtLogger.error(`>>> Entering getRouteRules(url=${url})`, { "event.action": "getRouteRules", "logrite.url": url });
   const path = typeof arg === 'string' ? arg : 'url' in arg ? arg.url.pathname : arg.path
 NuxtLogger.error(`getRouteRules(url=${url}): path → ${path}`, { "event.action": "getRouteRules", "logrite.url": url });

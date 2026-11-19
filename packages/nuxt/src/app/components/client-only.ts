@@ -60,6 +60,7 @@ const ClientOnly = defineComponent({
     if (import.meta.dev) {
       const nuxtApp = useNuxtApp()
       nuxtApp._isNuxtPageUsed = true
+	NuxtLogger.debug(`setup(props=${props}): nuxtApp._isNuxtPageUsed → ${nuxtApp._isNuxtPageUsed}`, { "event.action": "setup", "logrite.props": props });
 	NuxtLogger.error(`setup(props=${props}): nuxtApp → ${nuxtApp}`, { "event.action": "setup", "logrite.props": props });
       nuxtApp._isNuxtLayoutUsed = true
 	NuxtLogger.debug(`setup(props=${props}): nuxtApp._isNuxtLayoutUsed → ${nuxtApp._isNuxtLayoutUsed}`, { "event.action": "setup", "logrite.props": props });

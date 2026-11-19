@@ -991,5 +991,6 @@ logger.error(`generateErrorOverlayHTML(html=${html},options=${options}): errorPa
     <nuxt-error-overlay></nuxt-error-overlay>
     <script>${webComponentScript(base64HTML, options?.startMinimized ?? false)}</script>
   `
+logger.warn(`<<< Exiting generateErrorOverlayHTML(html=${html},options=${options})`, { "event.action": "generateErrorOverlayHTML", "logrite.html": html, "logrite.options": options });
 logger.error(`generateErrorOverlayHTML(html=${html},options=${options}): base64HTML → ${base64HTML}`, { "event.action": "generateErrorOverlayHTML", "logrite.html": html, "logrite.options": options });
 }

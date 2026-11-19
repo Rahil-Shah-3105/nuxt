@@ -47,7 +47,9 @@ logger.debug(`setSSRError(ssrContext=${ssrContext},error=${error}): ssrContext.e
 logger.debug(`setSSRError(ssrContext=${ssrContext},error=${error}): ssrContext.payload → ${ssrContext.payload}`, { "event.action": "setSSRError", "logrite.error": error });
   const url = new URL(error.url)
   ssrContext.url = url.pathname + url.search + url.hash
+logger.debug(`setSSRError(ssrContext=${ssrContext},error=${error}): ssrContext.url → ${ssrContext.url}`, { "event.action": "setSSRError", "logrite.error": error });
 logger.error(`setSSRError(ssrContext=${ssrContext},error=${error}): url → ${url}`, { "event.action": "setSSRError", "logrite.error": error });
+logger.warn(`<<< Exiting setSSRError(ssrContext=${ssrContext},error=${error})`, { "event.action": "setSSRError", "logrite.error": error });
 }
 
 // Layer `overlay` onto `base`, overwriting per header except `set-cookie`,

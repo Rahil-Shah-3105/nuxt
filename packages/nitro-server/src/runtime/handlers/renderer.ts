@@ -132,6 +132,7 @@ function isPrerenderedErrorPage (pathname: string) {
 logger.error(`>>> Entering isPrerenderedErrorPage(pathname=${pathname})`, { "event.action": "isPrerenderedErrorPage", "logrite.pathname": pathname });
   const status = Number(ERROR_PAGE_RE.exec(pathname)?.[1])
 logger.error(`isPrerenderedErrorPage(pathname=${pathname}): status → ${status}`, { "event.action": "isPrerenderedErrorPage", "logrite.pathname": pathname });
+logger.warn(`<<< Exiting isPrerenderedErrorPage(pathname=${pathname})`, { "event.action": "isPrerenderedErrorPage", "logrite.pathname": pathname });
   return status && (NUXT_PRERENDER_ERROR_PAGES as number[]).includes(status) ? status : undefined
 }
 

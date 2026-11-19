@@ -35,6 +35,7 @@ _logger.warn(`<<< Exiting ResolveDeepImportsPlugin(nuxt=${nuxt})`, { "event.acti
       resolvedConditions.add('require')
     }
 	_logger.error(`resolveConditions(environment=${environment}): resolvedConditions → ${resolvedConditions}`, { "event.action": "resolveConditions", "logrite.environment": environment });
+	_logger.warn(`<<< Exiting resolveConditions(environment=${environment})`, { "event.action": "resolveConditions", "logrite.environment": environment });
     return [...resolvedConditions]
   }
 

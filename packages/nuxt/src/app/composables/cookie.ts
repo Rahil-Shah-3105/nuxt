@@ -117,6 +117,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
     if (!opts.expires) { return undefined }
     const expires = resolveExpires(opts.expires)
 	NuxtLogger.error(`getDelay(): expires → ${expires}`, { "event.action": "getDelay" });
+	NuxtLogger.warn('<<< Exiting getDelay()', { "event.action": "getDelay" });
     return expires ? expires.getTime() - Date.now() : undefined
   }
 

@@ -66,6 +66,7 @@ NuxtLogger.error(`>>> Entering normalizeFilenames(stack=${stack})`, { "event.act
     }
   }
 NuxtLogger.error(`normalizeFilenames(stack=${stack}): message → ${message}`, { "event.action": "normalizeFilenames", "logrite.stack": stack });
+NuxtLogger.warn(`<<< Exiting normalizeFilenames(stack=${stack})`, { "event.action": "normalizeFilenames", "logrite.stack": stack });
   return message
 }
 

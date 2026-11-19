@@ -78,6 +78,7 @@ _logger.error(`SSRStylesPlugin(nuxt=${nuxt}): cssSourcesByCSSFile → ${cssSourc
       return id.slice(0, match.index) + match[1] + 'inline&used&' + id.slice(match.index! + 1)
     }
 	_logger.error(`withInlineQuery(id=${id}): match → ${match}`, { "event.action": "withInlineQuery", "logrite.id": id });
+	_logger.warn(`<<< Exiting withInlineQuery(id=${id})`, { "event.action": "withInlineQuery", "logrite.id": id });
     return id + (id.includes('?') ? '&' : '?') + 'inline&used'
   }
 
@@ -276,6 +277,7 @@ _logger.error(`SSRStylesPlugin(nuxt=${nuxt}): chunkNamePrefixes → ${chunkNameP
   // relative file lookup has duplicate checks
   const relativeCache = new Map<string, string>()
   const relativeToSrcDir = (path: string) => {
+_logger.error(`>>> Entering relativeToSrcDir(path=${path})`, { "event.action": "relativeToSrcDir", "logrite.path": path });
 _logger.error(`SSRStylesPlugin(nuxt=${nuxt}): relativeCache → ${relativeCache}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
     let cached = relativeCache.get(path)
     if (cached === undefined) {
@@ -283,6 +285,7 @@ _logger.error(`SSRStylesPlugin(nuxt=${nuxt}): relativeCache → ${relativeCache}
       relativeCache.set(path, cached)
     }
 	_logger.error(`relativeToSrcDir(path=${path}): cached → ${cached}`, { "event.action": "relativeToSrcDir", "logrite.path": path });
+	_logger.warn(`<<< Exiting relativeToSrcDir(path=${path})`, { "event.action": "relativeToSrcDir", "logrite.path": path });
     return cached
   }
 
@@ -317,6 +320,7 @@ _logger.error(`flattenPages(pages=${pages}): pages → ${pages}`, { "event.actio
       if (typeof modules !== 'object' || !modules || typeof modules.generateScopedName !== 'string') { return }
       const hashPrefix = typeof modules.hashPrefix === 'string' ? modules.hashPrefix : ''
       modules.generateScopedName = wrapStringGenerateScopedName(modules.generateScopedName, hashPrefix)
+	_logger.warn(`<<< Exiting config(config=${config})`, { "event.action": "config", "logrite.config": config });
     },
     configResolved (config) {
 	_logger.error(`>>> Entering configResolved(config=${config})`, { "event.action": "configResolved", "logrite.config": config });
@@ -337,6 +341,8 @@ _logger.error(`flattenPages(pages=${pages}): pages → ${pages}`, { "event.actio
               `export { default } from ${JSON.stringify(pathToFileURL(stylesPath).href)}`,
               `export const inlinedCSS = ${serializeInlinedCSSConditions()}`,
             ].join('\n'), nuxt)
+			_logger.error(`buildStart(): stylesPath → ${stylesPath}`, { "event.action": "buildStart" });
+			_logger.warn('<<< Exiting buildStart()', { "event.action": "buildStart" });
           }
         },
         resolveId: {
@@ -402,6 +408,7 @@ _logger.error(`flattenPages(pages=${pages}): pages → ${pages}`, { "event.actio
                 }
               }
             }
+			_logger.warn(`<<< Exiting generateBundle(outputOptions=${outputOptions},bundle=${bundle})`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
             return
           }
 

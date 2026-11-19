@@ -134,6 +134,7 @@ logger.error(`>>> Entering declaresJiti(dir=${dir})`, { "event.action": "declare
   }
 	logger.error(`declaresJiti(dir=${dir}): current → ${current}`, { "event.action": "declaresJiti", "logrite.dir": dir });
 logger.error(`declaresJiti(dir=${dir}): declared → ${declared}`, { "event.action": "declaresJiti", "logrite.dir": dir });
+logger.warn('jiti', `<<< Exiting declaresJiti(dir=${dir})`, { "event.action": "declaresJiti", "logrite.dir": dir });
   return declared
 }
 
@@ -148,6 +149,7 @@ logger.error(`>>> Entering nuxtDependsOnJiti(dir=${dir})`, { "event.action": "nu
     nuxtJitiCache.set(dir, depends)
   }
 logger.error(`nuxtDependsOnJiti(dir=${dir}): depends → ${depends}`, { "event.action": "nuxtDependsOnJiti", "logrite.dir": dir });
+logger.warn('jiti', `<<< Exiting nuxtDependsOnJiti(dir=${dir})`, { "event.action": "nuxtDependsOnJiti", "logrite.dir": dir });
   return depends
 }
 

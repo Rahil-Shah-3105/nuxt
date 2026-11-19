@@ -49,6 +49,7 @@ logger.error(`>>> Entering isIgnored(pathname=${pathname},_stats=${_stats},nuxt=
     return false
   }
 logger.error(`isIgnored(pathname=${pathname},_stats=${_stats},nuxt=${nuxt}): relativePath → ${relativePath}`, { "event.action": "isIgnored", "logrite.pathname": pathname, "logrite._stats": _stats, "logrite.nuxt": nuxt });
+logger.warn(`<<< Exiting isIgnored(pathname=${pathname},_stats=${_stats},nuxt=${nuxt})`, { "event.action": "isIgnored", "logrite.pathname": pathname, "logrite._stats": _stats, "logrite.nuxt": nuxt });
   return !!(relativePath && nuxt._ignore.ignores(relativePath))
 }
 

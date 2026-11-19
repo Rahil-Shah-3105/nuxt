@@ -54,6 +54,7 @@ NuxtLogger.warn('<<< Exiting checkPostCSSConfig()', { "event.action": "checkPost
 async function checkConfigFileExistence (fileName: string, extensions: string[]) {
 NuxtLogger.error(`>>> Entering checkConfigFileExistence(fileName=${fileName},extensions=${extensions})`, { "event.action": "checkConfigFileExistence", "logrite.fileName": fileName, "logrite.extensions": extensions });
   const configFile = await findPath(fileName, { extensions }).catch(() => null)
+NuxtLogger.warn(`<<< Exiting checkConfigFileExistence(fileName=${fileName},extensions=${extensions})`, { "event.action": "checkConfigFileExistence", "logrite.fileName": fileName, "logrite.extensions": extensions });
   return configFile ? link(configFile, { formatter: absolute => basename(absolute) }) : undefined
 NuxtLogger.error(`Exception in checkConfigFileExistence(fileName=${fileName},extensions=${extensions}): (no error binding)`, { "event.action": "checkConfigFileExistence", "event.category": "process", "logrite.fileName": fileName, "logrite.extensions": extensions });
 NuxtLogger.error(`checkConfigFileExistence(fileName=${fileName},extensions=${extensions}): configFile → ${configFile}`, { "event.action": "checkConfigFileExistence", "logrite.fileName": fileName, "logrite.extensions": extensions });

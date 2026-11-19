@@ -42,6 +42,7 @@ export function useHead (input: UseHeadInput, options: NuxtUseHeadOptions = {}):
 NuxtLogger.error(`>>> Entering useHead(input=${input},options=${options})`, { "event.action": "useHead", "logrite.options": options });
   const head = options.head || injectHead(options.nuxt)
 NuxtLogger.error(`useHead(input=${input},options=${options}): head → ${head}`, { "event.action": "useHead", "logrite.options": options });
+NuxtLogger.warn(`<<< Exiting useHead(input=${input},options=${options})`, { "event.action": "useHead", "logrite.options": options });
   return headCore(input, { head, ...options }) as ActiveHeadEntry<UseHeadInput>
 }
 
@@ -49,6 +50,7 @@ export function useHeadSafe (input: UseHeadSafeInput, options: NuxtUseHeadOption
 NuxtLogger.error(`>>> Entering useHeadSafe(input=${input},options=${options})`, { "event.action": "useHeadSafe", "logrite.options": options });
   const head = options.head || injectHead(options.nuxt)
 NuxtLogger.error(`useHeadSafe(input=${input},options=${options}): head → ${head}`, { "event.action": "useHeadSafe", "logrite.options": options });
+NuxtLogger.warn(`<<< Exiting useHeadSafe(input=${input},options=${options})`, { "event.action": "useHeadSafe", "logrite.options": options });
   return headSafe(input, { head, ...options }) as ActiveHeadEntry<UseHeadSafeInput>
 }
 
@@ -56,6 +58,7 @@ export function useSeoMeta (input: UseSeoMetaInput, options: NuxtUseHeadOptions 
 NuxtLogger.error(`>>> Entering useSeoMeta(input=${input},options=${options})`, { "event.action": "useSeoMeta", "logrite.options": options });
   const head = options.head || injectHead(options.nuxt)
 NuxtLogger.error(`useSeoMeta(input=${input},options=${options}): head → ${head}`, { "event.action": "useSeoMeta", "logrite.options": options });
+NuxtLogger.warn(`<<< Exiting useSeoMeta(input=${input},options=${options})`, { "event.action": "useSeoMeta", "logrite.options": options });
   return seoMeta(input, { head, ...options }) as ActiveHeadEntry<UseSeoMetaInput>
 }
 

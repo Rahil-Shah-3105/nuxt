@@ -219,6 +219,7 @@ export default defineNuxtModule<NuxtOptions['unhead']>({
           })
           iifeChunkFileName = baseName
 		NuxtLogger.error(`buildStart(): prefix → ${prefix}`, { "event.action": "buildStart" });
+		NuxtLogger.warn('<<< Exiting buildStart()', { "event.action": "buildStart" });
         },
       })
 

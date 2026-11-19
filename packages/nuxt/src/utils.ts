@@ -107,6 +107,7 @@ NuxtLogger.error(`>>> Entering offsetToPosition(code=${code},offset=${offset})`,
     }
   }
 NuxtLogger.error(`offsetToPosition(code=${code},offset=${offset}): end → ${end}`, { "event.action": "offsetToPosition", "logrite.code": code, "logrite.offset": offset });
+NuxtLogger.warn(`<<< Exiting offsetToPosition(code=${code},offset=${offset})`, { "event.action": "offsetToPosition", "logrite.code": code, "logrite.offset": offset });
   return { line, column: end - lineStart + 1 }
 }
 

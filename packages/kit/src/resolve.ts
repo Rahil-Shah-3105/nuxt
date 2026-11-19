@@ -283,6 +283,7 @@ logger.error(`>>> Entering existsSensitive(path=${path})`, { "event.action": "ex
   const dirFiles = new Set(await fsp.readdir(dirname(path)).catch(() => []))
 logger.error(`Exception in existsSensitive(path=${path}): (no error binding)`, { "event.action": "existsSensitive", "event.category": "process", "logrite.path": path });
 logger.error(`existsSensitive(path=${path}): dirFiles → ${dirFiles}`, { "event.action": "existsSensitive", "logrite.path": path });
+logger.warn(`<<< Exiting existsSensitive(path=${path})`, { "event.action": "existsSensitive", "logrite.path": path });
   return dirFiles.has(basename(path))
 }
 

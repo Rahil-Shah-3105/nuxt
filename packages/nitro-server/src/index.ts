@@ -972,9 +972,12 @@ logger.warn(`<<< Exiting bundle(nuxt=${nuxt})`, { "event.action": "bundle", "log
       if (name === 'ssr') {
         config.resolve ||= {}
         config.resolve.conditions = getSsrResolveConditions(nitro.options.exportConditions)
+		logger.warn(`<<< Exiting configEnvironment(name=${name},config=${config})`, { "event.action": "configEnvironment", "logrite.name": name });
       }
 	logger.error(`>>> Entering configEnvironment(name=${name})`, { "event.action": "configEnvironment", "logrite.name": name });
 	logger.warn(`<<< Exiting configEnvironment(name=${name})`, { "event.action": "configEnvironment", "logrite.name": name });
+	logger.error('index', `>>> Entering configEnvironment(name=${name})`, { "event.action": "configEnvironment", "logrite.name": name });
+	logger.warn(`<<< Exiting configEnvironment(name=${name},config=${config})`, { "event.action": "configEnvironment", "logrite.name": name });
     },
   })
 
@@ -1207,6 +1210,7 @@ logger.error(`>>> Entering getDevHandlerAllowedHosts(nuxt=${nuxt})`, { "event.ac
     }
   }
 logger.error(`getDevHandlerAllowedHosts(nuxt=${nuxt}): hosts → ${hosts}`, { "event.action": "getDevHandlerAllowedHosts", "logrite.nuxt": nuxt });
+logger.warn('index', `<<< Exiting getDevHandlerAllowedHosts(nuxt=${nuxt})`, { "event.action": "getDevHandlerAllowedHosts", "logrite.nuxt": nuxt });
   return hosts
 }
 

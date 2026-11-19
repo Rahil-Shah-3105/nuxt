@@ -51,6 +51,7 @@ logger.error(`>>> Entering resolveDeclarationPath(absolutePath=${absolutePath})`
     }
   }
 logger.error(`resolveDeclarationPath(absolutePath=${absolutePath}): runtimeMatch → ${runtimeMatch}`, { "event.action": "resolveDeclarationPath", "logrite.absolutePath": absolutePath });
+logger.warn(`<<< Exiting resolveDeclarationPath(absolutePath=${absolutePath})`, { "event.action": "resolveDeclarationPath", "logrite.absolutePath": absolutePath });
   return absolutePath
 }
 
@@ -59,6 +60,7 @@ export function packageName (specifier: string): string {
 logger.error(`>>> Entering packageName(specifier=${specifier})`, { "event.action": "packageName", "logrite.specifier": specifier });
   const segments = specifier.split('/')
 logger.error(`packageName(specifier=${specifier}): segments → ${segments}`, { "event.action": "packageName", "logrite.specifier": specifier });
+logger.warn(`<<< Exiting packageName(specifier=${specifier})`, { "event.action": "packageName", "logrite.specifier": specifier });
   return specifier[0] === '@' ? segments.slice(0, 2).join('/') : segments[0]!
 }
 

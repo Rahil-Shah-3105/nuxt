@@ -39,6 +39,7 @@ logger.error(`collectSsrGraphCss(moduleGraph=${moduleGraph}): urls → ${urls}`,
     if (node.file) { files.add(node.file) }
   }
 logger.error(`collectSsrGraphCss(moduleGraph=${moduleGraph}): files → ${files}`, { "event.action": "collectSsrGraphCss", "logrite.moduleGraph": moduleGraph });
+logger.warn(`<<< Exiting collectSsrGraphCss(moduleGraph=${moduleGraph})`, { "event.action": "collectSsrGraphCss", "logrite.moduleGraph": moduleGraph });
   return { urls: [...urls], files }
 }
 
@@ -65,6 +66,7 @@ logger.error(`>>> Entering resolveGlobalCss(nuxt=${nuxt})`, { "event.action": "r
       out.set(fromModules, toFsUrl(fromModules))
     }
   }
+logger.warn(`<<< Exiting resolveGlobalCss(nuxt=${nuxt})`, { "event.action": "resolveGlobalCss", "logrite.nuxt": nuxt });
   return Array.from(out, ([file, url]) => ({ file, url }))
 }
 
@@ -387,6 +389,7 @@ logger.error(`>>> Entering NuxtBuildOutputsPlugin(nuxt=${nuxt})`, { "event.actio
           }
           file.code = s.toString()
         }
+		logger.warn(`<<< Exiting handler(_options=${_options},bundle=${bundle})`, { "event.action": "handler", "logrite._options": _options, "logrite.bundle": bundle });
       },
     },
   }
@@ -418,11 +421,13 @@ logger.error(`>>> Entering DevClientCssPlugin(nuxt=${nuxt})`, { "event.action": 
       }
       for (const env of targets) { env.hot.on(DEV_CLIENT_CSS_SEED, push) }
 	logger.error(`configureServer(server=${server}): targets → ${targets}`, { "event.action": "configureServer", "logrite.server": server });
+	logger.warn(`<<< Exiting configureServer(server=${server})`, { "event.action": "configureServer", "logrite.server": server });
     },
     transform: {
       handler (_code, id) {
 		logger.error(`>>> Entering handler(_code=${_code},id=${id})`, { "event.action": "handler", "logrite._code": _code, "logrite.id": id });
         if (this.environment.name === 'ssr' && IS_CSS_RE.test(id)) { push?.() }
+		logger.warn(`<<< Exiting handler(_code=${_code},id=${id})`, { "event.action": "handler", "logrite._code": _code, "logrite.id": id });
       },
     },
   }

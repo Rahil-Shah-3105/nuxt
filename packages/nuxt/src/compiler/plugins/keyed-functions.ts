@@ -166,6 +166,7 @@ NuxtLogger.warn(`<<< Exiting KeyedFunctionsPlugin(options=${options})`, { "event
         }
 
 		NuxtLogger.error(`handler(code=${code},_id=${_id},meta=${meta}): possibleLocalFunctionNames → ${possibleLocalFunctionNames}`, { "event.action": "handler", "logrite.code": code, "logrite._id": _id, "logrite.meta": meta });
+		NuxtLogger.warn(`<<< Exiting handler(code=${code},_id=${_id},meta=${meta})`, { "event.action": "handler", "logrite.code": code, "logrite._id": _id, "logrite.meta": meta });
         /**
          * @param localName the local name of the function to get the meta for
          * @param source the resolved source of the function to get the meta for (needs to be WITHOUT EXTENSION)

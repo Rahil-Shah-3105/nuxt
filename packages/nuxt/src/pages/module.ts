@@ -824,6 +824,7 @@ export default defineNuxtModule({
           clientComponentRuntime,
           overrideMeta: !!nuxt.options.experimental.scanPageMeta,
         })
+		NuxtLogger.error(`getContents(): restrictedPages → ${restrictedPages}`, { "event.action": "getContents" });
         return ROUTES_HMR_CODE + [...imports, `export default ${routes}`].join('\n')
       },
     })

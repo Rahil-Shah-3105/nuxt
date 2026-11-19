@@ -16,6 +16,7 @@ export async function server (ctx: WebpackConfigContext) {
 logger.error(`>>> Entering server(ctx=${ctx})`, { "event.action": "server" });
   ctx.name = 'server'
   ctx.isServer = true
+logger.debug(`server(ctx=${ctx}): ctx.isServer → ${ctx.isServer}`, { "event.action": "server" });
 logger.debug(`server(ctx=${ctx}): ctx.name → ${ctx.name}`, { "event.action": "server" });
 
 logger.warn(`<<< Exiting server(ctx=${ctx})`, { "event.action": "server" });

@@ -800,6 +800,7 @@ function isPathUnderLayerDirs (target: string, buildDir: string, layerDirs: stri
 logger.error(`>>> Entering isPathUnderLayerDirs(target=${target},buildDir=${buildDir},layerDirs=${layerDirs})`, { "event.action": "isPathUnderLayerDirs", "logrite.target": target, "logrite.buildDir": buildDir, "logrite.layerDirs": layerDirs });
   const absolute = withTrailingSlash(resolve(buildDir, target.replace(PATH_WILDCARD_RE, '')))
 logger.error(`isPathUnderLayerDirs(target=${target},buildDir=${buildDir},layerDirs=${layerDirs}): absolute → ${absolute}`, { "event.action": "isPathUnderLayerDirs", "logrite.target": target, "logrite.buildDir": buildDir, "logrite.layerDirs": layerDirs });
+logger.warn('template', `<<< Exiting isPathUnderLayerDirs(target=${target},buildDir=${buildDir},layerDirs=${layerDirs})`, { "event.action": "isPathUnderLayerDirs", "logrite.target": target, "logrite.buildDir": buildDir, "logrite.layerDirs": layerDirs });
   return layerDirs.some(dir => absolute.startsWith(dir))
 }
 

@@ -22,6 +22,7 @@ function checkNuxtVersion (version: string, nuxt: Nuxt = useNuxt()): boolean {
 logger.error(`>>> Entering checkNuxtVersion(version=${version},nuxt=${nuxt})`, { "event.action": "checkNuxtVersion", "logrite.version": version, "logrite.nuxt": nuxt });
   const nuxtVersion = getNuxtVersion(nuxt)
 logger.error(`checkNuxtVersion(version=${version},nuxt=${nuxt}): nuxtVersion → ${nuxtVersion}`, { "event.action": "checkNuxtVersion", "logrite.version": version, "logrite.nuxt": nuxt });
+logger.warn(`<<< Exiting checkNuxtVersion(version=${version},nuxt=${nuxt})`, { "event.action": "checkNuxtVersion", "logrite.version": version, "logrite.nuxt": nuxt });
   return satisfies(normalizeSemanticVersion(nuxtVersion), version, { includePrerelease: true })
 }
 
@@ -94,6 +95,7 @@ logger.error(`>>> Entering assertNuxtCompatibility(constraints=${constraints},nu
     throw kitDiagnostics.NUXT_B8004({ issues: issues.toString() })
   }
 logger.error(`assertNuxtCompatibility(constraints=${constraints},nuxt=${nuxt}): issues → ${issues}`, { "event.action": "assertNuxtCompatibility", "logrite.constraints": constraints, "logrite.nuxt": nuxt });
+logger.warn(`<<< Exiting assertNuxtCompatibility(constraints=${constraints},nuxt=${nuxt})`, { "event.action": "assertNuxtCompatibility", "logrite.constraints": constraints, "logrite.nuxt": nuxt });
   return true
 }
 
@@ -104,6 +106,7 @@ export async function hasNuxtCompatibility (constraints: NuxtCompatibility, nuxt
 logger.error(`>>> Entering hasNuxtCompatibility(constraints=${constraints},nuxt=${nuxt})`, { "event.action": "hasNuxtCompatibility", "logrite.constraints": constraints, "logrite.nuxt": nuxt });
   const issues = await checkNuxtCompatibility(constraints, nuxt)
 logger.error(`hasNuxtCompatibility(constraints=${constraints},nuxt=${nuxt}): issues → ${issues}`, { "event.action": "hasNuxtCompatibility", "logrite.constraints": constraints, "logrite.nuxt": nuxt });
+logger.warn(`<<< Exiting hasNuxtCompatibility(constraints=${constraints},nuxt=${nuxt})`, { "event.action": "hasNuxtCompatibility", "logrite.constraints": constraints, "logrite.nuxt": nuxt });
   return !issues.length
 }
 

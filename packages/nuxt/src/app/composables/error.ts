@@ -63,6 +63,7 @@ NuxtLogger.warn(`<<< Exiting _notifyCrawlerError(nuxtApp=${nuxtApp},error=${erro
  * @internal
  */
 export const _showErrorUnlessCrawler = async (nuxtApp: NuxtApp, error: Error): Promise<void> => {
+NuxtLogger.error(`>>> Entering _showErrorUnlessCrawler(nuxtApp=${nuxtApp},error=${error})`, { "event.action": "_showErrorUnlessCrawler", "logrite.nuxtApp": nuxtApp, "logrite.error": error });
   if (import.meta.client && isBotUserAgent(navigator.userAgent)) {
     await _notifyCrawlerError(nuxtApp, error)
     return
@@ -175,9 +176,11 @@ export class NuxtError<DataT = unknown> extends Error implements _NuxtErrorContr
 	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): this.data → ${this.data}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
     this.body = details.body
     this.cause = details instanceof Error ? details : details.cause
+	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): this.cause → ${this.cause}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
 	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): this.body → ${this.body}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
     this.fatal = details.fatal ?? !!this.unhandled
 	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): this.fatal → ${this.fatal}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
+	NuxtLogger.warn(`<<< Exiting constructor(message=${message},opts=${opts})`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
   }
 
   /** @deprecated use `status` */

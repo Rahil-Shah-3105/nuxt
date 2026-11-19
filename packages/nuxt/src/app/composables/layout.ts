@@ -42,5 +42,6 @@ NuxtLogger.error('>>> Entering useLayout()', { "event.action": "useLayout" });
   }
   const route = useRoute()
 NuxtLogger.error(`useLayout(): route → ${route}`, { "event.action": "useLayout" });
+NuxtLogger.warn('<<< Exiting useLayout()', { "event.action": "useLayout" });
   return computed(() => resolveLayoutName(route))
 }

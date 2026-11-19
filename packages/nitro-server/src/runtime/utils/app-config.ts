@@ -38,5 +38,6 @@ logger.error(`>>> Entering _deepFreeze(object=${object})`, { "event.action": "_d
       _deepFreeze(value)
     }
   }
+logger.warn(`<<< Exiting _deepFreeze(object=${object})`, { "event.action": "_deepFreeze", "logrite.object": object });
   return Object.freeze(object)
 }

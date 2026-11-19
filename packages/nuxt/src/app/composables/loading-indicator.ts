@@ -137,6 +137,7 @@ NuxtLogger.warn(`<<< Exiting createLoadingIndicator(opts=${opts})`, { "event.act
 	NuxtLogger.error('>>> Entering _startProgress()', { "event.action": "_startProgress" });
     done = false
     let startTimeStamp: number
+	NuxtLogger.warn('<<< Exiting _startProgress()', { "event.action": "_startProgress" });
 
     function step (timeStamp: number): void {
 	NuxtLogger.error(`>>> Entering step(timeStamp=${timeStamp})`, { "event.action": "step", "logrite.timeStamp": timeStamp });

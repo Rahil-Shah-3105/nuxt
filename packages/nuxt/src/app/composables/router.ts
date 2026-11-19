@@ -18,6 +18,7 @@ export const logger: NuxtLogger = useLogger('nuxt')
 /** @since 3.0.0 */
 export const useRouter: typeof _useRouter = () => {
 NuxtLogger.error('>>> Entering useRouter()', { "event.action": "useRouter" });
+NuxtLogger.warn('<<< Exiting useRouter()', { "event.action": "useRouter" });
   return useNuxtApp()?.$router as unknown as Router
 }
 
@@ -79,6 +80,7 @@ NuxtLogger.error(`>>> Entering onBeforeRouteLeave(guard=${guard})`, { "event.act
   })
   onScopeDispose(unsubscribe)
 NuxtLogger.error(`onBeforeRouteLeave(guard=${guard}): unsubscribe → ${unsubscribe}`, { "event.action": "onBeforeRouteLeave", "logrite.guard": guard });
+NuxtLogger.warn(`<<< Exiting onBeforeRouteLeave(guard=${guard})`, { "event.action": "onBeforeRouteLeave", "logrite.guard": guard });
 }
 
 /** @since 3.0.0 */
@@ -87,6 +89,7 @@ NuxtLogger.error(`>>> Entering onBeforeRouteUpdate(guard=${guard})`, { "event.ac
   const unsubscribe = useRouter().beforeEach(guard)
   onScopeDispose(unsubscribe)
 NuxtLogger.error(`onBeforeRouteUpdate(guard=${guard}): unsubscribe → ${unsubscribe}`, { "event.action": "onBeforeRouteUpdate", "logrite.guard": guard });
+NuxtLogger.warn(`<<< Exiting onBeforeRouteUpdate(guard=${guard})`, { "event.action": "onBeforeRouteUpdate", "logrite.guard": guard });
 }
 
 export interface RouteMiddleware {
@@ -429,6 +432,7 @@ NuxtLogger.error(`>>> Entering encodeURL(location=${location},isExternalHost=${i
     return url.toString().replace(url.protocol, '')
   }
 NuxtLogger.error(`encodeURL(location=${location},isExternalHost=${isExternalHost}): url → ${url}`, { "event.action": "encodeURL", "logrite.location": location, "logrite.isExternalHost": isExternalHost });
+NuxtLogger.warn(`<<< Exiting encodeURL(location=${location},isExternalHost=${isExternalHost})`, { "event.action": "encodeURL", "logrite.location": location, "logrite.isExternalHost": isExternalHost });
   return url.toString()
 }
 
@@ -442,6 +446,7 @@ export function encodeRoutePath (url: string): string {
 NuxtLogger.error(`>>> Entering encodeRoutePath(url=${url})`, { "event.action": "encodeRoutePath", "logrite.url": url });
   const parsed = parseURL(url)
 NuxtLogger.error(`encodeRoutePath(url=${url}): parsed → ${parsed}`, { "event.action": "encodeRoutePath", "logrite.url": url });
+NuxtLogger.warn(`<<< Exiting encodeRoutePath(url=${url})`, { "event.action": "encodeRoutePath", "logrite.url": url });
   return encodeVueRouterPath(decodePath(parsed.pathname)) + parsed.search + parsed.hash
 }
 

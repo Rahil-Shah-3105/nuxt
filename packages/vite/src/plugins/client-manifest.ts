@@ -55,6 +55,7 @@ _logger.error(`ClientManifestPlugin(nuxt=${nuxt}): manifestCode → ${manifestCo
   const buildDevClientManifest = (): RendererManifest => {
 	_logger.error('>>> Entering buildDevClientManifest()', { "event.action": "buildDevClientManifest" });
     const entryFile = envApi ? toFsUrl(clientEntry) : clientEntry
+	_logger.error(`buildDevClientManifest(): entryFile → ${entryFile}`, { "event.action": "buildDevClientManifest" });
     return {
       '@vite/client': {
         isEntry: true,
@@ -138,6 +139,7 @@ _logger.error(`ClientManifestPlugin(nuxt=${nuxt}): manifestCode → ${manifestCo
     const buildAssetsDir = withTrailingSlash(withoutLeadingSlash(nuxt.options.app.buildAssetsDir))
     const BASE_RE = new RegExp(`^${escapeRE(buildAssetsDir)}`)
 
+	_logger.error(`finalizeBuildManifest(): BASE_RE → ${BASE_RE}`, { "event.action": "finalizeBuildManifest" });
 	_logger.error(`finalizeBuildManifest(): buildAssetsDir → ${buildAssetsDir}`, { "event.action": "finalizeBuildManifest" });
     for (const entry of manifestEntries) {
       entry.file &&= entry.file.replace(BASE_RE, '')

@@ -138,5 +138,6 @@ logger.error(`>>> Entering getAddDependencyCommand(names=${names},cwd=${cwd},opt
   const packageManager = await detectPackageManager(cwd, { includeParentDirs: true }).catch(() => undefined)
 logger.error(`Exception in getAddDependencyCommand(names=${names},cwd=${cwd},options=${options}): (no error binding)`, { "event.action": "getAddDependencyCommand", "event.category": "process", "logrite.names": names, "logrite.cwd": cwd, "logrite.options": options });
 logger.error(`getAddDependencyCommand(names=${names},cwd=${cwd},options=${options}): packageManager → ${packageManager}`, { "event.action": "getAddDependencyCommand", "logrite.names": names, "logrite.cwd": cwd, "logrite.options": options });
+logger.warn(`<<< Exiting getAddDependencyCommand(names=${names},cwd=${cwd},options=${options})`, { "event.action": "getAddDependencyCommand", "logrite.names": names, "logrite.cwd": cwd, "logrite.options": options });
   return addDependencyCommand(packageManager?.name || 'npm', names, { ...options, short: true })
 }

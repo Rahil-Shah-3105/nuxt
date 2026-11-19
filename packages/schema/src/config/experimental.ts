@@ -41,6 +41,7 @@ export default defineResolvers({
           return false
         }
         // Enabled by default for prod with ssr (for vue components)
+		logger.warn(`<<< Exiting resolve(_val=${_val},get=${get})`, { "event.action": "resolve", "logrite._val": _val, "logrite.get": get });
         return val ?? ((id?: string) => !!id && id.includes('.vue'))
       },
     },

@@ -130,6 +130,7 @@ function createFactoryProcessor (
       return namesToFactoryMeta.get(directImport.originalName)
     }
 	NuxtLogger.error(`getFactoryByLocalName(localName=${localName}): directImport → ${directImport}`, { "event.action": "getFactoryByLocalName", "logrite.localName": localName });
+	NuxtLogger.warn(`<<< Exiting getFactoryByLocalName(localName=${localName})`, { "event.action": "getFactoryByLocalName", "logrite.localName": localName });
     return namesToFactoryMeta.get(localName)
   }
 

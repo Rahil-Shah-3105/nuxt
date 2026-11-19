@@ -42,6 +42,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
 
       const route = router.resolve(path + url.search + url.hash)
       if (route.matched.length) { return route }
+	NuxtLogger.warn(`<<< Exiting resolveInternalLink(anchor=${anchor})`, { "event.action": "resolveInternalLink", "logrite.anchor": anchor });
 	NuxtLogger.error(`resolveInternalLink(anchor=${anchor}): route → ${route}`, { "event.action": "resolveInternalLink", "logrite.anchor": anchor });
     }
 
@@ -99,6 +100,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
         })
         unobservers.set(anchor, unobserve)
       }
+		NuxtLogger.warn(`<<< Exiting observeAnchors(root=${root})`, { "event.action": "observeAnchors", "logrite.root": root });
     }
 
     function unobserveAnchors (root: Element) {

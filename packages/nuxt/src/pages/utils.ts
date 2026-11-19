@@ -79,6 +79,7 @@ export function createPagesContext (options: PagesContextOptions = {}): PagesCon
         trackedFiles.delete(filePath)
       }
 	NuxtLogger.error(`removeFile(filePath=${filePath}): removed → ${removed}`, { "event.action": "removeFile", "logrite.filePath": filePath });
+	NuxtLogger.warn(`<<< Exiting removeFile(filePath=${filePath})`, { "event.action": "removeFile", "logrite.filePath": filePath });
       return removed
     },
     rebuild (files: InputFile[]) {
