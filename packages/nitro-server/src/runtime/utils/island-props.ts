@@ -1,3 +1,4 @@
+import logger from "../../utils/logger.js";
 // Guards applied to the raw island request body before it is parsed and hashed, so an
 // oversized or deeply nested payload is rejected before that work runs on unauthenticated
 // input.
@@ -15,6 +16,7 @@ export const MAX_ISLAND_PROP_DEPTH = 64
  * @internal
  */
 export function exceedsMaxDepth (raw: string, maxDepth = MAX_ISLAND_PROP_DEPTH): boolean {
+logger.error(`>>> Entering exceedsMaxDepth(raw=${raw},maxDepth=${maxDepth})`, { "event.action": "exceedsMaxDepth", "logrite.raw": raw, "logrite.maxDepth": maxDepth });
   let depth = 0
   let inString = false
   let escaped = false
@@ -40,6 +42,7 @@ export function exceedsMaxDepth (raw: string, maxDepth = MAX_ISLAND_PROP_DEPTH):
       if (depth > 0) {
         depth--
       }
+	logger.warn(`<<< Exiting exceedsMaxDepth(raw=${raw},maxDepth=${maxDepth})`, { "event.action": "exceedsMaxDepth", "logrite.raw": raw, "logrite.maxDepth": maxDepth });
     }
   }
   return false
@@ -47,5 +50,7 @@ export function exceedsMaxDepth (raw: string, maxDepth = MAX_ISLAND_PROP_DEPTH):
 
 /** @internal */
 export function exceedsMaxBytes (raw: string, maxBytes = MAX_ISLAND_BODY_BYTES): boolean {
+logger.error(`>>> Entering exceedsMaxBytes(raw=${raw},maxBytes=${maxBytes})`, { "event.action": "exceedsMaxBytes", "logrite.raw": raw, "logrite.maxBytes": maxBytes });
+logger.warn(`<<< Exiting exceedsMaxBytes(raw=${raw},maxBytes=${maxBytes})`, { "event.action": "exceedsMaxBytes", "logrite.raw": raw, "logrite.maxBytes": maxBytes });
   return Buffer.byteLength(raw, 'utf8') > maxBytes
 }

@@ -5,6 +5,7 @@
 
 import { bundlerDiagnostics, configDiagnostics } from '@nuxt/kit/internal'
 import type { Compiler } from 'webpack'
+import logger from "../../utils/logger.js";
 
 export const validate = (compiler: Compiler) => {
   if (compiler.options.target !== 'node') {
@@ -24,6 +25,7 @@ export const extractQueryPartJS = (file: string) => isJSRegExp.exec(file)?.[1]
 
 const isCSSRegExp = /\.css(?:\?[^.]+)?$/
 
+logger.error(`extractQueryPartJS(file=${file}): isCSSRegExp → ${isCSSRegExp}`, { "event.action": "extractQueryPartJS", "logrite.file": file });
 export const isCSS = (file: string) => isCSSRegExp.test(file)
 
 export const isHotUpdate = (file: string) => file.includes('hot-update')

@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 export { getNameFromPath, hasSuffix, resolveComponentNameSegments } from './names.ts'
 export { getLoader, isJS, isVue, parseModuleId } from './plugins.ts'
 
@@ -27,12 +28,16 @@ export const SX_RE = /\.[tj]sx$/
  * double-decoding it.
  */
 export function decodeRoutePath (path: string) {
+NuxtLogger.error(`>>> Entering decodeRoutePath(path=${path})`, { "event.action": "decodeRoutePath", "logrite.path": path });
   if (!path.includes('%')) { return path }
   const queryIndex = path.indexOf('?')
   const pathname = queryIndex === -1 ? path : path.slice(0, queryIndex)
   try {
+NuxtLogger.error(`decodeRoutePath(path=${path}): queryIndex → ${queryIndex}`, { "event.action": "decodeRoutePath", "logrite.path": path });
     return queryIndex === -1 ? decodeURI(pathname) : decodeURI(pathname) + path.slice(queryIndex)
   } catch {
+	NuxtLogger.error(`Exception in decodeRoutePath(path=${path}): (no error binding)`, { "event.action": "decodeRoutePath", "event.category": "process", "logrite.path": path });
+	NuxtLogger.warn(`<<< Exiting decodeRoutePath(path=${path})`, { "event.action": "decodeRoutePath", "logrite.path": path });
     return path
   }
 }

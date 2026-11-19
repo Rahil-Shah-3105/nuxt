@@ -3,6 +3,7 @@ import { useRouter } from '../composables/router'
 import { defineNuxtPlugin } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
 import type { ViewTransitionPageOptions } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { appViewTransition as defaultViewTransition } from '#build/nuxt.config.mjs'
 
 const plugin: Plugin & ObjectPlugin = defineNuxtPlugin((nuxtApp) => {
@@ -16,10 +17,12 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin((nuxtApp) => {
   let abortTransition: undefined | (() => void)
 
   const resetTransitionState = () => {
+	NuxtLogger.error('>>> Entering resetTransitionState()', { "event.action": "resetTransitionState" });
     transition = undefined
     hasUAVisualTransition = false
     abortTransition = undefined
     finishTransition = undefined
+	NuxtLogger.warn('<<< Exiting resetTransitionState()', { "event.action": "resetTransitionState" });
   }
 
   window.addEventListener('popstate', (event) => {
@@ -30,12 +33,14 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin((nuxtApp) => {
   const router = useRouter()
 
   const normalizeViewTransitionOptions = (value: unknown): Partial<ViewTransitionPageOptions> => {
+	NuxtLogger.error(`>>> Entering normalizeViewTransitionOptions(value=${value})`, { "event.action": "normalizeViewTransitionOptions", "logrite.value": value });
     if (typeof value === 'boolean' || value === 'always') {
       return { enabled: value }
     }
     if (value && typeof value === 'object') {
       return value as ViewTransitionPageOptions
     }
+	NuxtLogger.warn(`<<< Exiting normalizeViewTransitionOptions(value=${value})`, { "event.action": "normalizeViewTransitionOptions", "logrite.value": value });
     return {}
   }
 
@@ -58,6 +63,8 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin((nuxtApp) => {
     }
 
     const resolveViewTransitionTypes = (types: ViewTransitionPageOptions['types']) => {
+	NuxtLogger.error(`>>> Entering resolveViewTransitionTypes(types=${types})`, { "event.action": "resolveViewTransitionTypes", "logrite.types": types });
+	NuxtLogger.warn(`<<< Exiting resolveViewTransitionTypes(types=${types})`, { "event.action": "resolveViewTransitionTypes", "logrite.types": types });
       return types ? typeof types === 'function' ? types(to, from) : types : undefined
     }
 
@@ -83,7 +90,9 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin((nuxtApp) => {
     const ready = new Promise<void>(resolve => (changeRoute = resolve))
 
     const update = () => {
+	NuxtLogger.error('>>> Entering update()', { "event.action": "update" });
       changeRoute()
+	NuxtLogger.warn('<<< Exiting update()', { "event.action": "update" });
       return promise
     }
 

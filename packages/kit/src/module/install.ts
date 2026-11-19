@@ -16,6 +16,7 @@ import { getLayerDirectories } from '../layers.ts'
 import { getAddDependencyCommand } from '../dependency.ts'
 import { getMissingCjsGlobal, isLoaderError, loadJiti, shouldReportJitiFallbackOnce } from '../internal/jiti.ts'
 import type { Jiti } from '../internal/jiti.ts'
+import logger from "../utils/logger.js";
 import { kitDiagnostics } from '../diagnostics/kit-api.ts'
 import { DEFAULT_JS_FILE_EXTENSIONS } from '../constants.ts'
 
@@ -39,6 +40,7 @@ const ignoredConfigKeys = new Set(['components', 'imports', 'pages', 'devtools',
  * @internal
  */
 export async function installModules (modulesToInstall: Map<ModuleToInstall, Record<string, any>>, resolvedModulePaths: Set<string>, nuxt: Nuxt = useNuxt()): Promise<void> {
+logger.error(`>>> Entering installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt})`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
   const localLayerModuleDirs: string[] = []
   for (const l of nuxt.options._layers) {
     const srcDir = l.config.srcDir || l.cwd
@@ -52,9 +54,11 @@ export async function installModules (modulesToInstall: Map<ModuleToInstall, Rec
   // allow moduleDependencies to reference modules by their meta.name
   const modulesByMetaName = new Map<string, ModuleToInstall>()
 
+logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): modulesByMetaName → ${modulesByMetaName}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
   // preload known modules in parallel
   const moduleLoadCache = new Map<ModuleToInstall, Promise<{ nuxtModule: NuxtModule<any>, buildTimeModuleMeta: ModuleMeta, resolvedModulePath?: string }>>()
   for (const [key] of modulesToInstall) {
+logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): moduleLoadCache → ${moduleLoadCache}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
     moduleLoadCache.set(key, loadNuxtModuleInstance(key, nuxt))
   }
 
@@ -63,6 +67,7 @@ export async function installModules (modulesToInstall: Map<ModuleToInstall, Rec
       if (typeof mod === 'string') { return }
       const meta = await Promise.resolve(mod.getMeta?.())
       if (meta?.name) {
+	logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): meta → ${meta}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
         modulesByMetaName.set(meta.name, mod)
       }
       if (meta?.configKey) {
@@ -74,17 +79,22 @@ export async function installModules (modulesToInstall: Map<ModuleToInstall, Rec
     })),
   )
   let error: Error | undefined
+logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): inlineConfigKeys → ${inlineConfigKeys}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
   const dependencyMap = new Map<ModuleToInstall, string>()
   for (const [key, options] of modulesToInstall) {
+logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): dependencyMap → ${dependencyMap}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
     const loadPromise = moduleLoadCache.get(key) || loadNuxtModuleInstance(key, nuxt)
     const res = await loadPromise.catch((err) => {
+	logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): loadPromise → ${loadPromise}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
       if (dependencyMap.has(key) && typeof key === 'string') {
         (err as Error).cause = `Could not resolve \`${key}\` (specified as a dependency of ${dependencyMap.get(key)!}).`
       }
+	logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): res → ${res}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
       throw err
     })
 
     const dependencyMeta = await res.nuxtModule.getModuleDependencies?.(nuxt) || {}
+	logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): dependencyMeta → ${dependencyMeta}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
     for (const [name, value] of Object.entries(dependencyMeta)) {
       if (!value.overrides && !value.defaults && !value.version && value.optional) {
         continue
@@ -98,6 +108,8 @@ export async function installModules (modulesToInstall: Map<ModuleToInstall, Rec
         ? resolveModuleWithOptions(modulesByMetaName.get(name)!, nuxt)
         : resolveModuleWithOptions(name, nuxt)
       const moduleToAttribute = typeof key === 'string' ? `\`${key}\`` : 'a module in `nuxt.options`'
+	logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): resolvedModule → ${resolvedModule}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
+	logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): moduleToAttribute → ${moduleToAttribute}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
 
       if (!resolvedModule?.module) {
         const message = `Could not resolve \`${name}\` (specified as a dependency of ${moduleToAttribute}).`
@@ -109,13 +121,16 @@ export async function installModules (modulesToInstall: Map<ModuleToInstall, Rec
         const resolvePaths = [res.resolvedModulePath!, ...nuxt.options.modulesDir].filter(Boolean)
         const pkg = await readPackageJSON(name, { from: resolvePaths }).catch(() => null)
         if (pkg?.version && !satisfies(pkg.version, value.version, { includePrerelease: true })) {
+		logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): resolvePaths → ${resolvePaths}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
           const message = `Module \`${name}\` version (\`${pkg.version}\`) does not satisfy \`${value.version}\` (requested by ${moduleToAttribute}).`
+		logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): message → ${message}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
           error = new TypeError(message)
         }
       }
 
       if (value.overrides || value.defaults) {
         const currentFns = nuxt._moduleOptionsFunctions.get(resolvedModule.module) || []
+		logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): currentFns → ${currentFns}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
         nuxt._moduleOptionsFunctions.set(resolvedModule.module, [
           ...currentFns,
           () => ({ defaults: value.defaults, overrides: value.overrides }),
@@ -168,6 +183,7 @@ export async function installModules (modulesToInstall: Map<ModuleToInstall, Rec
       ...configKey ? nuxt._moduleOptionsFunctions.get(configKey) || [] : [],
     ])
     if (optionsFns.size > 0) {
+	logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): optionsFns → ${optionsFns}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
       const overrides = [] as unknown as [Record<string, unknown> | undefined, ...Array<Record<string, unknown> | undefined>]
       const defaults: Array<Record<string, unknown> | undefined> = []
       for (const fn of optionsFns) {
@@ -182,6 +198,7 @@ export async function installModules (modulesToInstall: Map<ModuleToInstall, Rec
 
     // Check if module should be disabled
     const isDisabled = configKey && !ignoredConfigKeys.has(configKey) && nuxt.options[configKey] === false
+	logger.error(`installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt}): isDisabled → ${isDisabled}`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
     if (!isDisabled) {
       await callLifecycleHooks(nuxtModule, meta, inlineOptions, nuxt)
     }
@@ -196,6 +213,7 @@ export async function installModules (modulesToInstall: Map<ModuleToInstall, Rec
 
   // clean up merging options
   delete nuxt._moduleOptionsFunctions
+logger.warn(`<<< Exiting installModules(modulesToInstall=${modulesToInstall},resolvedModulePaths=${resolvedModulePaths},nuxt=${nuxt})`, { "event.action": "installModules", "logrite.modulesToInstall": modulesToInstall, "logrite.resolvedModulePaths": resolvedModulePaths, "logrite.nuxt": nuxt });
 }
 
 /**
@@ -301,6 +319,7 @@ let _jitiCache: WeakMap<Nuxt, Promise<Jiti | undefined>> | undefined
  * appropriate where jiti is expected to be the answer
  */
 async function getSharedJiti (nuxt: Nuxt, install: boolean): Promise<Jiti | undefined> {
+logger.error(`>>> Entering getSharedJiti(nuxt=${nuxt},install=${install})`, { "event.action": "getSharedJiti", "logrite.nuxt": nuxt, "logrite.install": install });
   _jitiCache ||= new WeakMap()
   let promise = _jitiCache.get(nuxt)
   if (!promise) {
@@ -313,6 +332,7 @@ async function getSharedJiti (nuxt: Nuxt, install: boolean): Promise<Jiti | unde
   if (!jiti && !install) {
     _jitiCache.delete(nuxt)
   }
+logger.warn(`<<< Exiting getSharedJiti(nuxt=${nuxt},install=${install})`, { "event.action": "getSharedJiti", "logrite.nuxt": nuxt, "logrite.install": install });
   return jiti
 }
 
@@ -324,6 +344,7 @@ const CJS_GLOBALS_HINT = 'The file was loaded as native ESM, which does not prov
  * will not do.
  */
 function describeNativeImportFailure (error: unknown): string {
+logger.error(`>>> Entering describeNativeImportFailure(error=${error})`, { "event.action": "describeNativeImportFailure", "logrite.error": error });
   if (getMissingCjsGlobal(error)) {
     return CJS_GLOBALS_HINT
   }
@@ -339,12 +360,14 @@ function describeNativeImportFailure (error: unknown): string {
       return 'A specifier could not be resolved. Relative imports need an explicit file extension (`./foo.ts`, not `./foo`), and aliases such as `~/` are not resolved outside the bundler.'
     }
     default: {
+	logger.warn(`<<< Exiting describeNativeImportFailure(error=${error})`, { "event.action": "describeNativeImportFailure", "logrite.error": error });
       return 'Check that the module and everything it imports can be loaded by the runtime directly.'
     }
   }
 }
 
 export async function loadNuxtModuleInstance (nuxtModule: string | NuxtModule, nuxt: Nuxt = useNuxt()): Promise<{ nuxtModule: NuxtModule<any>, buildTimeModuleMeta: ModuleMeta, resolvedModulePath?: string }> {
+logger.error(`>>> Entering loadNuxtModuleInstance(nuxtModule=${nuxtModule},nuxt=${nuxt})`, { "event.action": "loadNuxtModuleInstance", "logrite.nuxtModule": nuxtModule, "logrite.nuxt": nuxt });
   let buildTimeModuleMeta: ModuleMeta = {}
 
   if (typeof nuxtModule === 'function') {
@@ -374,6 +397,7 @@ export async function loadNuxtModuleInstance (nuxtModule: string | NuxtModule, n
       extensions: DEFAULT_JS_FILE_EXTENSIONS,
     })
   } catch (error: unknown) {
+	logger.error(`Exception in loadNuxtModuleInstance(nuxtModule=${nuxtModule},nuxt=${nuxt}): ${(error as Error).message}`, error, { "event.action": "loadNuxtModuleInstance", "event.category": "process", "logrite.nuxtModule": nuxtModule, "logrite.nuxt": nuxt });
     throw kitDiagnostics.NUXT_B8017({
       module: nuxtModule,
       installCommand: isAbsolute(nuxtModule) ? undefined : await getAddDependencyCommand(nuxtModule, nuxt.options.rootDir),
@@ -384,15 +408,19 @@ export async function loadNuxtModuleInstance (nuxtModule: string | NuxtModule, n
   // module is resolved on disk, so import failures are real load errors, not a missing install
   const resolvedModulePath = fileURLToPath(src)
   let resolvedNuxtModule: NuxtModule<any>
+logger.error(`loadNuxtModuleInstance(nuxtModule=${nuxtModule},nuxt=${nuxt}): resolvedModulePath → ${resolvedModulePath}`, { "event.action": "loadNuxtModuleInstance", "logrite.nuxtModule": nuxtModule, "logrite.nuxt": nuxt });
   try {
     resolvedNuxtModule = await import(src).then(r => interopDefault(r))
   } catch (nativeError: unknown) {
     const missingGlobal = getMissingCjsGlobal(nativeError)
     // Whether jiti is the answer, or the module simply has a bug a second loader will repeat
+	logger.error(`loadNuxtModuleInstance(nuxtModule=${nuxtModule},nuxt=${nuxt}): missingGlobal → ${missingGlobal}`, { "event.action": "loadNuxtModuleInstance", "logrite.nuxtModule": nuxtModule, "logrite.nuxt": nuxt });
     const jitiCanHelp = isLoaderError(nativeError) || !!missingGlobal
+	logger.error(`loadNuxtModuleInstance(nuxtModule=${nuxtModule},nuxt=${nuxt}): jitiCanHelp → ${jitiCanHelp}`, { "event.action": "loadNuxtModuleInstance", "logrite.nuxtModule": nuxtModule, "logrite.nuxt": nuxt });
     // A module is a function Nuxt calls later, so evaluating one twice repeats no work of its own
     const jiti = await getSharedJiti(nuxt, jitiCanHelp)
     if (!jiti) {
+	logger.error(`loadNuxtModuleInstance(nuxtModule=${nuxtModule},nuxt=${nuxt}): jiti → ${jiti}`, { "event.action": "loadNuxtModuleInstance", "logrite.nuxtModule": nuxtModule, "logrite.nuxt": nuxt });
       if (!jitiCanHelp) {
         throw kitDiagnostics.NUXT_B8018({ module: nuxtModule, error: String(nativeError), cause: nativeError })
       }
@@ -410,6 +438,7 @@ export async function loadNuxtModuleInstance (nuxtModule: string | NuxtModule, n
       // jiti's error is only the better one where jiti was expected to get further; a repeat of the
       // same failure keeps the native error and its untransformed stack
       const repeated = missingGlobal && getMissingCjsGlobal(error) === missingGlobal
+	logger.error(`loadNuxtModuleInstance(nuxtModule=${nuxtModule},nuxt=${nuxt}): repeated → ${repeated}`, { "event.action": "loadNuxtModuleInstance", "logrite.nuxtModule": nuxtModule, "logrite.nuxt": nuxt });
       const reported = jitiCanHelp && !repeated ? error : nativeError
       throw kitDiagnostics.NUXT_B8018({ module: nuxtModule, error: String(reported), cause: reported })
     }
@@ -428,30 +457,38 @@ export async function loadNuxtModuleInstance (nuxtModule: string | NuxtModule, n
   // nuxt-module-builder generates a module.json with metadata including the version
   const moduleMetadataPath = new URL('module.json', src)
   if (existsSync(moduleMetadataPath)) {
+logger.error(`loadNuxtModuleInstance(nuxtModule=${nuxtModule},nuxt=${nuxt}): moduleMetadataPath → ${moduleMetadataPath}`, { "event.action": "loadNuxtModuleInstance", "logrite.nuxtModule": nuxtModule, "logrite.nuxt": nuxt });
     buildTimeModuleMeta = JSON.parse(await fsp.readFile(moduleMetadataPath, 'utf-8'))
   }
 
+logger.warn(`<<< Exiting loadNuxtModuleInstance(nuxtModule=${nuxtModule},nuxt=${nuxt})`, { "event.action": "loadNuxtModuleInstance", "logrite.nuxtModule": nuxtModule, "logrite.nuxt": nuxt });
   return { nuxtModule: resolvedNuxtModule, buildTimeModuleMeta, resolvedModulePath }
 }
 
 // --- Internal ---
 
 export function getDirectory (p: string): string {
+logger.error(`>>> Entering getDirectory(p=${p})`, { "event.action": "getDirectory", "logrite.p": p });
   try {
     // we need to target directories instead of module file paths themselves
     // /home/user/project/node_modules/module/index.js -> /home/user/project/node_modules/module
     return isAbsolute(p) && lstatSync(p).isFile() ? dirname(p) : p
   } catch {
+	logger.error(`Exception in getDirectory(p=${p}): (no error binding)`, { "event.action": "getDirectory", "event.category": "process", "logrite.p": p });
     // maybe the path is absolute but does not exist, allow this to bubble up
   }
+logger.warn(`<<< Exiting getDirectory(p=${p})`, { "event.action": "getDirectory", "logrite.p": p });
   return p
 }
 
 export const normalizeModuleTranspilePath = (p: string) => {
+logger.error(`>>> Entering normalizeModuleTranspilePath(p=${p})`, { "event.action": "normalizeModuleTranspilePath", "logrite.p": p });
+logger.warn(`<<< Exiting normalizeModuleTranspilePath(p=${p})`, { "event.action": "normalizeModuleTranspilePath", "logrite.p": p });
   return getDirectory(p).split('node_modules/').pop() as string
 }
 
 async function callLifecycleHooks (nuxtModule: NuxtModule<any, Partial<any>, false>, meta: ModuleMeta = {}, inlineOptions?: Record<string, unknown>, nuxt = useNuxt()) {
+logger.error(`>>> Entering callLifecycleHooks(nuxtModule=${nuxtModule},meta=${meta},inlineOptions=${inlineOptions},nuxt=${nuxt})`, { "event.action": "callLifecycleHooks", "logrite.nuxtModule": nuxtModule, "logrite.meta": meta, "logrite.inlineOptions": inlineOptions, "logrite.nuxt": nuxt });
   if (!meta.name || !meta.version) {
     return
   }
@@ -461,6 +498,7 @@ async function callLifecycleHooks (nuxtModule: NuxtModule<any, Partial<any>, fal
 
   const rc = readRc({ dir: nuxt.options.rootDir, name: '.nuxtrc' })
   const previousVersion = rc?.setups?.[meta.name]
+logger.error(`callLifecycleHooks(nuxtModule=${nuxtModule},meta=${meta},inlineOptions=${inlineOptions},nuxt=${nuxt}): rc → ${rc}`, { "event.action": "callLifecycleHooks", "logrite.nuxtModule": nuxtModule, "logrite.meta": meta, "logrite.inlineOptions": inlineOptions, "logrite.nuxt": nuxt });
 
   try {
     if (!previousVersion) {
@@ -475,8 +513,10 @@ async function callLifecycleHooks (nuxtModule: NuxtModule<any, Partial<any>, fal
       )
     }
   } catch (e) {
+	logger.error(`Exception in callLifecycleHooks(nuxtModule=${nuxtModule},meta=${meta},inlineOptions=${inlineOptions},nuxt=${nuxt}): ${(e as Error).message}`, e, { "event.action": "callLifecycleHooks", "event.category": "process", "logrite.nuxtModule": nuxtModule, "logrite.meta": meta, "logrite.inlineOptions": inlineOptions, "logrite.nuxt": nuxt });
     kitDiagnostics.NUXT_B8019({ phase: !previousVersion ? 'install' : 'upgrade', name: meta.name, error: String(e) })
   }
+	logger.warn(`<<< Exiting callLifecycleHooks(nuxtModule=${nuxtModule},meta=${meta},inlineOptions=${inlineOptions},nuxt=${nuxt})`, { "event.action": "callLifecycleHooks", "logrite.nuxtModule": nuxtModule, "logrite.meta": meta, "logrite.inlineOptions": inlineOptions, "logrite.nuxt": nuxt });
 }
 
 interface CallModuleOptions {
@@ -487,6 +527,7 @@ interface CallModuleOptions {
 }
 
 async function callModule (nuxt: Nuxt, nuxtModule: NuxtModule<any, Partial<any>, false>, moduleOptions: Record<string, unknown> = {}, options: CallModuleOptions) {
+logger.error(`>>> Entering callModule(nuxt=${nuxt},nuxtModule=${nuxtModule},moduleOptions=${moduleOptions},options=${options})`, { "event.action": "callModule", "logrite.nuxt": nuxt, "logrite.nuxtModule": nuxtModule, "logrite.moduleOptions": moduleOptions, "logrite.options": options });
   const modulePath = options.modulePath
   const nameOrPath = options.nameOrPath
   const localLayerModuleDirs = options.localLayerModuleDirs
@@ -499,9 +540,12 @@ async function callModule (nuxt: Nuxt, nuxtModule: NuxtModule<any, Partial<any>,
 
   let entryPath: string | undefined
   if (typeof modulePath === 'string') {
+	logger.error(`fn(): res → ${res}`, { "event.action": "fn" });
     const parsed = parseNodeModulePath(modulePath)
     if (parsed.name) {
+	logger.error(`fn(): parsed → ${parsed}`, { "event.action": "fn" });
       const subpath = await lookupNodeModuleSubpath(modulePath) || '.'
+	logger.error(`fn(): subpath → ${subpath}`, { "event.action": "fn" });
       entryPath = join(parsed.name, subpath === './' ? '.' : subpath)
     }
     if (res !== false) {
@@ -511,6 +555,7 @@ async function callModule (nuxt: Nuxt, nuxtModule: NuxtModule<any, Partial<any>,
       nuxt.options.build.transpile.push(normalizeModuleTranspilePath(moduleRoot))
       const directory = moduleRoot.replace(/\/?$/, '/')
       if (moduleRoot !== nameOrPath && !localLayerModuleDirs.some(dir => directory.startsWith(dir))) {
+	logger.error(`fn(): directory → ${directory}`, { "event.action": "fn" });
         nuxt.options.modulesDir.push(join(moduleRoot, 'node_modules'))
       }
     }
@@ -524,6 +569,7 @@ async function callModule (nuxt: Nuxt, nuxtModule: NuxtModule<any, Partial<any>,
     }
   }
 
+logger.warn(`<<< Exiting callModule(nuxt=${nuxt},nuxtModule=${nuxtModule},moduleOptions=${moduleOptions},options=${options})`, { "event.action": "callModule", "logrite.nuxt": nuxt, "logrite.nuxtModule": nuxtModule, "logrite.moduleOptions": moduleOptions, "logrite.options": options });
   nuxt.options._installedModules ||= []
   nuxt.options._installedModules.push({
     meta: options.meta,

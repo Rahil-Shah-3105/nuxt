@@ -4,6 +4,7 @@ import type { CookieParseOptions, CookieSerializeOptions } from 'cookie-es'
 import { parse, serialize } from 'cookie-es'
 import { deleteCookie, getCookie, setCookie } from '@nuxt/nitro-server/h3'
 import type { H3Event } from '@nuxt/nitro-server/h3'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { isEqual } from 'ohash'
 import { klona } from 'klona'
 import { useNuxtApp } from '../nuxt'
@@ -111,9 +112,11 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
   }
 
   const getDelay = () => {
+	NuxtLogger.error('>>> Entering getDelay()', { "event.action": "getDelay" });
     if (opts.maxAge !== undefined) { return opts.maxAge * 1000 }
     if (!opts.expires) { return undefined }
     const expires = resolveExpires(opts.expires)
+	NuxtLogger.error(`getDelay(): expires → ${expires}`, { "event.action": "getDelay" });
     return expires ? expires.getTime() - Date.now() : undefined
   }
 
@@ -143,6 +146,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
       // or running in an iframe: see https://github.com/nuxt/nuxt/issues/26338
     }
     const callback = (force = false) => {
+	NuxtLogger.error(`>>> Entering callback(force=${force})`, { "event.action": "callback", "logrite.force": force });
       if (!force) {
         if (opts.readonly || isEqual(cookie.value, cookies[name])) { return }
       }
@@ -153,6 +157,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
 
       cookies[name] = klona(cookie.value)
       channel?.postMessage({ value: opts.encode(cookie.value as T) })
+	NuxtLogger.warn(`<<< Exiting callback(force=${force})`, { "event.action": "callback", "logrite.force": force });
     }
 
     let cookieWatcher: WatchHandle | undefined
@@ -178,6 +183,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
     if (store) {
       /* event is of type CookieChangeEvent */
       const changeHandler = (event: CookieChangeEvent) => {
+		NuxtLogger.error(`>>> Entering changeHandler(event=${event})`, { "event.action": "changeHandler" });
         const changedCookie = event.changed.find(c => c.name === name)
         const removedCookie = event.deleted.find(c => c.name === name)
 
@@ -188,6 +194,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
         if (removedCookie) {
           handleChange({ value: null })
         }
+		NuxtLogger.warn(`<<< Exiting changeHandler(event=${event})`, { "event.action": "changeHandler" });
       }
       store.addEventListener('change', changeHandler)
       if (hasScope) {
@@ -207,12 +214,14 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
   } else if (import.meta.server) {
     const nuxtApp = useNuxtApp()
     const writeFinalCookieValue = () => {
+	NuxtLogger.error('>>> Entering writeFinalCookieValue()', { "event.action": "writeFinalCookieValue" });
       const valueIsSame = isEqual(cookie.value, cookies[name])
 
       if (
         opts.readonly
         || (valueIsSame && !opts.refresh)
       ) { return }
+	NuxtLogger.error(`writeFinalCookieValue(): valueIsSame → ${valueIsSame}`, { "event.action": "writeFinalCookieValue" });
 
       nuxtApp._cookiesChanged ||= {}
       if (valueIsSame && opts.refresh && !nuxtApp._cookiesChanged[name]) {
@@ -233,6 +242,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
         ? undefined
         : opts.encode(cookie.value as T)
       writeServerCookie(useRequestEvent(nuxtApp)!, name, encoded, opts)
+	NuxtLogger.warn('<<< Exiting writeFinalCookieValue()', { "event.action": "writeFinalCookieValue" });
     }
     const unhook = nuxtApp.hooks.hookOnce('app:rendered', writeFinalCookieValue)
     nuxtApp.hooks.hookOnce('app:error', () => {
@@ -245,6 +255,7 @@ export function useCookie<T = string | null | undefined> (name: string, _opts?: 
 }
 /** @since 3.10.0 */
 export function refreshCookie (name: string): void {
+NuxtLogger.error(`>>> Entering refreshCookie(name=${name})`, { "event.action": "refreshCookie", "logrite.name": name });
   if (import.meta.server || store || typeof BroadcastChannel === 'undefined') { return }
 
   try {
@@ -252,29 +263,35 @@ export function refreshCookie (name: string): void {
     channel.postMessage({ refresh: true })
     channel.close()
   } catch {
+	NuxtLogger.error(`refreshCookie(name=${name}): channel → ${channel}`, { "event.action": "refreshCookie", "logrite.name": name });
     // BroadcastChannel will fail in certain situations when cookies are disabled
+	NuxtLogger.warn(`<<< Exiting refreshCookie(name=${name})`, { "event.action": "refreshCookie", "logrite.name": name });
     // or running in an iframe: see https://github.com/nuxt/nuxt/issues/26338
   }
 }
 
 function readRawCookies (opts: CookieOptions = {}): Record<string, unknown> | undefined {
+NuxtLogger.error(`>>> Entering readRawCookies(opts=${opts})`, { "event.action": "readRawCookies", "logrite.opts": opts });
   if (import.meta.server) {
     return parse(useRequestEvent()!.req.headers.get('cookie') || '', opts)
   } else if (import.meta.client) {
     return parse(document.cookie, opts)
   }
+	NuxtLogger.warn(`<<< Exiting readRawCookies(opts=${opts})`, { "event.action": "readRawCookies", "logrite.opts": opts });
 }
 
 // value is expected to be already encoded via `opts.encode`; pass through as-is
 const identityEncode = (val: string) => val
 
 function toSerializeOptions (opts: CookieOptions): CookieSerializeOptions {
+NuxtLogger.error(`>>> Entering toSerializeOptions(opts=${opts})`, { "event.action": "toSerializeOptions", "logrite.opts": opts });
   const { encode: _encode, decode: _decode, expires, ...rest } = opts
   return {
     ...rest,
     expires: resolveExpires(expires),
     encode: identityEncode,
   }
+NuxtLogger.warn(`<<< Exiting toSerializeOptions(opts=${opts})`, { "event.action": "toSerializeOptions", "logrite.opts": opts });
 }
 
 function serializeCookie (name: string, value: string | undefined, opts: CookieOptions = {}) {
@@ -333,6 +350,7 @@ function cookieRef<T> (value: T | undefined, initialDelay: number | undefined, g
     if (shouldWatch) { unsubscribe = watch(internalRef, trigger) }
 
     function scheduleTimeout () {
+	NuxtLogger.error('>>> Entering scheduleTimeout()', { "event.action": "scheduleTimeout" });
       const currentDelay = delay
       if (currentDelay === undefined) { return }
       const timeRemaining = currentDelay - elapsed
@@ -344,25 +362,32 @@ function cookieRef<T> (value: T | undefined, initialDelay: number | undefined, g
         internalRef.value = undefined
         trigger()
       }, timeoutLength)
+	NuxtLogger.warn('<<< Exiting scheduleTimeout()', { "event.action": "scheduleTimeout" });
     }
 
     function createExpirationTimeout () {
+	NuxtLogger.error('>>> Entering createExpirationTimeout()', { "event.action": "createExpirationTimeout" });
       elapsed = 0
       delay = getDelay()
       clearTimeout(timeout)
       scheduleTimeout()
+	NuxtLogger.warn('<<< Exiting createExpirationTimeout()', { "event.action": "createExpirationTimeout" });
     }
 
     return {
       get () {
+		NuxtLogger.error('>>> Entering get()', { "event.action": "get" });
         track()
+		NuxtLogger.warn('<<< Exiting get()', { "event.action": "get" });
         return internalRef.value
       },
       set (newValue) {
+		NuxtLogger.error(`>>> Entering set(newValue=${newValue})`, { "event.action": "set", "logrite.newValue": newValue });
         createExpirationTimeout()
 
         internalRef.value = newValue
         trigger()
+		NuxtLogger.warn(`<<< Exiting set(newValue=${newValue})`, { "event.action": "set", "logrite.newValue": newValue });
       },
     }
   })

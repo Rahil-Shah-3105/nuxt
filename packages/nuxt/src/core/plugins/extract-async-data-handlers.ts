@@ -5,6 +5,7 @@ import type { RolldownString } from 'rolldown-string'
 import { dirname } from 'pathe'
 import { ScopeTracker, parseAndWalk, walk } from 'oxc-walker'
 import type { ESTree } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const functionsToExtract = new Set(['useAsyncData', 'useLazyAsyncData'])
 const FUNCTIONS_RE = /\buse(?:Lazy)?AsyncData\b/
@@ -20,6 +21,7 @@ export interface ExtractAsyncDataHandlersOptions {
 }
 
 export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlersOptions) => createUnplugin(() => {
+NuxtLogger.error(`>>> Entering ExtractAsyncDataHandlersPlugin(options=${options})`, { "event.action": "ExtractAsyncDataHandlersPlugin", "logrite.options": options });
   const asyncDatas: Record<string, { code: string, map?: SourceMapInput }> = {}
 
   let count = 0
@@ -28,7 +30,9 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
     name: 'nuxt:extract-async-data-handlers',
     enforce: 'post',
     resolveId (source) {
+	NuxtLogger.error(`>>> Entering resolveId(source=${source})`, { "event.action": "resolveId", "logrite.source": source });
       if (source in asyncDatas) {
+		NuxtLogger.warn(`<<< Exiting resolveId(source=${source})`, { "event.action": "resolveId", "logrite.source": source });
         return source
       }
     },
@@ -37,7 +41,9 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
         id: ASYNC_DATA_CHUNK_RE,
       },
       handler (id) {
+		NuxtLogger.error(`>>> Entering handler(id=${id})`, { "event.action": "handler", "logrite.id": id });
         if (id in asyncDatas) {
+		NuxtLogger.warn(`<<< Exiting handler(id=${id})`, { "event.action": "handler", "logrite.id": id });
           return asyncDatas[id]
         }
       },
@@ -51,6 +57,7 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
         code: { include: FUNCTIONS_RE },
       },
       handler (code, id, meta?: unknown) {
+		NuxtLogger.error(`>>> Entering handler(code=${code},id=${id},meta=${meta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         const { 0: script = code, index: codeIndex = 0 } = code.match(SCRIPT_RE) || { index: 0, 0: code }
 
         let s: RolldownString | undefined
@@ -59,9 +66,11 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
         const parseResult = parseAndWalk(script, id, { scopeTracker })
         scopeTracker.freeze()
 
+		NuxtLogger.error(`handler(code=${code},id=${id},meta=${meta}): scopeTracker → ${scopeTracker}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         walk(parseResult.program, {
           scopeTracker,
           enter (node) {
+			NuxtLogger.error(`>>> Entering enter(node=${node})`, { "event.action": "enter", "logrite.node": node });
             if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier' || !functionsToExtract.has(node.callee.name)) {
               return
             }
@@ -70,15 +79,18 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
 
             const fetcherFunction = callExpression.arguments.find((fn): fn is ESTree.Function | ESTree.ArrowFunctionExpression => fn.type === 'ArrowFunctionExpression' || fn.type === 'FunctionExpression')
 
+			NuxtLogger.error(`enter(node=${node}): fetcherFunction → ${fetcherFunction}`, { "event.action": "enter", "logrite.node": node });
             if (!fetcherFunction || (fetcherFunction.type !== 'ArrowFunctionExpression' && fetcherFunction.type !== 'FunctionExpression') || !fetcherFunction.body) {
               return
             }
 
+			NuxtLogger.warn(`<<< Exiting enter(node=${node})`, { "event.action": "enter", "logrite.node": node });
             s ||= rolldownString(code, id, meta)
 
             const referencedVariables = new Set<string>()
             const imports = new Set<string>()
 
+			NuxtLogger.error(`enter(node=${node}): referencedVariables → ${referencedVariables}`, { "event.action": "enter", "logrite.node": node });
             // Walk the function body to find all identifiers
             walk(fetcherFunction.body, {
               scopeTracker,
@@ -109,6 +121,7 @@ export const ExtractAsyncDataHandlersPlugin = (options: ExtractAsyncDataHandlers
 
                 const declaration = scopeTracker.getDeclaration(innerNode.name)
                 if (!declaration) {
+				NuxtLogger.error(`enter(innerNode=${innerNode},parent=${parent}): declaration → ${declaration}`, { "event.action": "enter", "logrite.innerNode": innerNode });
                   return
                 }
 

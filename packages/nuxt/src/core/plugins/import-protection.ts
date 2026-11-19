@@ -1,6 +1,7 @@
 import { relative, resolve } from 'pathe'
 import escapeRE from 'escape-string-regexp'
 import type { NuxtOptions } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 type ImportPattern = [importPattern: string | RegExp | ((id: string, importer: string) => boolean | string), warning?: string, suggestions?: string[]]
 
@@ -16,6 +17,7 @@ interface NuxtImportProtectionOptions {
 }
 
 export function createImportProtectionPatterns (nuxt: { options: NuxtOptions }, options: NuxtImportProtectionOptions) {
+NuxtLogger.error(`>>> Entering createImportProtectionPatterns(nuxt=${nuxt},options=${options})`, { "event.action": "createImportProtectionPatterns", "logrite.nuxt": nuxt, "logrite.options": options });
   const patterns: ImportProtectionOptions['patterns'] = []
   const context = contextFlags[options.context]
 
@@ -83,6 +85,7 @@ export function createImportProtectionPatterns (nuxt: { options: NuxtOptions }, 
     ])
   }
 
+NuxtLogger.warn(`<<< Exiting createImportProtectionPatterns(nuxt=${nuxt},options=${options})`, { "event.action": "createImportProtectionPatterns", "logrite.nuxt": nuxt, "logrite.options": options });
   return patterns
 }
 

@@ -7,6 +7,7 @@ import { isJS, isVue } from '../../core/utils/index.ts'
 import type { ComponentsOptions } from 'nuxt/schema'
 import { parseAndWalk } from 'oxc-walker'
 import type { ESTree } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 interface LoaderOptions {
   srcDir: string
@@ -28,6 +29,7 @@ const HYDRATION_TO_FACTORY = new Map<string, string>([
 ])
 
 export const LazyHydrationMacroTransformPlugin = (options: LoaderOptions) => createUnplugin(() => {
+NuxtLogger.error(`>>> Entering LazyHydrationMacroTransformPlugin(options=${options})`, { "event.action": "LazyHydrationMacroTransformPlugin", "logrite.options": options });
   const exclude = options.transform?.exclude || []
   const include = options.transform?.include || []
 
@@ -35,12 +37,14 @@ export const LazyHydrationMacroTransformPlugin = (options: LoaderOptions) => cre
     name: 'nuxt:lazy-hydration-macro',
     enforce: 'post',
     transformInclude (id) {
+	NuxtLogger.error(`>>> Entering transformInclude(id=${id})`, { "event.action": "transformInclude", "logrite.id": id });
       if (exclude.some(pattern => pattern.test(id))) {
         return false
       }
       if (include.some(pattern => pattern.test(id))) {
         return true
       }
+	NuxtLogger.warn(`<<< Exiting transformInclude(id=${id})`, { "event.action": "transformInclude", "logrite.id": id });
       return isVue(id, { type: ['template', 'script'] }) || isJS(id)
     },
 
@@ -51,9 +55,12 @@ export const LazyHydrationMacroTransformPlugin = (options: LoaderOptions) => cre
         },
       },
       handler (code, id, meta?: unknown) {
+		NuxtLogger.error(`>>> Entering handler(code=${code},id=${id},meta=${meta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         const s = rolldownString(code, id, meta)
         const names = new Set<string>()
         type Edit = { start: number, end: number, replacement: string }
+		NuxtLogger.error(`handler(code=${code},id=${id},meta=${meta}): s → ${s}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
+		NuxtLogger.error(`handler(code=${code},id=${id},meta=${meta}): names → ${names}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         const edits: Edit[] = []
 
         parseAndWalk(code, id, (node, parent) => {
@@ -72,6 +79,7 @@ export const LazyHydrationMacroTransformPlugin = (options: LoaderOptions) => cre
 
           const functionName = HYDRATION_TO_FACTORY.get(strategy)
           if (!functionName) { return }
+		NuxtLogger.error(`handler(code=${code},id=${id},meta=${meta}): functionName → ${functionName}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
 
           if (loaderArgument?.type !== 'ArrowFunctionExpression') { return }
 
@@ -82,8 +90,10 @@ export const LazyHydrationMacroTransformPlugin = (options: LoaderOptions) => cre
           const filePath = resolveAlias(rawPath, options.alias || {})
           const relativePath = relative(options.srcDir, filePath)
 
+		NuxtLogger.error(`handler(code=${code},id=${id},meta=${meta}): filePath → ${filePath}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
           const originalLoader = code.slice(loaderArgument.start, loaderArgument.end)
           const replacement = `__${functionName}(${JSON.stringify(relativePath)}, ${originalLoader})`
+		NuxtLogger.error(`handler(code=${code},id=${id},meta=${meta}): originalLoader → ${originalLoader}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
 
           edits.push({ start: node.start, end: node.end, replacement })
           names.add(functionName)
@@ -98,6 +108,7 @@ export const LazyHydrationMacroTransformPlugin = (options: LoaderOptions) => cre
           s.prepend(imports)
         }
 
+		NuxtLogger.warn(`<<< Exiting handler(code=${code},id=${id},meta=${meta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         return generateTransform(s, id)
       },
     },
@@ -105,16 +116,20 @@ export const LazyHydrationMacroTransformPlugin = (options: LoaderOptions) => cre
 })
 
 function isStringLiteral (node: ESTree.Argument | undefined): node is ESTree.StringLiteral {
+NuxtLogger.error(`>>> Entering isStringLiteral(node=${node})`, { "event.action": "isStringLiteral", "logrite.node": node });
+NuxtLogger.warn(`<<< Exiting isStringLiteral(node=${node})`, { "event.action": "isStringLiteral", "logrite.node": node });
   return !!node && node.type === 'Literal' && typeof node.value === 'string'
 }
 
 function findImportExpression (node: ESTree.Expression | ESTree.FunctionBody): { importExpression?: ESTree.ImportExpression, importLiteral?: ESTree.Expression } {
+NuxtLogger.error(`>>> Entering findImportExpression(node=${node})`, { "event.action": "findImportExpression", "logrite.node": node });
   if (node.type === 'ImportExpression') {
     return { importExpression: node, importLiteral: node.source }
   }
   if (node.type === 'BlockStatement') {
     const returnStmt = node.body.find(stmt => stmt.type === 'ReturnStatement')
     if (returnStmt && returnStmt.argument) {
+	NuxtLogger.error(`findImportExpression(node=${node}): returnStmt → ${returnStmt}`, { "event.action": "findImportExpression", "logrite.node": node });
       return findImportExpression(returnStmt.argument)
     }
     return {}
@@ -134,5 +149,6 @@ function findImportExpression (node: ESTree.Expression | ESTree.FunctionBody): {
   if (node.type === 'CallExpression') {
     return findImportExpression(node.callee)
   }
+NuxtLogger.warn(`<<< Exiting findImportExpression(node=${node})`, { "event.action": "findImportExpression", "logrite.node": node });
   return {}
 }

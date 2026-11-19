@@ -1,13 +1,16 @@
 import { normalize } from 'pathe'
 import type { Nuxt, NuxtApp, NuxtPage, NuxtTemplateChange, NuxtTemplateDependency, ResolvedNuxtTemplate } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const isSamePath = (a: string | undefined, b: string) => !!a && (a === b || normalize(a) === b)
 
 function isPageFile (pages: NuxtPage[], path: string): boolean {
+NuxtLogger.error(`>>> Entering isPageFile(pages=${pages},path=${path})`, { "event.action": "isPageFile", "logrite.pages": pages, "logrite.path": path });
   for (const page of pages) {
     if (isSamePath(page.file, path)) { return true }
     if (page.children && isPageFile(page.children, path)) { return true }
   }
+NuxtLogger.warn(`<<< Exiting isPageFile(pages=${pages},path=${path})`, { "event.action": "isPageFile", "logrite.pages": pages, "logrite.path": path });
   return false
 }
 
@@ -29,6 +32,7 @@ const dependencyMatchers: Record<NuxtTemplateDependency, (app: NuxtApp, path: st
 export function createChangedFileFilter (nuxt: Nuxt, app: NuxtApp, path: string): ((template: ResolvedNuxtTemplate<any>) => boolean) | undefined {
   const change: NuxtTemplateChange = { event: 'change', path }
   const filter = (template: ResolvedNuxtTemplate<any>) => {
+	NuxtLogger.error(`>>> Entering filter(template=${template})`, { "event.action": "filter", "logrite.template": template });
     const dependsOn = template.dependsOn
     if (typeof dependsOn === 'function') {
       return dependsOn(change, { nuxt, app, options: template.options })
@@ -40,6 +44,7 @@ export function createChangedFileFilter (nuxt: Nuxt, app: NuxtApp, path: string)
     if (template.src) {
       return isSamePath(template.src, path)
     }
+	NuxtLogger.warn(`<<< Exiting filter(template=${template})`, { "event.action": "filter", "logrite.template": template });
     return true
   }
 

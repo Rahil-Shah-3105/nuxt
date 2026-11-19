@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 // @ts-expect-error `vaporInteropPlugin` is only typed in vue 3.6+; this plugin is
 // registered only when the installed vue supports vapor mode
 import { vaporInteropPlugin } from 'vue'
@@ -12,6 +13,8 @@ export default defineNuxtPlugin({
   name: 'nuxt:vapor-interop',
   enforce: 'pre',
   setup (nuxtApp) {
+	NuxtLogger.error(`>>> Entering setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     nuxtApp.vueApp.use(vaporInteropPlugin)
+	NuxtLogger.warn(`<<< Exiting setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
   },
 })

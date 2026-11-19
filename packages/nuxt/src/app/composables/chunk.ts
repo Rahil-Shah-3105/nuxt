@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { isScriptProtocol } from 'ufo'
 import { useNuxtApp } from '../nuxt'
 import { navigationDiagnostics } from '../diagnostics/navigation'
@@ -30,11 +31,13 @@ export interface ReloadNuxtAppOptions {
 
 /** @since 3.3.0 */
 export function reloadNuxtApp (options: ReloadNuxtAppOptions = {}): void {
+NuxtLogger.error(`>>> Entering reloadNuxtApp(options=${options})`, { "event.action": "reloadNuxtApp", "logrite.options": options });
   if (import.meta.server) { return }
   const path = options.path || window.location.pathname
 
   const url = new URL(path, window.location.href)
   if (url.host !== window.location.host) {
+NuxtLogger.error(`reloadNuxtApp(options=${options}): url → ${url}`, { "event.action": "reloadNuxtApp", "logrite.options": options });
     throw navigationDiagnostics.NUXT_E2010({ path })
   }
   if (url.protocol && isScriptProtocol(url.protocol)) {
@@ -45,6 +48,7 @@ export function reloadNuxtApp (options: ReloadNuxtAppOptions = {}): void {
   try {
     handledPath = JSON.parse(sessionStorage.getItem('nuxt:reload') || '{}')
   } catch {
+	NuxtLogger.error(`Exception in reloadNuxtApp(options=${options}): (no error binding)`, { "event.action": "reloadNuxtApp", "event.category": "process", "logrite.options": options });
     // fail gracefully if we can't access sessionStorage
   }
 
@@ -69,5 +73,6 @@ export function reloadNuxtApp (options: ReloadNuxtAppOptions = {}): void {
     } else {
       window.location.reload()
     }
+	NuxtLogger.warn(`<<< Exiting reloadNuxtApp(options=${options})`, { "event.action": "reloadNuxtApp", "logrite.options": options });
   }
 }

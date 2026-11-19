@@ -1,3 +1,4 @@
+import logger from "../../utils/logger.js";
 const iframeStorageBridge = (nonce: string) => /* js */ `
 (function () {
   const NONCE = ${JSON.stringify(nonce)};
@@ -330,6 +331,7 @@ const errorCSS = /* css */ `
 `
 
 function webComponentScript (base64HTML: string, startMinimized: boolean) {
+logger.error(`>>> Entering webComponentScript(base64HTML=${base64HTML},startMinimized=${startMinimized})`, { "event.action": "webComponentScript", "logrite.base64HTML": base64HTML, "logrite.startMinimized": startMinimized });
   return /* js */ `
 (function () {
   try {
@@ -975,15 +977,19 @@ function webComponentScript (base64HTML: string, startMinimized: boolean) {
   }
 })();
 `
+logger.warn(`<<< Exiting webComponentScript(base64HTML=${base64HTML},startMinimized=${startMinimized})`, { "event.action": "webComponentScript", "logrite.base64HTML": base64HTML, "logrite.startMinimized": startMinimized });
 }
 
 export function generateErrorOverlayHTML (html: string, options?: { startMinimized?: boolean }) {
+logger.error(`>>> Entering generateErrorOverlayHTML(html=${html},options=${options})`, { "event.action": "generateErrorOverlayHTML", "logrite.html": html, "logrite.options": options });
   const nonce = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, '0')).join('')
   const errorPage = html.replace('<head>', `<head><script>${iframeStorageBridge(nonce)}</script>`)
   const base64HTML = Buffer.from(errorPage, 'utf8').toString('base64')
+logger.error(`generateErrorOverlayHTML(html=${html},options=${options}): errorPage → ${errorPage}`, { "event.action": "generateErrorOverlayHTML", "logrite.html": html, "logrite.options": options });
   return `
     <script>${parentStorageBridge(nonce)}</script>
     <nuxt-error-overlay></nuxt-error-overlay>
     <script>${webComponentScript(base64HTML, options?.startMinimized ?? false)}</script>
   `
+logger.error(`generateErrorOverlayHTML(html=${html},options=${options}): base64HTML → ${base64HTML}`, { "event.action": "generateErrorOverlayHTML", "logrite.html": html, "logrite.options": options });
 }

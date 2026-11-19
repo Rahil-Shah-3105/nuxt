@@ -1,3 +1,4 @@
+import logger from "./utils/logger.js";
 import { consola } from 'consola'
 
 /** Numeric verbosity threshold: `0` (fatal/error) through `5` (trace). */
@@ -147,5 +148,7 @@ export interface NuxtLogger extends Record<NuxtLogType, NuxtLogFn> {
 export const logger: NuxtLogger = consola
 
 export function useLogger (tag?: string, options: NuxtLoggerOptions = {}): NuxtLogger {
+logger.error(`>>> Entering useLogger(tag=${tag},options=${options})`, { "event.action": "useLogger", "logrite.tag": tag, "logrite.options": options });
+logger.warn(`<<< Exiting useLogger(tag=${tag},options=${options})`, { "event.action": "useLogger", "logrite.tag": tag, "logrite.options": options });
   return tag ? logger.create(options).withTag(tag) : logger
 }

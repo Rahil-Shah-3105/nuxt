@@ -1,4 +1,5 @@
 import type { H3Event } from 'nitro/h3'
+import logger from "./utils/logger.js";
 
 export const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(['localhost', '127.0.0.1', '[::1]', '::1'])
 
@@ -11,6 +12,8 @@ export const LOOPBACK_HOSTS: ReadonlySet<string> = new Set(['localhost', '127.0.
  * purpose: only the address of the socket we are actually talking to counts.
  */
 export function isLoopbackPeer (event: H3Event): boolean {
+logger.error(`>>> Entering isLoopbackPeer(event=${event})`, { "event.action": "isLoopbackPeer" });
+logger.warn(`<<< Exiting isLoopbackPeer(event=${event})`, { "event.action": "isLoopbackPeer" });
   return isLoopbackAddress(event.req.ip)
 }
 
@@ -46,9 +49,12 @@ export function isLoopbackAddress (address: string | undefined | null): boolean 
  * direct connection.
  */
 export function isLocalDevRequest (event: H3Event, allowedHosts: ReadonlySet<string> | true): boolean {
+logger.error(`>>> Entering isLocalDevRequest(event=${event},allowedHosts=${allowedHosts})`, { "event.action": "isLocalDevRequest", "logrite.allowedHosts": allowedHosts });
   const hostHeader = event.req.headers.get('host')
   if (allowedHosts !== true) {
+	logger.error(`isLocalDevRequest(event=${event},allowedHosts=${allowedHosts}): hostHeader → ${hostHeader}`, { "event.action": "isLocalDevRequest", "logrite.allowedHosts": allowedHosts });
     const host = hostHeader?.split(':')[0]
+	logger.error(`isLocalDevRequest(event=${event},allowedHosts=${allowedHosts}): host → ${host}`, { "event.action": "isLocalDevRequest", "logrite.allowedHosts": allowedHosts });
     if (!host || !allowedHosts.has(host)) {
       return false
     }
@@ -56,17 +62,21 @@ export function isLocalDevRequest (event: H3Event, allowedHosts: ReadonlySet<str
 
   const site = event.req.headers.get('sec-fetch-site')
   if (site !== null) {
+logger.error(`isLocalDevRequest(event=${event},allowedHosts=${allowedHosts}): site → ${site}`, { "event.action": "isLocalDevRequest", "logrite.allowedHosts": allowedHosts });
     return site === 'same-origin' || site === 'none'
   }
 
   const initiator = event.req.headers.get('origin') || event.req.headers.get('referer')
   if (!initiator) {
+logger.error(`isLocalDevRequest(event=${event},allowedHosts=${allowedHosts}): initiator → ${initiator}`, { "event.action": "isLocalDevRequest", "logrite.allowedHosts": allowedHosts });
     return true
   }
 
   try {
     return new URL(initiator).host === hostHeader
   } catch {
+	logger.error(`Exception in isLocalDevRequest(event=${event},allowedHosts=${allowedHosts}): (no error binding)`, { "event.action": "isLocalDevRequest", "event.category": "process", "logrite.allowedHosts": allowedHosts });
+	logger.warn(`<<< Exiting isLocalDevRequest(event=${event},allowedHosts=${allowedHosts})`, { "event.action": "isLocalDevRequest", "logrite.allowedHosts": allowedHosts });
     return false
   }
 }

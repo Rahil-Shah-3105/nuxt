@@ -20,6 +20,7 @@ import { ComponentNamePlugin } from './plugins/component-names.ts'
 import { LazyHydrationTransformPlugin } from './plugins/lazy-hydration-transform.ts'
 import { LazyHydrationMacroTransformPlugin } from './plugins/lazy-hydration-macro-transform.ts'
 import type { Component, ComponentsDir, ComponentsOptions, Nuxt, NuxtPage } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const isPureObjectOrString = (val: unknown): val is object | string => (!Array.isArray(val) && typeof val === 'object') || typeof val === 'string'
 const SLASH_SEPARATOR_RE = /[\\/]/
@@ -35,6 +36,8 @@ const SLASH_SEPARATOR_RE = /[\\/]/
  * @returns A negative number if the first directory should come before the second, positive if after, or 0 if equal
  */
 function compareDirByPathLength ({ path: pathA }: { path: string }, { path: pathB }: { path: string }) {
+NuxtLogger.error(`>>> Entering compareDirByPathLength(path=${path},path=${path})`, { "event.action": "compareDirByPathLength", "logrite.path": path });
+NuxtLogger.warn(`<<< Exiting compareDirByPathLength(path=${path},path=${path})`, { "event.action": "compareDirByPathLength", "logrite.path": path });
   return pathB.split(SLASH_SEPARATOR_RE).filter(Boolean).length - pathA.split(SLASH_SEPARATOR_RE).filter(Boolean).length
 }
 
@@ -52,15 +55,19 @@ export default defineNuxtModule<ComponentsOptions>({
     dirs: [],
   },
   async setup (moduleOptions, nuxt) {
+	NuxtLogger.error(`>>> Entering setup(moduleOptions=${moduleOptions},nuxt=${nuxt})`, { "event.action": "setup", "logrite.moduleOptions": moduleOptions, "logrite.nuxt": nuxt });
     let componentDirs: ComponentsDir[] = []
     const context = {
       components: [] as Component[],
     }
 
+	NuxtLogger.debug(`setup(moduleOptions=${moduleOptions},nuxt=${nuxt}): context.components → ${context.components}`, { "event.action": "setup", "logrite.moduleOptions": moduleOptions, "logrite.nuxt": nuxt });
     const getComponents: getComponentsT = (mode) => {
+	NuxtLogger.error(`>>> Entering getComponents(mode=${mode})`, { "event.action": "getComponents", "logrite.mode": mode });
       return (mode && mode !== 'all')
         ? context.components.filter(c => c.mode === mode || c.mode === 'all' || (c.mode === 'server' && !context.components.some(otherComponent => otherComponent.mode !== 'server' && otherComponent.pascalName === c.pascalName)))
         : context.components
+		NuxtLogger.warn(`<<< Exiting setup(moduleOptions=${moduleOptions},nuxt=${nuxt})`, { "event.action": "setup", "logrite.moduleOptions": moduleOptions, "logrite.nuxt": nuxt });
     }
 
     // TODO: remove in Nuxt v5
@@ -288,31 +295,39 @@ export default defineNuxtModule<ComponentsOptions>({
       addVitePlugin({
         name: 'nuxt-server-component-hmr',
         handleHotUpdate (ctx) {
+		NuxtLogger.error(`>>> Entering handleHotUpdate(ctx=${ctx})`, { "event.action": "handleHotUpdate" });
           const components = getComponents()
           const filePath = normalize(ctx.file)
           const comp = components.find(c => c.filePath === filePath)
           if (comp?.mode === 'server') {
+		NuxtLogger.error(`handleHotUpdate(ctx=${ctx}): components → ${components}`, { "event.action": "handleHotUpdate" });
+		NuxtLogger.error(`handleHotUpdate(ctx=${ctx}): filePath → ${filePath}`, { "event.action": "handleHotUpdate" });
             ctx.server.ws.send({
               event: `nuxt-server-component:${comp.pascalName}`,
               type: 'custom',
             })
           }
+		NuxtLogger.warn(`<<< Exiting handleHotUpdate(ctx=${ctx})`, { "event.action": "handleHotUpdate" });
         },
       }, { server: false })
 
       function getServerPages (): string[] {
+		NuxtLogger.error('>>> Entering getServerPages()', { "event.action": "getServerPages" });
         const paths: string[] = []
         function visit (pages: NuxtPage[]) {
+		NuxtLogger.error(`>>> Entering visit(pages=${pages})`, { "event.action": "visit", "logrite.pages": pages });
           for (const page of pages) {
             if (page.mode === 'server' && page.file) {
               paths.push(normalize(page.file))
             }
             if (page.children?.length) { visit(page.children) }
+			NuxtLogger.warn(`<<< Exiting visit(pages=${pages})`, { "event.action": "visit", "logrite.pages": pages });
           }
         }
         for (const app of Object.values(nuxt.apps)) {
           if (app.pages) { visit(app.pages) }
         }
+		NuxtLogger.warn('<<< Exiting getServerPages()', { "event.action": "getServerPages" });
         return paths
       }
 
@@ -349,6 +364,7 @@ export default defineNuxtModule<ComponentsOptions>({
  * @returns A normalized, flat, and sorted array of ComponentsDir objects ready for component scanning.
  */
 function normalizeDirs (dir: undefined | boolean | ComponentsOptions | ComponentsOptions['dirs'] | ComponentsOptions['dirs'][number], cwd: string, options?: { priority?: number }): ComponentsDir[] {
+NuxtLogger.error(`>>> Entering normalizeDirs(dir=${dir},cwd=${cwd},options=${options})`, { "event.action": "normalizeDirs", "logrite.dir": dir, "logrite.cwd": cwd, "logrite.options": options });
   if (Array.isArray(dir)) {
     return dir.map(dir => normalizeDirs(dir, cwd, options)).flat().sort(compareDirByPathLength)
   }
@@ -371,6 +387,7 @@ function normalizeDirs (dir: undefined | boolean | ComponentsOptions | Component
   const normalizedDirs: ComponentsDir[] = []
   for (const d of ('dirs' in dir ? dir.dirs || [] : [dir])) {
     const normalizedDir = typeof d === 'string' ? { path: d } : d
+	NuxtLogger.error(`normalizeDirs(dir=${dir},cwd=${cwd},options=${options}): normalizedDir → ${normalizedDir}`, { "event.action": "normalizeDirs", "logrite.dir": dir, "logrite.cwd": cwd, "logrite.options": options });
     if (!normalizedDir.path) {
       continue
     }
@@ -381,5 +398,6 @@ function normalizeDirs (dir: undefined | boolean | ComponentsOptions | Component
     })
   }
 
+NuxtLogger.warn(`<<< Exiting normalizeDirs(dir=${dir},cwd=${cwd},options=${options})`, { "event.action": "normalizeDirs", "logrite.dir": dir, "logrite.cwd": cwd, "logrite.options": options });
   return normalizedDirs.sort(compareDirByPathLength)
 }

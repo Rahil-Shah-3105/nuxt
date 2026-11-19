@@ -12,6 +12,7 @@ import genericNames from 'generic-names'
 import { IS_CSS_RE, isCSS, isVue, parseModuleId } from '../utils/index.ts'
 import { resolveClientEntry } from '../utils/config.ts'
 import escapeStringRegexp from 'escape-string-regexp'
+const _logger = createLogger()
 
 const SUPPORTED_FILES_RE = /\.(?:vue|(?:[cm]?j|t)sx?)$/
 const QUERY_RE = /\?.+$/
@@ -46,18 +47,22 @@ function wrapStringGenerateScopedName (
 }
 
 export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
+_logger.error(`>>> Entering SSRStylesPlugin(nuxt=${nuxt})`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
   if (nuxt.options.dev) { return }
 
   const envApi = nuxt.options.experimental.nitroViteEnvironment
 
   const chunksWithInlinedCSS = new Set<string>()
   // Client module graph (ids and importers with any query stripped), used to
+_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): chunksWithInlinedCSS → ${chunksWithInlinedCSS}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
   // check which components a CSS source can be reached from.
   const clientImporters = new Map<string, Set<string>>()
   // For each emitted CSS asset (base file name), the CSS source module ids
+_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): clientImporters → ${clientImporters}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
   // bundled into it.
   const cssSourcesByCSSFile = new Map<string, Set<string>>()
   const clientCSSMap: Record<string, Set<string>> = {}
+_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): cssSourcesByCSSFile → ${cssSourcesByCSSFile}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
 
   const stripQuery = (id: string) => id.replace(QUERY_RE, '')
 
@@ -67,10 +72,12 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
   // gate on. Insert the params *before* that trailing marker so the id keeps its
   // CSS suffix and stays visible to extension-gated transforms. (#29232)
   const withInlineQuery = (id: string) => {
+	_logger.error(`>>> Entering withInlineQuery(id=${id})`, { "event.action": "withInlineQuery", "logrite.id": id });
     const match = id.match(/([?&])lang\.[^&?]+$/)
     if (match) {
       return id.slice(0, match.index) + match[1] + 'inline&used&' + id.slice(match.index! + 1)
     }
+	_logger.error(`withInlineQuery(id=${id}): match → ${match}`, { "event.action": "withInlineQuery", "logrite.id": id });
     return id + (id.includes('?') ? '&' : '?') + 'inline&used'
   }
 
@@ -83,33 +90,43 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
   // inline styles emitted.
   const inlinedCSSConsumers = new Map<string, Set<string>>()
 
+_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): inlinedCSSConsumers → ${inlinedCSSConsumers}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
   // A CSS source is only safe to drop when every path from it up through the
   // client module graph reaches a component that inlines it. With a
   // function-valued `inlineStyles` (the default is one) a shared CSS source can
   // be inlined for one importer while another still relies on the link.
   const isInlinedForEveryImporter = (cssId: string) => {
+	_logger.error(`>>> Entering isInlinedForEveryImporter(cssId=${cssId})`, { "event.action": "isInlinedForEveryImporter", "logrite.cssId": cssId });
     const consumers = inlinedCSSConsumers.get(cssId)
     if (!consumers) { return false }
+	_logger.error(`isInlinedForEveryImporter(cssId=${cssId}): consumers → ${consumers}`, { "event.action": "isInlinedForEveryImporter", "logrite.cssId": cssId });
     const seen = new Set<string>()
     const queue = [cssId]
+	_logger.error(`isInlinedForEveryImporter(cssId=${cssId}): seen → ${seen}`, { "event.action": "isInlinedForEveryImporter", "logrite.cssId": cssId });
     while (queue.length) {
       const importer = queue.shift()!
+	_logger.error(`isInlinedForEveryImporter(cssId=${cssId}): importer → ${importer}`, { "event.action": "isInlinedForEveryImporter", "logrite.cssId": cssId });
       if (seen.has(importer)) { continue }
       seen.add(importer)
       if (consumers.has(relativeToSrcDir(importer))) { continue }
       const parents = clientImporters.get(importer)
       if (!parents?.size) { return false }
+	_logger.error(`isInlinedForEveryImporter(cssId=${cssId}): parents → ${parents}`, { "event.action": "isInlinedForEveryImporter", "logrite.cssId": cssId });
       queue.push(...parents)
     }
+	_logger.warn(`<<< Exiting isInlinedForEveryImporter(cssId=${cssId})`, { "event.action": "isInlinedForEveryImporter", "logrite.cssId": cssId });
     return true
   }
 
   const isDroppableCSSFile = (file: string) => {
+	_logger.error(`>>> Entering isDroppableCSSFile(file=${file})`, { "event.action": "isDroppableCSSFile", "logrite.file": file });
     const sources = cssSourcesByCSSFile.get(basename(file))
     if (!sources?.size) { return false }
+	_logger.error(`isDroppableCSSFile(file=${file}): sources → ${sources}`, { "event.action": "isDroppableCSSFile", "logrite.file": file });
     for (const cssId of sources) {
       if (!isInlinedForEveryImporter(cssId)) { return false }
     }
+	_logger.warn(`<<< Exiting isDroppableCSSFile(file=${file})`, { "event.action": "isDroppableCSSFile", "logrite.file": file });
     return true
   }
 
@@ -119,6 +136,7 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
   // link when every group has at least one module in `ssrContext.modules`.
   const inlinedCSSConditions = new Map<string, string[][]>()
 
+_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): inlinedCSSConditions → ${inlinedCSSConditions}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
   const serializeInlinedCSSConditions = () => JSON.stringify(Object.fromEntries(inlinedCSSConditions))
 
   /**
@@ -132,12 +150,16 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
    * `ssrContext.modules`.
    */
   const dropCSSFile = (file: string, entryIds: Set<string>) => {
+	_logger.error(`>>> Entering dropCSSFile(file=${file},entryIds=${entryIds})`, { "event.action": "dropCSSFile", "logrite.file": file, "logrite.entryIds": entryIds });
     const cssFile = basename(file)
     const sources = cssSourcesByCSSFile.get(cssFile)!
+	_logger.error(`dropCSSFile(file=${file},entryIds=${entryIds}): cssFile → ${cssFile}`, { "event.action": "dropCSSFile", "logrite.file": file, "logrite.entryIds": entryIds });
+	_logger.error(`dropCSSFile(file=${file},entryIds=${entryIds}): sources → ${sources}`, { "event.action": "dropCSSFile", "logrite.file": file, "logrite.entryIds": entryIds });
     const conditions: string[][] = []
     for (const cssId of sources) {
       const consumers = inlinedCSSConsumers.get(cssId)
       if (!consumers?.size) { continue }
+	_logger.error(`dropCSSFile(file=${file},entryIds=${entryIds}): consumers → ${consumers}`, { "event.action": "dropCSSFile", "logrite.file": file, "logrite.entryIds": entryIds });
       let alwaysRendered = false
       for (const consumer of consumers) {
         if (entryIds.has(consumer)) {
@@ -151,6 +173,7 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
     }
     if (!conditions.length) { return true }
     inlinedCSSConditions.set(cssFile, conditions)
+	_logger.warn(`<<< Exiting dropCSSFile(file=${file},entryIds=${entryIds})`, { "event.action": "dropCSSFile", "logrite.file": file, "logrite.entryIds": entryIds });
     return false
   }
 
@@ -160,8 +183,10 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
    * component by filename rather than through the module graph.
    */
   const dropComponentCSSFile = (file: string, componentId: string, entryIds: Set<string>) => {
+	_logger.error(`>>> Entering dropComponentCSSFile(file=${file},componentId=${componentId},entryIds=${entryIds})`, { "event.action": "dropComponentCSSFile", "logrite.file": file, "logrite.componentId": componentId, "logrite.entryIds": entryIds });
     if (entryIds.has(componentId)) { return true }
     inlinedCSSConditions.set(basename(file), [[componentId]])
+	_logger.warn(`<<< Exiting dropComponentCSSFile(file=${file},componentId=${componentId},entryIds=${entryIds})`, { "event.action": "dropComponentCSSFile", "logrite.file": file, "logrite.componentId": componentId, "logrite.entryIds": entryIds });
     return false
   }
 
@@ -169,6 +194,7 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
   nuxt.hook('build:manifest', (manifest) => {
     const entryIds = new Set<string>()
 
+	_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): entryIds → ${entryIds}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
     // The set of components whose CSS is inlined is derived from `cssMap`
     // directly (entries with bundled, non-empty CSS). `build:manifest` can fire
     // before the styles `generateBundle` has run, so we must not depend on the
@@ -203,11 +229,13 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
       if (chunk.imports && chunk.src) {
         const componentBaseName = _filename(chunk.src)
         for (const imp of chunk.imports) {
+		_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): componentBaseName → ${componentBaseName}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
           const imported = manifest[imp]
           if (imported?.css?.length && !imported.isEntry && !imported.src) {
             // Only clear if ALL CSS files in the chunk match this component
             const allMatch = imported.css.every((css: string) => css.startsWith(componentBaseName + '.'))
             if (allMatch) {
+			_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): allMatch → ${allMatch}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
               imported.css = imported.css.filter(file => !dropComponentCSSFile(file, id, entryIds))
             }
           }
@@ -239,6 +267,7 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
   const chunkNamePrefixes = new Map<string, string>()
   const usedChunkNamePrefixes = new Set<string>()
 
+_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): chunkNamePrefixes → ${chunkNamePrefixes}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
   const options = {
     shouldInline: nuxt.options.features.inlineStyles,
     globalCSS: nuxt.options.css,
@@ -247,16 +276,19 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
   // relative file lookup has duplicate checks
   const relativeCache = new Map<string, string>()
   const relativeToSrcDir = (path: string) => {
+_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): relativeCache → ${relativeCache}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
     let cached = relativeCache.get(path)
     if (cached === undefined) {
       cached = relative(nuxt.options.srcDir, path)
       relativeCache.set(path, cached)
     }
+	_logger.error(`relativeToSrcDir(path=${path}): cached → ${cached}`, { "event.action": "relativeToSrcDir", "logrite.path": path });
     return cached
   }
 
   const warnCache = new Set<string>()
   const components = nuxt.apps.default!.components || []
+_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): warnCache → ${warnCache}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
   const islands = components.filter(component =>
     component.island ||
     // .server components without a corresponding .client component will need to be rendered as an island
@@ -264,6 +296,7 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
   )
   const islandPaths = new Set(islands.map(c => c.filePath))
 
+_logger.error(`SSRStylesPlugin(nuxt=${nuxt}): islandPaths → ${islandPaths}`, { "event.action": "SSRStylesPlugin", "logrite.nuxt": nuxt });
   // Server pages (.server.vue) are not in the components list but still need
   // their CSS extracted for inline delivery via the island handler.
   const flattenPages = (pages?: NuxtPage[]): NuxtPage[] =>
@@ -272,11 +305,13 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
   const serverPages = pages.filter(({ mode, file }) => mode === 'server' && file)
   const serverPagePaths = new Set(serverPages.map(({ file }) => file!))
 
+_logger.error(`flattenPages(pages=${pages}): pages → ${pages}`, { "event.action": "flattenPages", "logrite.pages": pages });
   let entry: string
 
   return {
     name: 'ssr-styles',
     config (config) {
+	_logger.error(`>>> Entering config(config=${config})`, { "event.action": "config", "logrite.config": config });
       if (!nuxt.options.features.inlineStyles) { return }
       const modules = config.css?.modules
       if (typeof modules !== 'object' || !modules || typeof modules.generateScopedName !== 'string') { return }
@@ -284,14 +319,18 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
       modules.generateScopedName = wrapStringGenerateScopedName(modules.generateScopedName, hashPrefix)
     },
     configResolved (config) {
+	_logger.error(`>>> Entering configResolved(config=${config})`, { "event.action": "configResolved", "logrite.config": config });
       entry = resolveClientEntry(config)
+	_logger.warn(`<<< Exiting configResolved(config=${config})`, { "event.action": "configResolved", "logrite.config": config });
     },
     applyToEnvironment (environment) {
+	_logger.error(`>>> Entering applyToEnvironment(environment=${environment})`, { "event.action": "applyToEnvironment", "logrite.environment": environment });
       if (environment.name !== 'client' && environment.name !== 'ssr') { return false }
       return {
         name: `nuxt:ssr-styles:${environment.name}`,
         enforce: 'pre',
         buildStart () {
+		_logger.error('>>> Entering buildStart()', { "event.action": "buildStart" });
           if (!envApi && this.environment.name === 'ssr') {
             const stylesPath = resolve(this.environment.config.build.outDir, 'styles.mjs')
             setBuildOutput('ssrStyles', () => [
@@ -308,6 +347,7 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
             },
           },
           async handler (id, importer, _options) {
+			_logger.error(`>>> Entering handler(id=${id},importer=${importer},_options=${_options})`, { "event.action": "handler", "logrite.id": id, "logrite.importer": importer, "logrite._options": _options });
             // We want to remove side effects (namely, emitting CSS) from `.vue` files and explicitly imported `.css` files
             // but only as long as we are going to inline that CSS.
             if ((options.shouldInline === false || (typeof options.shouldInline === 'function' && !options.shouldInline(importer)))) {
@@ -316,14 +356,17 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
 
             const res = await this.resolve(id, importer, { ..._options, skipSelf: true })
             if (res) {
+			_logger.error(`handler(id=${id},importer=${importer},_options=${_options}): res → ${res}`, { "event.action": "handler", "logrite.id": id, "logrite.importer": importer, "logrite._options": _options });
               return {
                 ...res,
                 moduleSideEffects: false,
               }
+			_logger.warn(`<<< Exiting handler(id=${id},importer=${importer},_options=${_options})`, { "event.action": "handler", "logrite.id": id, "logrite.importer": importer, "logrite._options": _options });
             }
           },
         },
         generateBundle (outputOptions, bundle) {
+		_logger.error(`>>> Entering generateBundle(outputOptions=${outputOptions},bundle=${bundle})`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
           if (environment.name === 'client') {
             for (const chunk of Object.values(bundle)) {
               if (chunk.type !== 'chunk') { continue }
@@ -332,14 +375,17 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
                 const importers = clientImporters.get(id) ?? new Set()
                 clientImporters.set(id, importers)
                 for (const importer of this.getModuleInfo(moduleId)?.importers ?? []) {
+				_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): id → ${id}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
                   const importerId = stripQuery(importer)
                   if (importerId !== id) {
+				_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): importerId → ${importerId}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
                     importers.add(importerId)
                   }
                 }
               }
               const cssSources = new Set<string>()
               for (const moduleId of chunk.moduleIds) {
+			_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): cssSources → ${cssSources}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
                 if (isCSS(moduleId)) {
                   cssSources.add(stripQuery(moduleId))
                 }
@@ -350,6 +396,7 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
                   const sources = cssSourcesByCSSFile.get(cssFile) ?? new Set<string>()
                   cssSourcesByCSSFile.set(cssFile, sources)
                   for (const cssId of cssSources) {
+				_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): cssFile → ${cssFile}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
                     sources.add(cssId)
                   }
                 }
@@ -361,10 +408,12 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
           const emitted: Record<string, string> = {}
           const usedNames = new Set<string>()
           for (const [file, { files, inBundle }] of Object.entries(cssMap)) {
+		_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): usedNames → ${usedNames}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
             // File has been tree-shaken out of build (or there are no styles to inline)
             if (!files.length || !inBundle) { continue }
             const baseName = filename(file)
             let assetName = `${baseName}-styles.mjs`
+			_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): baseName → ${baseName}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
             for (let i = 2; usedNames.has(assetName); i++) {
               assetName = `${baseName}-styles-${i}.mjs`
             }
@@ -380,19 +429,24 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
                   source: '',
                 })
 
+			_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): base → ${base}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
             const baseDir = dirname(base)
 
+			_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): baseDir → ${baseDir}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
             const cssImports = new Set<string>()
             const exportNames = new Set<string>()
             const importStatements = new Set<string>()
             let i = 0
+			_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): cssImports → ${cssImports}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
             for (const css of files) {
               const file = this.getFileName(css)
               if (cssImports.has(file)) {
+			_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): file → ${file}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
                 continue
               }
               cssImports.add(file)
               const name = `style_${i++}`
+			_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): name → ${name}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
               importStatements.add(genImport(`./${relative(baseDir, file)}`, name))
               exportNames.add(name)
             }
@@ -432,8 +486,10 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
               `export const inlinedCSS = ${serializeInlinedCSSConditions()}`,
             ].join('\n'), nuxt)
           }
+			_logger.error(`generateBundle(outputOptions=${outputOptions},bundle=${bundle}): stylesMapEntries → ${stylesMapEntries}`, { "event.action": "generateBundle", "logrite.outputOptions": outputOptions, "logrite.bundle": bundle });
         },
         renderChunk (_code, chunk) {
+		_logger.error(`>>> Entering renderChunk(_code=${_code},chunk=${chunk})`, { "event.action": "renderChunk", "logrite._code": _code, "logrite.chunk": chunk });
           const isEntry = chunk.facadeModuleId === entry
           if (isEntry) {
             clientCSSMap[chunk.facadeModuleId!] ||= new Set()
@@ -444,6 +500,7 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
             if (environment.name === 'client') {
               const moduleMap = clientCSSMap[moduleId] ||= new Set()
               if (isCSS(moduleId)) {
+			_logger.error(`renderChunk(_code=${_code},chunk=${chunk}): moduleMap → ${moduleMap}`, { "event.action": "renderChunk", "logrite._code": _code, "logrite.chunk": chunk });
                 // Vue files can (also) be their own entrypoints as they are tracked separately
                 if (isVue(moduleId)) {
                   moduleMap.add(moduleId)
@@ -466,10 +523,12 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
 
             const relativePath = relativeToSrcDir(stripQuery(moduleId))
             if (relativePath in cssMap) {
+			_logger.error(`renderChunk(_code=${_code},chunk=${chunk}): relativePath → ${relativePath}`, { "event.action": "renderChunk", "logrite._code": _code, "logrite.chunk": chunk });
               cssMap[relativePath]!.inBundle = cssMap[relativePath]!.inBundle ?? ((isVue(stripQuery(moduleId)) && !!relativePath) || isEntry)
             }
           }
 
+		_logger.warn(`<<< Exiting renderChunk(_code=${_code},chunk=${chunk})`, { "event.action": "renderChunk", "logrite._code": _code, "logrite.chunk": chunk });
           return null
         },
         transform: {
@@ -482,15 +541,18 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
             },
           },
           async handler (code, id, meta?: unknown) {
+			_logger.error(`>>> Entering handler(code=${code},id=${id},meta=${meta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
             if (environment.name === 'client') {
               // We will either teleport global CSS to the 'entry' chunk on the server side
               // or include it here in the client build so it is emitted in the CSS.
               if (id === entry && (options.shouldInline === true || (typeof options.shouldInline === 'function' && options.shouldInline(id)))) {
                 const idClientCSSMap = clientCSSMap[id] ||= new Set()
                 if (!options.globalCSS.length) { return }
+				_logger.error(`handler(code=${code},id=${id},meta=${meta}): idClientCSSMap → ${idClientCSSMap}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
 
                 const s = rolldownString(code, id, meta)
                 for (const file of options.globalCSS) {
+				_logger.error(`handler(code=${code},id=${id},meta=${meta}): s → ${s}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
                   const resolved = await this.resolve(file) ?? await this.resolve(file, id)
                   const fileInline = withInlineQuery(file)
                   const res = await this.resolve(fileInline) ?? await this.resolve(fileInline, id)
@@ -525,12 +587,16 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
 
             const relativeId = relativeToSrcDir(stripQuery(id))
             const idMap = cssMap[relativeId] ||= { files: [] }
+			_logger.error(`handler(code=${code},id=${id},meta=${meta}): relativeId → ${relativeId}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
             const idCssIds = idMap.cssIds ||= new Set()
 
+			_logger.error(`handler(code=${code},id=${id},meta=${meta}): idCssIds → ${idCssIds}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
             const emittedIds = new Set<string>()
             let chunkNamePrefix = chunkNamePrefixes.get(relativeId)
             if (chunkNamePrefix === undefined) {
+			_logger.error(`handler(code=${code},id=${id},meta=${meta}): emittedIds → ${emittedIds}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
               const baseName = filename(id) || 'styles'
+			_logger.error(`handler(code=${code},id=${id},meta=${meta}): baseName → ${baseName}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
               chunkNamePrefix = baseName
               for (let i = 2; usedChunkNamePrefixes.has(chunkNamePrefix); i++) {
                 chunkNamePrefix = `${baseName}-${i}`
@@ -548,6 +614,7 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
               const resolved = await this.resolve(file) ?? await this.resolve(file, id)
               const res = await this.resolve(fileInline) ?? await this.resolve(fileInline, id)
               if (!resolved || !res) {
+			_logger.error(`handler(code=${code},id=${id},meta=${meta}): fileInline → ${fileInline}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
                 if (!warnCache.has(file)) {
                   warnCache.add(file)
                   this.warn(`[nuxt] Cannot extract styles for \`${file}\`. Its styles will not be inlined when server-rendering.`)
@@ -581,9 +648,11 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
 
               const resolved = await this.resolve(specifier, id)
               if (!resolved) { continue }
+			_logger.error(`handler(code=${code},id=${id},meta=${meta}): resolved → ${resolved}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
               const resolvedIdInline = withInlineQuery(resolved.id)
               const res = await this.resolve(resolvedIdInline)
               if (!res) {
+			_logger.error(`handler(code=${code},id=${id},meta=${meta}): resolvedIdInline → ${resolvedIdInline}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
                 if (!warnCache.has(resolved.id)) {
                   warnCache.add(resolved.id)
                   this.warn(`[nuxt] Cannot extract styles for \`${specifier}\`. Its styles will not be inlined when server-rendering.`)
@@ -607,6 +676,7 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
               }
 
               idMap.files.push(ref)
+			_logger.warn(`<<< Exiting handler(code=${code},id=${id},meta=${meta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
             }
           },
         },
@@ -616,15 +686,19 @@ export function SSRStylesPlugin (nuxt: Nuxt): Plugin | undefined {
 }
 
 function filename (name: string) {
+_logger.error(`>>> Entering filename(name=${name})`, { "event.action": "filename", "logrite.name": name });
+_logger.warn(`<<< Exiting filename(name=${name})`, { "event.action": "filename", "logrite.name": name });
   return _filename(name.replace(QUERY_RE, ''))
 }
 
 function getStaticImportSpecifiers (program: ReturnType<Rollup.PluginContext['parse']>) {
+_logger.error(`>>> Entering getStaticImportSpecifiers(program=${program})`, { "event.action": "getStaticImportSpecifiers", "logrite.program": program });
   const specifiers: string[] = []
   for (const node of program.body) {
     if (node.type === 'ImportDeclaration') {
       specifiers.push(node.source.value)
     }
   }
+_logger.warn(`<<< Exiting getStaticImportSpecifiers(program=${program})`, { "event.action": "getStaticImportSpecifiers", "logrite.program": program });
   return specifiers
 }

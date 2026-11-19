@@ -12,26 +12,36 @@ import { checkForExternalConfigurationFiles } from './external-config-files.ts'
 import { createChangedFileFilter } from './template-dependencies.ts'
 import { cleanupCaches, getVueHash } from './cache.ts'
 import type { Nuxt, NuxtBuilder, NuxtHooks } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 export async function build (nuxt: Nuxt): Promise<void> {
+NuxtLogger.error(`>>> Entering build(nuxt=${nuxt})`, { "event.action": "build", "logrite.nuxt": nuxt });
   nuxt._perf?.startPhase('app:generate')
   const app = createApp(nuxt)
   nuxt.apps.default = app
+NuxtLogger.error(`build(nuxt=${nuxt}): app → ${app}`, { "event.action": "build", "logrite.nuxt": nuxt });
+NuxtLogger.debug(`build(nuxt=${nuxt}): app.mainComponent → ${app.mainComponent}`, { "event.action": "build", "logrite.nuxt": nuxt });
+NuxtLogger.debug(`build(nuxt=${nuxt}): app.errorComponent → ${app.errorComponent}`, { "event.action": "build", "logrite.nuxt": nuxt });
 
   let closing = false
   const writes = new Set<Promise<unknown>>()
   const track = async <T> (run: () => Promise<T>) => {
+NuxtLogger.error(`build(nuxt=${nuxt}): writes → ${writes}`, { "event.action": "build", "logrite.nuxt": nuxt });
     if (closing) { return }
     const p = run()
     writes.add(p)
     try { await p } finally { writes.delete(p) }
+	NuxtLogger.error(`build(nuxt=${nuxt}): p → ${p}`, { "event.action": "build", "logrite.nuxt": nuxt });
   }
   const generateApp = debounce(() => _generateApp(nuxt, app), undefined, { leading: true })
   await generateApp()
   nuxt._perf?.endPhase('app:generate')
 
+NuxtLogger.error(`build(nuxt=${nuxt}): track → ${track}`, { "event.action": "build", "logrite.nuxt": nuxt });
+NuxtLogger.error(`build(nuxt=${nuxt}): generateApp → ${generateApp}`, { "event.action": "build", "logrite.nuxt": nuxt });
   const builder = nuxt.options._prepare ? undefined : await resolveBuilder(nuxt)
 
+NuxtLogger.error(`build(nuxt=${nuxt}): builder → ${builder}`, { "event.action": "build", "logrite.nuxt": nuxt });
   if (nuxt.options.dev) {
     if (nuxt.options.experimental.watcher === 'builder' && builder?.setupWatcher) {
       await builder.setupWatcher(nuxt)
@@ -55,8 +65,10 @@ export async function build (nuxt: Nuxt): Promise<void> {
       if (event === 'add' || event === 'unlink') {
         const path = resolve(nuxt.options.srcDir, relativePath)
         for (const dirs of getLayerDirectories(nuxt)) {
+		NuxtLogger.error(`build(nuxt=${nuxt}): path → ${path}`, { "event.action": "build", "logrite.nuxt": nuxt });
           const relativePath = relative(dirs.app, path)
           if (/^app\./i.test(relativePath)) {
+		NuxtLogger.error(`build(nuxt=${nuxt}): relativePath → ${relativePath}`, { "event.action": "build", "logrite.nuxt": nuxt });
             app.mainComponent = undefined
             break
           }
@@ -71,6 +83,7 @@ export async function build (nuxt: Nuxt): Promise<void> {
       if (event === 'change' && app.templates.length) {
         const filter = createChangedFileFilter(nuxt, app, resolve(nuxt.options.srcDir, relativePath))
         if (!filter) { return }
+		NuxtLogger.error(`build(nuxt=${nuxt}): filter → ${filter}`, { "event.action": "build", "logrite.nuxt": nuxt });
         await track(() => _generateApp(nuxt, app, { filter }))
         return
       }
@@ -90,6 +103,7 @@ export async function build (nuxt: Nuxt): Promise<void> {
     const { restoreCache, collectCache, clientCachePlugin } = await getVueHash(nuxt)
     const hit = await restoreCache()
 
+	NuxtLogger.error(`build(nuxt=${nuxt}): hit → ${hit}`, { "event.action": "build", "logrite.nuxt": nuxt });
     if (hit && !nuxt.options.experimental.nitroViteEnvironment) {
       // `@nuxt/nitro-server` builds nitro from `build:done` in the legacy path
       await nuxt.callHook('build:done')
@@ -146,6 +160,7 @@ export async function build (nuxt: Nuxt): Promise<void> {
   if (!nuxt.options.dev) {
     await nuxt.callHook('close', nuxt)
   }
+	NuxtLogger.warn(`<<< Exiting build(nuxt=${nuxt})`, { "event.action": "build", "logrite.nuxt": nuxt });
 }
 
 const watchEvents: Record<EventType, 'add' | 'addDir' | 'change' | 'unlink' | 'unlinkDir'> = {
@@ -155,24 +170,31 @@ const watchEvents: Record<EventType, 'add' | 'addDir' | 'change' | 'unlink' | 'u
 }
 
 async function watch (nuxt: Nuxt) {
+NuxtLogger.error(`>>> Entering watch(nuxt=${nuxt})`, { "event.action": "watch", "logrite.nuxt": nuxt });
   if (nuxt.options.experimental.watcher === 'parcel') {
     const success = await createParcelWatcher()
     if (success) { return }
+	NuxtLogger.error(`watch(nuxt=${nuxt}): success → ${success}`, { "event.action": "watch", "logrite.nuxt": nuxt });
   }
 
   if (nuxt.options.experimental.watcher === 'chokidar') {
     return createWatcher()
   }
 
+NuxtLogger.warn(`<<< Exiting watch(nuxt=${nuxt})`, { "event.action": "watch", "logrite.nuxt": nuxt });
   return createGranularWatcher()
 }
 
 function createWatcher () {
+NuxtLogger.error('>>> Entering createWatcher()', { "event.action": "createWatcher" });
   const nuxt = useNuxt()
   const isIgnored = createIsIgnored(nuxt)
 
+NuxtLogger.error(`createWatcher(): nuxt → ${nuxt}`, { "event.action": "createWatcher" });
+NuxtLogger.error(`createWatcher(): isIgnored → ${isIgnored}`, { "event.action": "createWatcher" });
   const layerDirs = getLayerDirectories(nuxt)
   const paths: string[] = []
+NuxtLogger.error(`createWatcher(): layerDirs → ${layerDirs}`, { "event.action": "createWatcher" });
   for (const layer of layerDirs) {
     paths.push(layer.app)
     // Only add server if it's not inside app (avoid double-watching)
@@ -190,9 +212,11 @@ function createWatcher () {
   const restartPaths = new Set<string>()
   const srcDir = nuxt.options.srcDir.replace(/\/?$/, '/')
   for (const pattern of nuxt.options.watch) {
+NuxtLogger.error(`createWatcher(): restartPaths → ${restartPaths}`, { "event.action": "createWatcher" });
     if (typeof pattern !== 'string') { continue }
     const path = resolve(nuxt.options.srcDir, pattern)
     if (!path.startsWith(srcDir)) {
+	NuxtLogger.error(`createWatcher(): path → ${path}`, { "event.action": "createWatcher" });
       restartPaths.add(path)
     }
   }
@@ -208,15 +232,20 @@ function createWatcher () {
 
   const disposeRecovery = recoverThrottledChanges(watcher)
   nuxt.hook('close', () => {
+NuxtLogger.error(`createWatcher(): disposeRecovery → ${disposeRecovery}`, { "event.action": "createWatcher" });
     disposeRecovery()
+	NuxtLogger.warn('<<< Exiting createWatcher()', { "event.action": "createWatcher" });
     return watcher?.close()
   })
 }
 
 function createGranularWatcher () {
+NuxtLogger.error('>>> Entering createGranularWatcher()', { "event.action": "createGranularWatcher" });
   const nuxt = useNuxt()
   const isIgnored = createIsIgnored(nuxt)
 
+NuxtLogger.error(`createGranularWatcher(): nuxt → ${nuxt}`, { "event.action": "createGranularWatcher" });
+NuxtLogger.error(`createGranularWatcher(): isIgnored → ${isIgnored}`, { "event.action": "createGranularWatcher" });
   if (nuxt.options.debug && nuxt.options.debug.watchers) {
     // eslint-disable-next-line no-console
     console.time('[nuxt] builder:chokidar:watch')
@@ -227,11 +256,14 @@ function createGranularWatcher () {
   const ignoredDirs = new Set([...nuxt.options.modulesDir, nuxt.options.buildDir])
   const pathsToWatch = resolvePathsToWatch(nuxt)
   for (const dir of pathsToWatch) {
+NuxtLogger.error(`createGranularWatcher(): ignoredDirs → ${ignoredDirs}`, { "event.action": "createGranularWatcher" });
     pending++
     const watcher = chokidarWatch(dir, { ...nuxt.options.watchers.chokidar, ignoreInitial: false, depth: 0, ignored: [isIgnored, /[\\/]node_modules[\\/]/] })
     const watchers: Record<string, FSWatcher> = {}
+	NuxtLogger.error(`createGranularWatcher(): watcher → ${watcher}`, { "event.action": "createGranularWatcher" });
     const disposers = new Map<string, () => void>()
 
+	NuxtLogger.error(`createGranularWatcher(): disposers → ${disposers}`, { "event.action": "createGranularWatcher" });
     watcher.on('all', (event, path) => {
       if (event === 'all' || event === 'ready' || event === 'error' || event === 'raw') {
         return
@@ -264,6 +296,7 @@ function createGranularWatcher () {
     })
     const disposeRecovery = recoverThrottledChanges(watcher)
     watcher.on('ready', () => {
+	NuxtLogger.error(`createGranularWatcher(): disposeRecovery → ${disposeRecovery}`, { "event.action": "createGranularWatcher" });
       pending--
       if (nuxt.options.debug && nuxt.options.debug.watchers && !pending) {
         // eslint-disable-next-line no-console
@@ -277,11 +310,14 @@ function createGranularWatcher () {
       return watcher?.close()
     })
   }
+	NuxtLogger.warn('<<< Exiting createGranularWatcher()', { "event.action": "createGranularWatcher" });
 }
 
 async function createParcelWatcher () {
+NuxtLogger.error('>>> Entering createParcelWatcher()', { "event.action": "createParcelWatcher" });
   const nuxt = useNuxt()
   if (nuxt.options.debug && nuxt.options.debug.watchers) {
+	NuxtLogger.error(`createParcelWatcher(): nuxt → ${nuxt}`, { "event.action": "createParcelWatcher" });
     // eslint-disable-next-line no-console
     console.time('[nuxt] builder:parcel:watch')
   }
@@ -289,12 +325,14 @@ async function createParcelWatcher () {
   try {
     ({ subscribe } = await importModule<typeof import('@parcel/watcher')>('@parcel/watcher', { url: [nuxt.options.rootDir, ...nuxt.options.modulesDir].map(d => directoryToURL(d)) }))
   } catch {
+	NuxtLogger.error('Exception in createParcelWatcher()', { "event.action": "createParcelWatcher", "event.category": "process" });
     buildDiagnostics.NUXT_B1015({ installCommand: await getAddDependencyCommand('@parcel/watcher', nuxt.options.rootDir, { dev: true }) })
     return false
   }
   try {
     const pathsToWatch = resolvePathsToWatch(nuxt, { parentDirectories: true })
     for (const dir of pathsToWatch) {
+	NuxtLogger.error(`createParcelWatcher(): pathsToWatch → ${pathsToWatch}`, { "event.action": "createParcelWatcher" });
       if (!await isDirectory(dir)) { continue }
       const subscription = await subscribe(dir, (err, events) => {
         if (err) { return }
@@ -317,24 +355,30 @@ async function createParcelWatcher () {
     return true
   } catch {
     buildDiagnostics.NUXT_B1016()
+	NuxtLogger.warn('<<< Exiting createParcelWatcher()', { "event.action": "createParcelWatcher" });
     return false
   }
 }
 
 async function resolveBuilder (nuxt: Nuxt): Promise<NuxtBuilder> {
+NuxtLogger.error(`>>> Entering resolveBuilder(nuxt=${nuxt})`, { "event.action": "resolveBuilder", "logrite.nuxt": nuxt });
   const source = typeof nuxt.options.builder === 'string'
     ? await loadBuilder(nuxt, nuxt.options.builder)
     : nuxt.options.builder
 
+NuxtLogger.error(`resolveBuilder(nuxt=${nuxt}): source → ${source}`, { "event.action": "resolveBuilder", "logrite.nuxt": nuxt });
   // Wrap `bundle` so the `build:error` hook fires for any builder, including
   // user-supplied ones, without each caller having to remember to do it.
   return {
     ...source,
     async bundle (nuxt) {
+	NuxtLogger.error(`>>> Entering bundle(nuxt=${nuxt})`, { "event.action": "bundle", "logrite.nuxt": nuxt });
       try {
         await source.bundle(nuxt)
       } catch (error: any) {
+		NuxtLogger.error(`Exception in bundle(nuxt=${nuxt}): ${(error as Error).message}`, error, { "event.action": "bundle", "event.category": "process", "logrite.nuxt": nuxt });
         await nuxt.callHook('build:error', error)
+		NuxtLogger.warn(`<<< Exiting bundle(nuxt=${nuxt})`, { "event.action": "bundle", "logrite.nuxt": nuxt });
         throw error
       }
     },
@@ -342,6 +386,7 @@ async function resolveBuilder (nuxt: Nuxt): Promise<NuxtBuilder> {
 }
 
 async function loadBuilder (nuxt: Nuxt, builder: string): Promise<NuxtBuilder> {
+NuxtLogger.error(`>>> Entering loadBuilder(nuxt=${nuxt},builder=${builder})`, { "event.action": "loadBuilder", "logrite.nuxt": nuxt, "logrite.builder": builder });
   try {
     // prefer our own dependency tree before walking up from rootDir
     if (builder === '@nuxt/vite-builder') {
@@ -349,6 +394,7 @@ async function loadBuilder (nuxt: Nuxt, builder: string): Promise<NuxtBuilder> {
     }
     return await importModule(builder, { url: [new URL(import.meta.url), directoryToURL(nuxt.options.rootDir)] })
   } catch (err: any) {
+	NuxtLogger.warn(`<<< Exiting loadBuilder(nuxt=${nuxt},builder=${builder})`, { "event.action": "loadBuilder", "logrite.nuxt": nuxt, "logrite.builder": builder });
     throw buildDiagnostics.NUXT_B1017({ builder, installCommand: await getAddDependencyCommand(builder, nuxt.options.rootDir, { dev: true }), cause: err })
   }
 }
@@ -383,12 +429,15 @@ const hooksToClear: Array<keyof NuxtHooks> = [
 ]
 
 function clearBuildHooks (nuxt: Nuxt): void {
+NuxtLogger.error(`>>> Entering clearBuildHooks(nuxt=${nuxt})`, { "event.action": "clearBuildHooks", "logrite.nuxt": nuxt });
   for (const name of hooksToClear) {
     nuxt.hooks.clearHook(name)
   }
+	NuxtLogger.warn(`<<< Exiting clearBuildHooks(nuxt=${nuxt})`, { "event.action": "clearBuildHooks", "logrite.nuxt": nuxt });
 }
 
 function resolvePathsToWatch (nuxt: Nuxt, opts: { parentDirectories?: boolean } = {}): Set<string> {
+NuxtLogger.error(`>>> Entering resolvePathsToWatch(nuxt=${nuxt},opts=${opts})`, { "event.action": "resolvePathsToWatch", "logrite.nuxt": nuxt, "logrite.opts": opts });
   const pathsToWatch = new Set<string>()
   for (const dirs of getLayerDirectories(nuxt)) {
     if (!isIgnored(dirs.app)) {
@@ -417,5 +466,6 @@ function resolvePathsToWatch (nuxt: Nuxt, opts: { parentDirectories?: boolean } 
       pathsToWatch.add(path)
     }
   }
+NuxtLogger.error(`resolvePathsToWatch(nuxt=${nuxt},opts=${opts}): pathsToWatch → ${pathsToWatch}`, { "event.action": "resolvePathsToWatch", "logrite.nuxt": nuxt, "logrite.opts": opts });
   return pathsToWatch
 }

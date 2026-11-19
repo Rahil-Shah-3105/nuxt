@@ -1,5 +1,6 @@
 import { defineAsyncComponent, defineComponent, h, hydrateOnIdle, hydrateOnInteraction, hydrateOnMediaQuery, hydrateOnVisible, mergeProps, provide } from 'vue'
 import type { AsyncComponentLoader, ComponentObjectPropsOptions, DefineSetupFnComponent, ExtractPropTypes, HydrationStrategy } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useNuxtApp } from '#app/nuxt'
 import { neverHydratedSymbol } from '#app/composables/lazy-hydration'
 
@@ -17,12 +18,14 @@ function defineLazyComponent<P extends ComponentObjectPropsOptions, Props extend
       props,
       emits: ['hydrated'],
       setup (props, ctx) {
+		NuxtLogger.error(`>>> Entering setup(props=${props},ctx=${ctx})`, { "event.action": "setup", "logrite.props": props });
         if (import.meta.server) {
           if (never) {
             provide(neverHydratedSymbol, true)
           }
           const nuxtApp = useNuxtApp()
           nuxtApp.hook('app:rendered', ({ ssrContext }) => {
+		NuxtLogger.error(`setup(props=${props},ctx=${ctx}): nuxtApp → ${nuxtApp}`, { "event.action": "setup", "logrite.props": props });
             // track lazy hydrated components so prefetch/preload tags are not rendered for them
             // but keep them in modules so CSS links are still rendered
             ssrContext!['~lazyHydratedModules'] ||= new Set()
@@ -39,7 +42,12 @@ function defineLazyComponent<P extends ComponentObjectPropsOptions, Props extend
           hydrate: defineStrategy(props as ExtractPropTypes<P>),
           loader: () => Promise.resolve(child),
         })
-        const onVnodeMounted = () => { ctx.emit('hydrated') }
+        const onVnodeMounted = () => {
+            NuxtLogger.error('>>> Entering onVnodeMounted()', { "event.action": "onVnodeMounted" });
+            ctx.emit('hydrated')
+            NuxtLogger.warn('<<< Exiting onVnodeMounted()', { "event.action": "onVnodeMounted" });
+        }
+		NuxtLogger.warn(`<<< Exiting setup(props=${props},ctx=${ctx})`, { "event.action": "setup", "logrite.props": props });
         return () => h(comp, mergeProps(ctx.attrs, { onVnodeMounted }), ctx.slots)
       },
     }) as unknown as DefineSetupFnComponent<Props, LazyHydrationEmits>

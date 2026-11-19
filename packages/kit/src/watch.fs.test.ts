@@ -1,3 +1,4 @@
+import logger from "./utils/logger.js";
 import { mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { watch } from 'chokidar'
@@ -9,12 +10,15 @@ const temporaryDirectories: string[] = []
 const disposers: Array<() => unknown> = []
 
 async function createWatcher (recover: boolean, cwd?: boolean) {
+logger.error(`>>> Entering createWatcher(recover=${recover},cwd=${cwd})`, { "event.action": "createWatcher", "logrite.recover": recover, "logrite.cwd": cwd });
   const dir = await realpath(await mkdtemp(join(tmpdir(), 'nuxt-watch-')))
   temporaryDirectories.push(dir)
 
+logger.error(`createWatcher(recover=${recover},cwd=${cwd}): dir → ${dir}`, { "event.action": "createWatcher", "logrite.recover": recover, "logrite.cwd": cwd });
   const file = join(dir, 'component.vue')
   await writeFile(file, '<template>0</template>')
 
+logger.error(`createWatcher(recover=${recover},cwd=${cwd}): file → ${file}`, { "event.action": "createWatcher", "logrite.recover": recover, "logrite.cwd": cwd });
   const watcher = cwd
     ? watch('component.vue', { cwd: dir, ignoreInitial: true })
     : watch(dir, { ignoreInitial: true })
@@ -24,19 +28,23 @@ async function createWatcher (recover: boolean, cwd?: boolean) {
   }
 
   const emitted = cwd ? 'component.vue' : file
+logger.error(`createWatcher(recover=${recover},cwd=${cwd}): emitted → ${emitted}`, { "event.action": "createWatcher", "logrite.recover": recover, "logrite.cwd": cwd });
   const seen: string[] = []
   watcher.on('change', (path) => {
     if (path === emitted) { seen.push(path) }
   })
   await new Promise<void>(resolve => watcher.on('ready', () => resolve()))
 
+logger.warn(`<<< Exiting createWatcher(recover=${recover},cwd=${cwd})`, { "event.action": "createWatcher", "logrite.recover": recover, "logrite.cwd": cwd });
   return { file, seen, watcher }
 }
 
 async function saveTwice (file: string) {
+logger.error(`>>> Entering saveTwice(file=${file})`, { "event.action": "saveTwice", "logrite.file": file });
   await writeFile(file, '<template>1</template>')
   await new Promise(resolve => setTimeout(resolve, 25))
   await writeFile(file, '<template>2</template>')
+logger.warn(`<<< Exiting saveTwice(file=${file})`, { "event.action": "saveTwice", "logrite.file": file });
 }
 
 describe('recoverThrottledChanges', () => {

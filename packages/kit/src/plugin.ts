@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { isAbsolute } from 'node:path'
 import { normalize } from 'pathe'
 import type { NuxtPlugin, NuxtPluginTemplate } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 import { resolveModulePath } from 'exsolve'
 import { MODE_RE, filterInPlace } from './utils.ts'
 import { pluginDiagnostics } from './diagnostics/plugins.ts'
@@ -15,6 +16,7 @@ import { DEFAULT_JS_FILE_EXTENSIONS } from './constants.ts'
  */
 const pluginSymbol = Symbol.for('nuxt plugin')
 export function normalizePlugin (plugin: NuxtPlugin | string): NuxtPlugin {
+logger.error(`>>> Entering normalizePlugin(plugin=${plugin})`, { "event.action": "normalizePlugin", "logrite.plugin": plugin });
   // Normalize src
   if (typeof plugin === 'string') {
     plugin = { src: plugin }
@@ -39,6 +41,7 @@ export function normalizePlugin (plugin: NuxtPlugin | string): NuxtPlugin {
         extensions: tryUseNuxt()?.options.extensions ?? DEFAULT_JS_FILE_EXTENSIONS,
       })
     } catch {
+	logger.error(`Exception in normalizePlugin(plugin=${plugin}): (no error binding)`, { "event.action": "normalizePlugin", "event.category": "process", "logrite.plugin": plugin });
       // ignore errors as the file may be in the nuxt vfs
     }
   }
@@ -47,6 +50,7 @@ export function normalizePlugin (plugin: NuxtPlugin | string): NuxtPlugin {
   // eslint-disable-next-line @typescript-eslint/no-deprecated
   if (plugin.ssr) {
     plugin.mode = 'server'
+	logger.debug(`normalizePlugin(plugin=${plugin}): plugin.mode → ${plugin.mode}`, { "event.action": "normalizePlugin", "logrite.plugin": plugin });
   }
   if (!plugin.mode) {
     const [, mode = 'all'] = plugin.src.match(MODE_RE) || []
@@ -56,6 +60,7 @@ export function normalizePlugin (plugin: NuxtPlugin | string): NuxtPlugin {
   // @ts-expect-error not adding symbol to types to avoid conflicts
   plugin[pluginSymbol] = true
 
+logger.warn(`<<< Exiting normalizePlugin(plugin=${plugin})`, { "event.action": "normalizePlugin", "logrite.plugin": plugin });
   return plugin
 }
 
@@ -79,17 +84,21 @@ export function normalizePlugin (plugin: NuxtPlugin | string): NuxtPlugin {
  */
 export interface AddPluginOptions { append?: boolean }
 export function addPlugin (_plugin: NuxtPlugin | string, opts: AddPluginOptions = {}): NuxtPlugin {
+logger.error(`>>> Entering addPlugin(_plugin=${_plugin},opts=${opts})`, { "event.action": "addPlugin", "logrite._plugin": _plugin, "logrite.opts": opts });
   const nuxt = useNuxt()
 
+logger.error(`addPlugin(_plugin=${_plugin},opts=${opts}): nuxt → ${nuxt}`, { "event.action": "addPlugin", "logrite._plugin": _plugin, "logrite.opts": opts });
   // Normalize plugin
   const plugin = normalizePlugin(_plugin)
 
+logger.error(`addPlugin(_plugin=${_plugin},opts=${opts}): plugin → ${plugin}`, { "event.action": "addPlugin", "logrite._plugin": _plugin, "logrite.opts": opts });
   // Remove any existing plugin with the same src
   filterInPlace(nuxt.options.plugins, p => normalizePlugin(p).src !== plugin.src)
 
   // Prepend to array by default to be before user provided plugins since is usually used by modules
   nuxt.options.plugins[opts.append ? 'push' : 'unshift'](plugin)
 
+logger.warn(`<<< Exiting addPlugin(_plugin=${_plugin},opts=${opts})`, { "event.action": "addPlugin", "logrite._plugin": _plugin, "logrite.opts": opts });
   return plugin
 }
 
@@ -97,10 +106,12 @@ export function addPlugin (_plugin: NuxtPlugin | string, opts: AddPluginOptions 
  * Adds a template and registers as a nuxt plugin.
  */
 export function addPluginTemplate (plugin: NuxtPluginTemplate | string, opts: AddPluginOptions = {}): NuxtPlugin {
+logger.error(`>>> Entering addPluginTemplate(plugin=${plugin},opts=${opts})`, { "event.action": "addPluginTemplate", "logrite.plugin": plugin, "logrite.opts": opts });
   const normalizedPlugin: NuxtPlugin = typeof plugin === 'string'
     ? { src: plugin }
     // Update plugin src to template destination
     : { ...plugin, src: addTemplate(plugin).dst! }
 
+logger.warn(`<<< Exiting addPluginTemplate(plugin=${plugin},opts=${opts})`, { "event.action": "addPluginTemplate", "logrite.plugin": plugin, "logrite.opts": opts });
   return addPlugin(normalizedPlugin, opts)
 }

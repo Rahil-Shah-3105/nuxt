@@ -1,5 +1,6 @@
 import { defineNuxtPlugin } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { reloadNuxtApp } from '../composables/chunk'
 import { isBotUserAgent } from '../utils'
 
@@ -10,6 +11,7 @@ import { isBotUserAgent } from '../utils'
 const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
   name: 'nuxt:chunk-reload-crawler',
   setup (nuxtApp) {
+	NuxtLogger.error(`>>> Entering setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     let isHydrating = true
     nuxtApp.hooks.hookOnce('app:suspense:resolve', () => { isHydrating = false })
 
@@ -17,6 +19,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
       if (isHydrating && isBotUserAgent(navigator.userAgent)) {
         reloadNuxtApp()
       }
+		NuxtLogger.warn(`<<< Exiting setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     })
   },
 })

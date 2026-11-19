@@ -7,6 +7,7 @@ import type { NuxtError } from '#app/composables/error'
 import { isInComponentSetup, useNuxtApp } from '#app/nuxt'
 import { appDiagnostics } from '../../app/diagnostics/core'
 import type { SerializableValue } from './utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 // Generated at runtime to be extended
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
@@ -67,11 +68,14 @@ declare module 'vue-router' {
 }
 
 const warnRuntimeUsage = (method: string) => {
+NuxtLogger.error(`>>> Entering warnRuntimeUsage(method=${method})`, { "event.action": "warnRuntimeUsage", "logrite.method": method });
   appDiagnostics.NUXT_E1007({ name: method })
+NuxtLogger.warn(`<<< Exiting warnRuntimeUsage(method=${method})`, { "event.action": "warnRuntimeUsage", "logrite.method": method });
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export const definePageMeta = (meta: PageMeta): void => {
+NuxtLogger.error(`>>> Entering definePageMeta(meta=${meta})`, { "event.action": "definePageMeta", "logrite.meta": meta });
   if (import.meta.dev) {
     const component = getCurrentInstance()?.type
     try {
@@ -82,11 +86,13 @@ export const definePageMeta = (meta: PageMeta): void => {
       }
       const isRouteComponent = component && useRoute().matched.some(p => Object.values(p.components || {}).includes(component))
       const isRenderingServerPage = import.meta.server && useNuxtApp().ssrContext?.islandContext
+	NuxtLogger.error(`definePageMeta(meta=${meta}): isRouteComponent → ${isRouteComponent}`, { "event.action": "definePageMeta", "logrite.meta": meta });
       if (isRouteComponent || isRenderingServerPage || ((component as any)?.__clientOnlyPage)) {
         // don't warn if it's being used in a route component (or server page)
         return
       }
     } catch {
+	NuxtLogger.error(`Exception in definePageMeta(meta=${meta}): (no error binding)`, { "event.action": "definePageMeta", "event.category": "process", "logrite.meta": meta });
       // ignore any errors with accessing current instance or route
     }
     warnRuntimeUsage('definePageMeta')

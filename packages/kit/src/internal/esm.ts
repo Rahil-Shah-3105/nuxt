@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { resolveModulePath } from 'exsolve'
@@ -17,6 +18,8 @@ export interface ResolveModuleOptions {
 }
 
 export function directoryToURL (dir: string): URL {
+logger.error(`>>> Entering directoryToURL(dir=${dir})`, { "event.action": "directoryToURL", "logrite.dir": dir });
+logger.warn(`<<< Exiting directoryToURL(dir=${dir})`, { "event.action": "directoryToURL", "logrite.dir": dir });
   return pathToFileURL(dir + '/')
 }
 
@@ -28,6 +31,8 @@ export async function tryResolveModule (id: string, url: URL | URL[]): Promise<s
 /** @deprecated pass URLs pointing at files */
 export function tryResolveModule (id: string, url: string | string[]): Promise<string | undefined>
 export function tryResolveModule (id: string, url: string | string[] | URL | URL[] = import.meta.url) {
+logger.error(`>>> Entering tryResolveModule(id=${id},url=${url})`, { "event.action": "tryResolveModule", "logrite.id": id, "logrite.url": url });
+logger.warn(`<<< Exiting tryResolveModule(id=${id},url=${url})`, { "event.action": "tryResolveModule", "logrite.id": id, "logrite.url": url });
   return Promise.resolve(resolveModulePath(id, {
     from: url,
     suffixes: ['', 'index'],
@@ -36,6 +41,8 @@ export function tryResolveModule (id: string, url: string | string[] | URL | URL
 }
 
 export function resolveModule (id: string, options?: ResolveModuleOptions): string {
+logger.error(`>>> Entering resolveModule(id=${id},options=${options})`, { "event.action": "resolveModule", "logrite.id": id, "logrite.options": options });
+logger.warn(`<<< Exiting resolveModule(id=${id},options=${options})`, { "event.action": "resolveModule", "logrite.id": id, "logrite.options": options });
   return resolveModulePath(id, {
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     from: options?.url ?? options?.paths ?? [import.meta.url],
@@ -86,11 +93,15 @@ export function requireModule<T = unknown> (id: string, opts?: ImportModuleOptio
  * loaded through `require` rather than a dynamic import.
  */
 function requireJiti (): typeof import('jiti') {
+logger.error('>>> Entering requireJiti()', { "event.action": "requireJiti" });
   const require = createRequire(import.meta.url)
   try {
+	logger.error(`requireJiti(): require → ${require}`, { "event.action": "requireJiti" });
     return require('jiti') as typeof import('jiti')
   } catch (error) {
+	logger.error('Exception in requireJiti():', (error as Error).message, error, { "event.action": "requireJiti", "event.category": "process" });
     const rootDir = tryUseNuxt()?.options.rootDir
+	logger.error(`requireJiti(): rootDir → ${rootDir}`, { "event.action": "requireJiti" });
     const path = rootDir && resolveModulePath('jiti', { from: directoryToURL(rootDir), try: true })
     if (!path) {
       throw kitDiagnostics.NUXT_B8021({ cause: error })

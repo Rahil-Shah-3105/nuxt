@@ -1,10 +1,12 @@
 import VueSSRClientPlugin from '../plugins/vue/client.ts'
 import VueSSRServerPlugin from '../plugins/vue/server.ts'
 import type { WebpackConfigContext } from '../utils/config.ts'
+import logger from "../utils/logger.js";
 
 import { VueLoaderPlugin, builder, vueLoader, vueModuleIdentifierLoader, webpack } from '../builder.ts'
 
 export function vue (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering vue(ctx=${ctx})`, { "event.action": "vue" });
   // ensure the Vue loader is always the first plugin, regardless of plugin ordering.
   ctx.nuxt.hooks.hookOnce(`${builder}:config`, () => {
     ctx.nuxt.hook(`${builder}:configResolved`, (configs) => {
@@ -41,6 +43,7 @@ export function vue (ctx: WebpackConfigContext) {
     })
   }
 
+logger.warn(`<<< Exiting vue(ctx=${ctx})`, { "event.action": "vue" });
   // Feature flags
   // https://github.com/vuejs/core/tree/main/packages/vue#bundler-build-feature-flags
   ctx.config.plugins!.push(new webpack.DefinePlugin({

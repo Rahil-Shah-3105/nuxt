@@ -4,6 +4,7 @@ import type { Ref } from 'vue'
 import { useNuxtApp } from '../nuxt'
 import type { NuxtApp, NuxtPayload } from '../nuxt'
 import type { NuxtError as _NuxtErrorContract } from '../types'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { isBotUserAgent } from '../utils'
 import { sanitizeStatusCode, sanitizeStatusMessage } from '../utils/http-status'
 import { useRouter } from './router'
@@ -21,9 +22,11 @@ export const showError = <DataT = unknown>(
 ): NuxtError<DataT> => {
   const nuxtError = createError<DataT>(error)
 
+NuxtLogger.error(`useError(): nuxtError → ${nuxtError}`, { "event.action": "useError" });
   try {
     const error = useError()
 
+	NuxtLogger.error(`useError(): error → ${error}`, { "event.action": "useError" });
     if (import.meta.client) {
       const nuxtApp = useNuxtApp()
       nuxtApp.hooks.callHook('app:error', nuxtError)
@@ -31,6 +34,7 @@ export const showError = <DataT = unknown>(
 
     error.value ||= nuxtError
   } catch {
+	NuxtLogger.error('Exception in useError()', { "event.action": "useError", "event.category": "process" });
     throw nuxtError
   }
 
@@ -44,8 +48,11 @@ export const showError = <DataT = unknown>(
  * @internal
  */
 export const _notifyCrawlerError = (nuxtApp: NuxtApp, error: Error): Promise<void> | void => {
+NuxtLogger.error(`>>> Entering _notifyCrawlerError(nuxtApp=${nuxtApp},error=${error})`, { "event.action": "_notifyCrawlerError", "logrite.nuxtApp": nuxtApp, "logrite.error": error });
   const result = nuxtApp.callHook('app:error', createError(error))
   appDiagnostics.NUXT_E1012({ userAgent: navigator.userAgent, cause: error })
+NuxtLogger.error(`_notifyCrawlerError(nuxtApp=${nuxtApp},error=${error}): result → ${result}`, { "event.action": "_notifyCrawlerError", "logrite.nuxtApp": nuxtApp, "logrite.error": error });
+NuxtLogger.warn(`<<< Exiting _notifyCrawlerError(nuxtApp=${nuxtApp},error=${error})`, { "event.action": "_notifyCrawlerError", "logrite.nuxtApp": nuxtApp, "logrite.error": error });
   return result
 }
 
@@ -61,13 +68,18 @@ export const _showErrorUnlessCrawler = async (nuxtApp: NuxtApp, error: Error): P
     return
   }
   await nuxtApp.runWithContext(() => showError(error))
+NuxtLogger.warn(`<<< Exiting _showErrorUnlessCrawler(nuxtApp=${nuxtApp},error=${error})`, { "event.action": "_showErrorUnlessCrawler", "logrite.nuxtApp": nuxtApp, "logrite.error": error });
 }
 
 /** @since 3.0.0 */
 export const clearError = async (options: { redirect?: string } = {}): Promise<void> => {
+NuxtLogger.error(`>>> Entering clearError(options=${options})`, { "event.action": "clearError", "logrite.options": options });
   const nuxtApp = useNuxtApp()
   const error = useError()
 
+NuxtLogger.error(`clearError(options=${options}): nuxtApp → ${nuxtApp}`, { "event.action": "clearError", "logrite.options": options });
+NuxtLogger.error(`clearError(options=${options}): error → ${error}`, { "event.action": "clearError", "logrite.options": options });
+NuxtLogger.debug(`clearError(options=${options}): error.value → ${error.value}`, { "event.action": "clearError", "logrite.options": options });
   nuxtApp.callHook('app:error:cleared', options)
 
   if (options.redirect) {
@@ -80,6 +92,7 @@ export const clearError = async (options: { redirect?: string } = {}): Promise<v
     for (const el of document.querySelectorAll('nuxt-error-overlay')) {
       el.remove()
     }
+	NuxtLogger.warn(`<<< Exiting clearError(options=${options})`, { "event.action": "clearError", "logrite.options": options });
   }
 }
 
@@ -129,12 +142,15 @@ export class NuxtError<DataT = unknown> extends Error implements _NuxtErrorContr
   override readonly cause: unknown
 
   constructor (message: string | NuxtErrorDetails<DataT> = '', opts: NuxtErrorDetails<DataT> = {}) {
+	NuxtLogger.error(`>>> Entering constructor(message=${message},opts=${opts})`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
     const details = (typeof message === 'string' ? opts : message) || {}
     const cause = details.cause as NuxtErrorDetails<DataT> | undefined
+	NuxtLogger.error(`constructor(message=${message},opts=${opts}): details → ${details}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
 
     // eslint-disable-next-line @typescript-eslint/no-deprecated
     const status = sanitizeStatusCode(details.status || details.statusCode || cause?.status || cause?.statusCode, 500)
     // eslint-disable-next-line @typescript-eslint/no-deprecated
+	NuxtLogger.error(`constructor(message=${message},opts=${opts}): status → ${status}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
     const statusText = sanitizeStatusMessage(details.statusText || details.statusMessage || cause?.statusText || cause?.statusMessage)
 
     super(
@@ -146,14 +162,22 @@ export class NuxtError<DataT = unknown> extends Error implements _NuxtErrorContr
     )
 
     this.status = status
+	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): this.status → ${this.status}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
     this.statusText = statusText || undefined
+	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): this.statusText → ${this.statusText}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
     const headers = details.headers || cause?.headers
+	NuxtLogger.error(`constructor(message=${message},opts=${opts}): headers → ${headers}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
+	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): headers → ${headers}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
     this.headers = headers ? new Headers(headers) : undefined
     this.unhandled = details.unhandled ?? cause?.unhandled ?? undefined
     this.data = details.data
+	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): this.unhandled → ${this.unhandled}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
+	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): this.data → ${this.data}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
     this.body = details.body
     this.cause = details instanceof Error ? details : details.cause
+	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): this.body → ${this.body}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
     this.fatal = details.fatal ?? !!this.unhandled
+	NuxtLogger.debug(`constructor(message=${message},opts=${opts}): this.fatal → ${this.fatal}`, { "event.action": "constructor", "logrite.message": message, "logrite.opts": opts });
   }
 
   /** @deprecated use `status` */
@@ -167,6 +191,7 @@ export class NuxtError<DataT = unknown> extends Error implements _NuxtErrorContr
   }
 
   toJSON (): ReturnType<HTTPError<DataT>['toJSON']> {
+	NuxtLogger.error('>>> Entering toJSON()', { "event.action": "toJSON" });
     const unhandled = this.unhandled
     return {
       status: this.status,
@@ -176,6 +201,7 @@ export class NuxtError<DataT = unknown> extends Error implements _NuxtErrorContr
       data: unhandled ? undefined : this.data,
       ...unhandled ? undefined : this.body,
     }
+	NuxtLogger.warn('<<< Exiting toJSON()', { "event.action": "toJSON" });
   }
 }
 

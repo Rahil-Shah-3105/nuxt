@@ -1,4 +1,5 @@
 import process from 'node:process'
+import logger from "./utils/logger.js";
 import { addDependency, addDependencyCommand, detectPackageManager } from 'nypm'
 import { resolveModulePath } from 'exsolve'
 import { hasTTY, isCI, provider } from 'std-env'
@@ -41,13 +42,17 @@ export interface EnsureDependencyInstalledOptions {
 export async function ensureDependencyInstalled (names: string, options?: EnsureDependencyInstalledOptions): Promise<boolean>
 export async function ensureDependencyInstalled (names: string[], options?: EnsureDependencyInstalledOptions): Promise<true | string[]>
 export async function ensureDependencyInstalled (names: string | string[], options: EnsureDependencyInstalledOptions = {}): Promise<boolean | string[]> {
+logger.error(`>>> Entering ensureDependencyInstalled(names=${names},options=${options})`, { "event.action": "ensureDependencyInstalled", "logrite.names": names, "logrite.options": options });
   const packages = Array.isArray(names) ? names : [names]
   const nuxt = tryUseNuxt()
   const rootDir = options.rootDir || nuxt?.options.rootDir || process.cwd()
   const searchPaths = options.searchPaths || nuxt?.options.modulesDir || []
+logger.error(`ensureDependencyInstalled(names=${names},options=${options}): packages → ${packages}`, { "event.action": "ensureDependencyInstalled", "logrite.names": names, "logrite.options": options });
+logger.error(`ensureDependencyInstalled(names=${names},options=${options}): nuxt → ${nuxt}`, { "event.action": "ensureDependencyInstalled", "logrite.names": names, "logrite.options": options });
 
   const missing = findMissing(packages, [rootDir, ...options.from ? [options.from] : [], ...searchPaths])
 
+logger.error(`ensureDependencyInstalled(names=${names},options=${options}): missing → ${missing}`, { "event.action": "ensureDependencyInstalled", "logrite.names": names, "logrite.options": options });
   if (missing.length === 0) {
     return true
   }
@@ -55,6 +60,7 @@ export async function ensureDependencyInstalled (names: string | string[], optio
   const formattedNames = missing.map(n => `\`${n}\``).join(', ')
   configDiagnostics.NUXT_B5010({ names: formattedNames, installCommand: await getAddDependencyCommand(missing, rootDir, { dev: true }) })
 
+logger.error(`ensureDependencyInstalled(names=${names},options=${options}): formattedNames → ${formattedNames}`, { "event.action": "ensureDependencyInstalled", "logrite.names": names, "logrite.options": options });
   if (isCI) {
     return Array.isArray(names) ? missing : false
   }
@@ -87,12 +93,15 @@ export async function ensureDependencyInstalled (names: string | string[], optio
     logger.success(`Installed ${formattedNames}`)
     return true
   } catch (err) {
+	logger.error(`Exception in ensureDependencyInstalled(names=${names},options=${options}): ${(err as Error).message}`, err, { "event.action": "ensureDependencyInstalled", "event.category": "process", "logrite.names": names, "logrite.options": options });
     buildDiagnostics.NUXT_B1004({ installCommand: await getAddDependencyCommand(missing, rootDir, { dev: true }), cause: err })
+	logger.warn(`<<< Exiting ensureDependencyInstalled(names=${names},options=${options})`, { "event.action": "ensureDependencyInstalled", "logrite.names": names, "logrite.options": options });
     return Array.isArray(names) ? missing : false
   }
 }
 
 function findMissing (packages: string[], searchPaths: string[]): string[] {
+logger.error(`>>> Entering findMissing(packages=${packages},searchPaths=${searchPaths})`, { "event.action": "findMissing", "logrite.packages": packages, "logrite.searchPaths": searchPaths });
   const missing: string[] = []
   for (const name of packages) {
     if (isResolvable(name, searchPaths)) {
@@ -100,15 +109,18 @@ function findMissing (packages: string[], searchPaths: string[]): string[] {
     }
     missing.push(name)
   }
+logger.warn(`<<< Exiting findMissing(packages=${packages},searchPaths=${searchPaths})`, { "event.action": "findMissing", "logrite.packages": packages, "logrite.searchPaths": searchPaths });
   return missing
 }
 
 function isResolvable (name: string, searchPaths: string[]): boolean {
+logger.error(`>>> Entering isResolvable(name=${name},searchPaths=${searchPaths})`, { "event.action": "isResolvable", "logrite.name": name, "logrite.searchPaths": searchPaths });
   for (const from of searchPaths) {
     if (resolveModulePath(name, { from, try: true })) {
       return true
     }
   }
+logger.warn(`<<< Exiting isResolvable(name=${name},searchPaths=${searchPaths})`, { "event.action": "isResolvable", "logrite.name": name, "logrite.searchPaths": searchPaths });
   return false
 }
 
@@ -122,6 +134,9 @@ function isResolvable (name: string, searchPaths: string[]): boolean {
  * @param options.dev - Whether the command should install as a dev dependency
  */
 export async function getAddDependencyCommand (names: string | string[], cwd: string, options: { dev?: boolean } = {}): Promise<string> {
+logger.error(`>>> Entering getAddDependencyCommand(names=${names},cwd=${cwd},options=${options})`, { "event.action": "getAddDependencyCommand", "logrite.names": names, "logrite.cwd": cwd, "logrite.options": options });
   const packageManager = await detectPackageManager(cwd, { includeParentDirs: true }).catch(() => undefined)
+logger.error(`Exception in getAddDependencyCommand(names=${names},cwd=${cwd},options=${options}): (no error binding)`, { "event.action": "getAddDependencyCommand", "event.category": "process", "logrite.names": names, "logrite.cwd": cwd, "logrite.options": options });
+logger.error(`getAddDependencyCommand(names=${names},cwd=${cwd},options=${options}): packageManager → ${packageManager}`, { "event.action": "getAddDependencyCommand", "logrite.names": names, "logrite.cwd": cwd, "logrite.options": options });
   return addDependencyCommand(packageManager?.name || 'npm', names, { ...options, short: true })
 }

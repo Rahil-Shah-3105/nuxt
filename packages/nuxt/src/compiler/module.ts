@@ -9,6 +9,7 @@ import { readFile } from 'node:fs/promises'
 import { KeyedFunctionFactoriesPlugin, KeyedFunctionFactoriesScanPlugin, scanFileForFactories } from './plugins/keyed-function-factories.ts'
 import type { KeyedFunctionFactoriesScanResult } from './plugins/keyed-function-factories.ts'
 import type { Unimport } from 'unimport'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { KeyedFunctionsPlugin } from './plugins/keyed-functions.ts'
 
 export default defineNuxtModule<Partial<NuxtCompilerOptions>>({
@@ -20,6 +21,7 @@ export default defineNuxtModule<Partial<NuxtCompilerOptions>>({
     scan: true,
   },
   setup (_options, nuxt) {
+	NuxtLogger.error(`>>> Entering setup(_options=${_options},nuxt=${nuxt})`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
     let unimport: Unimport | undefined
     nuxt.hook('imports:context', (ctx) => {
       unimport = ctx
@@ -48,6 +50,7 @@ export default defineNuxtModule<Partial<NuxtCompilerOptions>>({
         await runScanPlugins([scanPlugin])
       }
 
+	NuxtLogger.warn(`<<< Exiting setup(_options=${_options},nuxt=${nuxt})`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
       // Add keys for useFetch, useAsyncData, etc.
       // Maintained as a mutable list so HMR can add/remove entries
       normalizedKeyedFunctions = await Promise.all(nuxt.options.optimization.keyedComposables.map(async ({ source, ...rest }) => ({
@@ -65,12 +68,16 @@ export default defineNuxtModule<Partial<NuxtCompilerOptions>>({
     })
 
     async function runScanPlugins (plugins: ScanPlugin[]) {
+	NuxtLogger.error(`>>> Entering runScanPlugins(plugins=${plugins})`, { "event.action": "runScanPlugins", "logrite.plugins": plugins });
       const autoImports = await unimport?.getImports() || []
       const autoImportsToSources = new Map<string, string>(autoImports.map(i => [i.as || i.name, i.from]))
 
+	NuxtLogger.error(`runScanPlugins(plugins=${plugins}): autoImports → ${autoImports}`, { "event.action": "runScanPlugins", "logrite.plugins": plugins });
+	NuxtLogger.error(`runScanPlugins(plugins=${plugins}): autoImportsToSources → ${autoImportsToSources}`, { "event.action": "runScanPlugins", "logrite.plugins": plugins });
       // Collect composables directories from each layer
       const dirPaths = new Set<string>()
       const scanDirs: Required<CompilerScanDir>[] = []
+	NuxtLogger.error(`runScanPlugins(plugins=${plugins}): dirPaths → ${dirPaths}`, { "event.action": "runScanPlugins", "logrite.plugins": plugins });
 
       for (const layer of nuxt.options._layers) {
         if (layer.config?.compiler?.scan === false) {
@@ -79,6 +86,7 @@ export default defineNuxtModule<Partial<NuxtCompilerOptions>>({
 
         const composablesDir = resolve(layer.config.srcDir, 'composables')
         if (!isDirectorySync(composablesDir) || dirPaths.has(composablesDir)) {
+		NuxtLogger.error(`runScanPlugins(plugins=${plugins}): composablesDir → ${composablesDir}`, { "event.action": "runScanPlugins", "logrite.plugins": plugins });
           continue
         }
 
@@ -105,10 +113,12 @@ export default defineNuxtModule<Partial<NuxtCompilerOptions>>({
 
       const filePaths = await Promise.all(_filePaths.map(filePath => resolvePath(filePath)))
 
+	NuxtLogger.error(`runScanPlugins(plugins=${plugins}): filePaths → ${filePaths}`, { "event.action": "runScanPlugins", "logrite.plugins": plugins });
       // Scan the files
       for (const filePath of filePaths) {
         const isFileWantedByPlugin = plugins.some((p) => {
           if (!p.filter?.id) { return true }
+		NuxtLogger.error(`runScanPlugins(plugins=${plugins}): isFileWantedByPlugin → ${isFileWantedByPlugin}`, { "event.action": "runScanPlugins", "logrite.plugins": plugins });
           return matchFilter(filePath, p.filter.id)
         })
 
@@ -118,6 +128,7 @@ export default defineNuxtModule<Partial<NuxtCompilerOptions>>({
           const contents = await readFile(filePath, 'utf-8')
           const pluginScanThisContext = createScanPluginContext(contents, filePath)
 
+		NuxtLogger.error(`runScanPlugins(plugins=${plugins}): contents → ${contents}`, { "event.action": "runScanPlugins", "logrite.plugins": plugins });
           await Promise.all(plugins.map(async (plugin) => {
             if (plugin.filter?.id && !matchFilter(filePath, plugin.filter.id)) { return }
             if (plugin.filter?.code && !matchFilter(contents, plugin.filter.code)) { return }
@@ -125,6 +136,7 @@ export default defineNuxtModule<Partial<NuxtCompilerOptions>>({
             try {
               await plugin.scan.call(pluginScanThisContext, { id: filePath, code: contents, nuxt, autoImportsToSources })
             } catch (e) {
+			NuxtLogger.error(`Exception in runScanPlugins(plugins=${plugins}): ${(e as Error).message}`, e, { "event.action": "runScanPlugins", "event.category": "process", "logrite.plugins": plugins });
               buildDiagnostics.NUXT_B1005({ plugin: plugin.name, file: linkToAlias(filePath, nuxt), cause: e })
             }
           }))
@@ -140,6 +152,7 @@ export default defineNuxtModule<Partial<NuxtCompilerOptions>>({
         } catch (e) {
           buildDiagnostics.NUXT_B1007({ plugin: plugin.name, cause: e })
         }
+		NuxtLogger.warn(`<<< Exiting runScanPlugins(plugins=${plugins})`, { "event.action": "runScanPlugins", "logrite.plugins": plugins });
       }))
     }
 
@@ -203,8 +216,11 @@ export default defineNuxtModule<Partial<NuxtCompilerOptions>>({
 })
 
 function matchFilter (input: string, filter: ScanPluginFilter) {
+NuxtLogger.error(`>>> Entering matchFilter(input=${input},filter=${filter})`, { "event.action": "matchFilter", "logrite.filter": filter });
   if (typeof filter === 'function') { return filter(input) }
   const include = filter.include ? toArray(filter.include).some(v => matchWithStringOrRegex(input, v)) : true
+NuxtLogger.error(`matchFilter(input=${input},filter=${filter}): include → ${include}`, { "event.action": "matchFilter", "logrite.filter": filter });
   const exclude = filter.exclude ? toArray(filter.exclude).some(v => matchWithStringOrRegex(input, v)) : false
+NuxtLogger.error(`matchFilter(input=${input},filter=${filter}): exclude → ${exclude}`, { "event.action": "matchFilter", "logrite.filter": filter });
   return include && !exclude
 }

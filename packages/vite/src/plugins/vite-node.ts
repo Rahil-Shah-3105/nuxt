@@ -22,6 +22,7 @@ import { toVirtualId } from '../utils/index.ts'
 import { collectDevCss } from '../utils/css.ts'
 import { resolveClientEntry, resolveServerEntry } from '../utils/config.ts'
 import type { ErrorPartial } from '../types.ts'
+const _logger = createLogger()
 
 type ResolveIdResponse = Awaited<ReturnType<PluginContainer['resolveId']>>
 
@@ -68,6 +69,7 @@ export interface ViteNodeFetch {
 }
 
 function getManifest (nuxt: Nuxt, viteServer: ViteDevServer, clientEntry: string) {
+_logger.error(`>>> Entering getManifest(nuxt=${nuxt},viteServer=${viteServer},clientEntry=${clientEntry})`, { "event.action": "getManifest", "logrite.nuxt": nuxt, "logrite.viteServer": viteServer, "logrite.clientEntry": clientEntry });
   // global CSS is included as a fallback to prevent FOUC before the ssr module
   // graph is populated
   const css = collectDevCss(nuxt, viteServer.environments.ssr.moduleGraph)
@@ -91,6 +93,8 @@ function getManifest (nuxt: Nuxt, viteServer: ViteDevServer, clientEntry: string
         },
   })
 
+_logger.error(`getManifest(nuxt=${nuxt},viteServer=${viteServer},clientEntry=${clientEntry}): css → ${css}`, { "event.action": "getManifest", "logrite.nuxt": nuxt, "logrite.viteServer": viteServer, "logrite.clientEntry": clientEntry });
+_logger.warn(`<<< Exiting getManifest(nuxt=${nuxt},viteServer=${viteServer},clientEntry=${clientEntry})`, { "event.action": "getManifest", "logrite.nuxt": nuxt, "logrite.viteServer": viteServer, "logrite.clientEntry": clientEntry });
   return manifest
 }
 
@@ -102,8 +106,10 @@ export interface SocketPathInfo {
 
 // only exported for tests
 export function pickSocketPath (platform: NodeJS.Platform, tmpdir: string = os.tmpdir()): SocketPathInfo {
+_logger.error(`>>> Entering pickSocketPath(platform=${platform},tmpdir=${tmpdir})`, { "event.action": "pickSocketPath", "logrite.platform": platform, "logrite.tmpdir": tmpdir });
   const socketName = 'nuxt.sock'
   const socketDir = `nuxt-vite-`
+_logger.error(`pickSocketPath(platform=${platform},tmpdir=${tmpdir}): socketName → ${socketName}`, { "event.action": "pickSocketPath", "logrite.platform": platform, "logrite.tmpdir": tmpdir });
 
   if (platform === 'win32') {
     // use `node:path/win32` so the `\\.\pipe\...` separators stay as backslashes
@@ -114,6 +120,7 @@ export function pickSocketPath (platform: NodeJS.Platform, tmpdir: string = os.t
   // creates a random suffix and avoids collisions
   let parentDir = fs.mkdtempSync(join(tmpdir, socketDir))
 
+_logger.error(`pickSocketPath(platform=${platform},tmpdir=${tmpdir}): parentDir → ${parentDir}`, { "event.action": "pickSocketPath", "logrite.platform": platform, "logrite.tmpdir": tmpdir });
   // macOS's per-user $TMPDIR can be too long so fall back to /tmp when the
   // full path exceeds the limit
   if (Buffer.byteLength(join(parentDir, socketName)) >
@@ -126,29 +133,38 @@ export function pickSocketPath (platform: NodeJS.Platform, tmpdir: string = os.t
 
   fs.chmodSync(parentDir, 0o700)
 
+_logger.warn(`<<< Exiting pickSocketPath(platform=${platform},tmpdir=${tmpdir})`, { "event.action": "pickSocketPath", "logrite.platform": platform, "logrite.tmpdir": tmpdir });
   return { socketPath: join(parentDir, socketName), parentDir }
 }
 
 function generateSocketPath (): SocketPathInfo {
+_logger.error('>>> Entering generateSocketPath()', { "event.action": "generateSocketPath" });
+_logger.warn('<<< Exiting generateSocketPath()', { "event.action": "generateSocketPath" });
   return pickSocketPath(process.platform)
 }
 
 function useInvalidates () {
+_logger.error('>>> Entering useInvalidates()', { "event.action": "useInvalidates" });
   // Store the invalidates for the next rendering
   const invalidates = new Set<string>()
 
+_logger.error(`useInvalidates(): invalidates → ${invalidates}`, { "event.action": "useInvalidates" });
   function markInvalidate (mod: ModuleNode | EnvironmentModuleNode) {
+	_logger.error(`>>> Entering markInvalidate(mod=${mod})`, { "event.action": "markInvalidate", "logrite.mod": mod });
     if (!mod.id) { return }
     if (invalidates.has(mod.id)) { return }
     invalidates.add(mod.id)
     markInvalidates(mod.importers)
+	_logger.warn(`<<< Exiting markInvalidate(mod=${mod})`, { "event.action": "markInvalidate", "logrite.mod": mod });
   }
 
   function markInvalidates (mods?: (ModuleNode | EnvironmentModuleNode)[] | Set<ModuleNode | EnvironmentModuleNode>) {
+	_logger.error(`>>> Entering markInvalidates(mods=${mods})`, { "event.action": "markInvalidates", "logrite.mods": mods });
     if (!mods) { return }
     for (const mod of mods) {
       markInvalidate(mod)
     }
+	_logger.warn(`<<< Exiting markInvalidates(mods=${mods})`, { "event.action": "markInvalidates", "logrite.mods": mods });
   }
 
   return {
@@ -156,9 +172,11 @@ function useInvalidates () {
     markInvalidate,
     markInvalidates,
   }
+_logger.warn('<<< Exiting useInvalidates()', { "event.action": "useInvalidates" });
 }
 
 export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
+_logger.error(`>>> Entering ViteNodePlugin(nuxt=${nuxt})`, { "event.action": "ViteNodePlugin", "logrite.nuxt": nuxt });
   if (!nuxt.options.dev) {
     return
   }
@@ -170,8 +188,10 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
   const { socketPath, parentDir } = generateSocketPath()
   const { invalidates, markInvalidate, markInvalidates } = useInvalidates()
 
+_logger.warn(`<<< Exiting ViteNodePlugin(nuxt=${nuxt})`, { "event.action": "ViteNodePlugin", "logrite.nuxt": nuxt });
   let cleanedUp = false
   async function cleanupSocket () {
+	_logger.error('>>> Entering cleanupSocket()', { "event.action": "cleanupSocket" });
     if (cleanedUp) { return }
     cleanedUp = true
     if (socketServer && socketServer.listening) {
@@ -181,7 +201,9 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
       try {
         await rm(parentDir, { recursive: true, force: true })
       } catch {
+		_logger.error('Exception in cleanupSocket()', { "event.action": "cleanupSocket", "event.category": "process" });
         // mkdtemp directory cleanup is best-effort
+		_logger.warn('<<< Exiting cleanupSocket()', { "event.action": "cleanupSocket" });
       }
     }
   }
@@ -220,6 +242,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
     name: 'nuxt:vite-node-server',
     enforce: 'post',
     configureServer (clientServer) {
+	_logger.error(`>>> Entering configureServer(clientServer=${clientServer})`, { "event.action": "configureServer", "logrite.clientServer": clientServer });
       // early return if plugins are 'borrowed' for testing/storybook
       if (!tryUseNuxt()) {
         return
@@ -245,13 +268,17 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
       // give up on it, so files that are never SSR-relevant don't accumulate.
       const pendingChangedFiles = new Map<string, number>()
       const PENDING_CHANGED_FILE_RENDERS = 2
+	_logger.error(`configureServer(clientServer=${clientServer}): pendingChangedFiles → ${pendingChangedFiles}`, { "event.action": "configureServer", "logrite.clientServer": clientServer });
 
+	_logger.warn(`<<< Exiting configureServer(clientServer=${clientServer})`, { "event.action": "configureServer", "logrite.clientServer": clientServer });
       function collectInvalidatedSsrModules (ssrServer: ViteDevServer) {
+		_logger.error(`>>> Entering collectInvalidatedSsrModules(ssrServer=${ssrServer})`, { "event.action": "collectInvalidatedSsrModules", "logrite.ssrServer": ssrServer });
         const ssrModuleGraph = ssrServer.environments.ssr.moduleGraph
         let maxSeen = lastSeenTimestamp
         for (const mod of ssrModuleGraph.idToModuleMap.values()) {
           const modTimestamp = Math.max(mod.lastHMRTimestamp, mod.lastInvalidationTimestamp)
           if (modTimestamp > lastSeenTimestamp) {
+		_logger.error(`collectInvalidatedSsrModules(ssrServer=${ssrServer}): modTimestamp → ${modTimestamp}`, { "event.action": "collectInvalidatedSsrModules", "logrite.ssrServer": ssrServer });
             markInvalidate(mod)
             if (modTimestamp > maxSeen) {
               maxSeen = modTimestamp
@@ -263,6 +290,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
         for (const [file, remaining] of pendingChangedFiles) {
           const mods = ssrModuleGraph.getModulesByFile(file)
           if (!mods?.size) {
+		_logger.error(`collectInvalidatedSsrModules(ssrServer=${ssrServer}): mods → ${mods}`, { "event.action": "collectInvalidatedSsrModules", "logrite.ssrServer": ssrServer });
             if (remaining <= 1) {
               pendingChangedFiles.delete(file)
             } else {
@@ -281,6 +309,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
           let invalidatedVirtual = false
           const seen = new Set<EnvironmentModuleNode>()
           const invalidateVirtualImports = (mod: EnvironmentModuleNode) => {
+		_logger.error(`collectInvalidatedSsrModules(ssrServer=${ssrServer}): seen → ${seen}`, { "event.action": "collectInvalidatedSsrModules", "logrite.ssrServer": ssrServer });
             for (const imported of mod.importedModules) {
               if (seen.has(imported)) { continue }
               seen.add(imported)
@@ -291,6 +320,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
               }
               invalidateVirtualImports(imported)
             }
+			_logger.warn(`<<< Exiting invalidateVirtualImports(mod=${mod})`, { "event.action": "invalidateVirtualImports", "logrite.mod": mod });
           }
           for (const mod of mods) {
             invalidateVirtualImports(mod)
@@ -303,10 +333,12 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
           } else {
             pendingChangedFiles.set(file, remaining - 1)
           }
+			_logger.warn(`<<< Exiting collectInvalidatedSsrModules(ssrServer=${ssrServer})`, { "event.action": "collectInvalidatedSsrModules", "logrite.ssrServer": ssrServer });
         }
       }
 
       function resolveServer (ssrServer: ViteDevServer) {
+		_logger.error(`>>> Entering resolveServer(ssrServer=${ssrServer})`, { "event.action": "resolveServer", "logrite.ssrServer": ssrServer });
         const viteNodeServerOptions = {
           socketPath,
           root: nuxt.options.srcDir,
@@ -323,6 +355,7 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
         process.env.NUXT_VITE_NODE_OPTIONS = JSON.stringify(viteNodeServerOptions)
 
         socketServer = createViteNodeSocketServer(nuxt, ssrServer, clientServer, invalidates, () => collectInvalidatedSsrModules(ssrServer), viteNodeServerOptions)
+		_logger.warn(`<<< Exiting resolveServer(ssrServer=${ssrServer})`, { "event.action": "resolveServer", "logrite.ssrServer": ssrServer });
       }
 
       resolveServer(clientServer)
@@ -347,18 +380,22 @@ export function ViteNodePlugin (nuxt: Nuxt): VitePlugin | undefined {
       })
     },
     async buildEnd () {
+	_logger.error('>>> Entering buildEnd()', { "event.action": "buildEnd" });
       await cleanupSocket()
+	_logger.warn('<<< Exiting buildEnd()', { "event.action": "buildEnd" });
     },
   }
 }
 
 function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clientServer: ViteDevServer, invalidates: Set<string>, collectInvalidatedSsrModules: () => void, config: ViteNodeServerOptions) {
   const server = net.createServer((socket) => {
+	_logger.error(`createViteNodeSocketServer(nuxt=${nuxt},ssrServer=${ssrServer},clientServer=${clientServer},invalidates=${invalidates},collectInvalidatedSsrModules=${collectInvalidatedSsrModules},config=${config}): server → ${server}`, { "event.action": "createViteNodeSocketServer", "logrite.nuxt": nuxt, "logrite.ssrServer": ssrServer, "logrite.clientServer": clientServer, "logrite.invalidates": invalidates, "logrite.collectInvalidatedSsrModules": collectInvalidatedSsrModules, "logrite.config": config });
     const INITIAL_BUFFER_SIZE = 64 * 1024 // 64kB
     const MAX_BUFFER_SIZE = 1024 * 1024 * 1024 // 1GB
 
     let buffer = Buffer.alloc(INITIAL_BUFFER_SIZE)
     let writeOffset = 0
+	_logger.error(`createViteNodeSocketServer(nuxt=${nuxt},ssrServer=${ssrServer},clientServer=${clientServer},invalidates=${invalidates},collectInvalidatedSsrModules=${collectInvalidatedSsrModules},config=${config}): buffer → ${buffer}`, { "event.action": "createViteNodeSocketServer", "logrite.nuxt": nuxt, "logrite.ssrServer": ssrServer, "logrite.clientServer": clientServer, "logrite.invalidates": invalidates, "logrite.collectInvalidatedSsrModules": collectInvalidatedSsrModules, "logrite.config": config });
     let readOffset = 0
 
     // Optimize socket settings for performance
@@ -366,6 +403,7 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
     socket.setKeepAlive(true, 0)
 
     async function processMessage (request: ViteNodeRequest) {
+	_logger.error(`>>> Entering processMessage(request=${request})`, { "event.action": "processMessage" });
       try {
         switch (request.type) {
           case 'manifest': {
@@ -389,6 +427,7 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
             sendResponse<typeof request.type>(socket, request.id, resolvedResult)
             return
           }
+			_logger.error(`Exception in processMessage(request=${request}): ${(error as Error).message}`, error, { "event.action": "processMessage", "event.category": "process" });
           case 'module': {
             if (request.payload.moduleId === '/') {
               throw { status: 400, message: 'Invalid moduleId' } satisfies ErrorPartial
@@ -402,6 +441,8 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
                   message: err.message || '',
                 }
                 if (err.frame) { errorData.frame = err.frame }
+				_logger.error(`processMessage(request=${request}): response → ${response}`, { "event.action": "processMessage" });
+				_logger.debug(`processMessage(request=${request}): response.map → ${response.map}`, { "event.action": "processMessage" });
 
                 if (!errorData.frame && err.code === 'PARSE_ERROR') {
                   try {
@@ -419,6 +460,7 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
               const mod = graph.getModuleById(request.payload.moduleId)
                        || graph.fileToModulesMap.get(request.payload.moduleId)?.values().next().value
               if (mod?.transformResult?.map) {
+				_logger.error(`processMessage(request=${request}): mod → ${mod}`, { "event.action": "processMessage" });
                 response.map = mod.transformResult.map as FetchResult['map']
               }
             }
@@ -432,14 +474,18 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
       } catch (error: any) {
         sendError(socket, request.id, error)
       }
+	_logger.warn(`<<< Exiting processMessage(request=${request})`, { "event.action": "processMessage" });
     }
 
     const resetBuffer = () => {
+	_logger.error('>>> Entering resetBuffer()', { "event.action": "resetBuffer" });
       writeOffset = 0
       readOffset = 0
+	_logger.warn('<<< Exiting resetBuffer()', { "event.action": "resetBuffer" });
     }
 
     const compactBuffer = () => {
+	_logger.error('>>> Entering compactBuffer()', { "event.action": "compactBuffer" });
       if (readOffset > 0) {
         const remainingData = writeOffset - readOffset
         if (remainingData > 0) {
@@ -447,10 +493,12 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
         }
         writeOffset = remainingData
         readOffset = 0
+		_logger.warn('<<< Exiting compactBuffer()', { "event.action": "compactBuffer" });
       }
     }
 
     const ensureBufferCapacity = (additionalBytes: number) => {
+	_logger.error(`>>> Entering ensureBufferCapacity(additionalBytes=${additionalBytes})`, { "event.action": "ensureBufferCapacity", "logrite.additionalBytes": additionalBytes });
       const requiredSize = writeOffset + additionalBytes
 
       if (requiredSize > MAX_BUFFER_SIZE) {
@@ -470,8 +518,10 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
           const newBuffer = Buffer.alloc(newSize)
           buffer.copy(newBuffer, 0, 0, writeOffset)
           buffer = newBuffer
+		_logger.error(`ensureBufferCapacity(additionalBytes=${additionalBytes}): newBuffer → ${newBuffer}`, { "event.action": "ensureBufferCapacity", "logrite.additionalBytes": additionalBytes });
         }
       }
+	_logger.warn(`<<< Exiting ensureBufferCapacity(additionalBytes=${additionalBytes})`, { "event.action": "ensureBufferCapacity", "logrite.additionalBytes": additionalBytes });
     }
 
     socket.on('data', (data) => {
@@ -537,8 +587,10 @@ function createViteNodeSocketServer (nuxt: Nuxt, ssrServer: ViteDevServer, clien
 }
 
 export function listenAndRestrict (server: net.Server, socketPath: string): void {
+_logger.error(`>>> Entering listenAndRestrict(server=${server},socketPath=${socketPath})`, { "event.action": "listenAndRestrict", "logrite.server": server, "logrite.socketPath": socketPath });
   const isWindowsPipe = socketPath.startsWith('\\\\.\\pipe\\')
   if (isWindowsPipe) {
+	_logger.error(`listenAndRestrict(server=${server},socketPath=${socketPath}): isWindowsPipe → ${isWindowsPipe}`, { "event.action": "listenAndRestrict", "logrite.server": server, "logrite.socketPath": socketPath });
     server.listen(socketPath)
     return
   }
@@ -550,10 +602,12 @@ export function listenAndRestrict (server: net.Server, socketPath: string): void
   //    and be observable to other code.
   const previousUmask = process.umask(0o077)
   try {
+_logger.error(`listenAndRestrict(server=${server},socketPath=${socketPath}): previousUmask → ${previousUmask}`, { "event.action": "listenAndRestrict", "logrite.server": server, "logrite.socketPath": socketPath });
     server.listen(socketPath, () => {
       try {
         fs.chmodSync(socketPath, 0o600)
       } catch (error) {
+		_logger.error(`Exception in listenAndRestrict(server=${server},socketPath=${socketPath}): ${(error as Error).message}`, error, { "event.action": "listenAndRestrict", "event.category": "process", "logrite.server": server, "logrite.socketPath": socketPath });
         bundlerDiagnostics.NUXT_B7018({ cause: error })
         server.close()
         try {
@@ -566,6 +620,7 @@ export function listenAndRestrict (server: net.Server, socketPath: string): void
   } finally {
     process.umask(previousUmask)
   }
+	_logger.warn(`<<< Exiting listenAndRestrict(server=${server},socketPath=${socketPath})`, { "event.action": "listenAndRestrict", "logrite.server": server, "logrite.socketPath": socketPath });
 }
 
 function sendResponse<T extends keyof ViteNodeRequestMap> (
@@ -596,6 +651,7 @@ function sendResponse<T extends keyof ViteNodeRequestMap> (
 }
 
 function sendError (socket: net.Socket, id: number, error: any) {
+_logger.error(`>>> Entering sendError(socket=${socket},id=${id},error=${error})`, { "event.action": "sendError", "logrite.id": id, "logrite.error": error });
   const errorResponse = {
     id,
     type: 'error',
@@ -610,17 +666,20 @@ function sendError (socket: net.Socket, id: number, error: any) {
   const responseJSON = JSON.stringify(errorResponse)
   const messageBuffer = Buffer.from(responseJSON, 'utf-8')
   const messageLength = messageBuffer.length
+_logger.error(`sendError(socket=${socket},id=${id},error=${error}): responseJSON → ${responseJSON}`, { "event.action": "sendError", "logrite.id": id, "logrite.error": error });
 
   // Pre-allocate single buffer for length + message to avoid Buffer.concat()
   const fullMessage = Buffer.alloc(4 + messageLength)
   fullMessage.writeUInt32BE(messageLength, 0)
   messageBuffer.copy(fullMessage, 4)
 
+_logger.error(`sendError(socket=${socket},id=${id},error=${error}): fullMessage → ${fullMessage}`, { "event.action": "sendError", "logrite.id": id, "logrite.error": error });
   socket.write(fullMessage, (err) => {
     if (err) {
       // Failed to send error response - connection likely closed
     }
   })
+_logger.warn(`<<< Exiting sendError(socket=${socket},id=${id},error=${error})`, { "event.action": "sendError", "logrite.id": id, "logrite.error": error });
 }
 
 export type ViteNodeServerOptions = {

@@ -18,6 +18,7 @@ import { navigationDiagnostics } from '../../../app/diagnostics/navigation'
 import _routes, { handleHotUpdate } from '#build/routes'
 import _routeRulesMatcher from '#build/route-rules.mjs'
 import routerOptions, { hashMode } from '#build/router.options.mjs'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { globalMiddleware, namedMiddleware } from '#build/middleware'
 import { pageIslandRoutes } from '#build/components.islands.mjs'
 
@@ -51,8 +52,10 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
   name: 'nuxt:router',
   enforce: 'pre',
   async setup (nuxtApp) {
+	NuxtLogger.error(`>>> Entering setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     let routerBase = useRuntimeConfig().app.baseURL
     if (hashMode && !routerBase.includes('#')) {
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): routerBase → ${routerBase}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
       // allow the user to provide a `#` in the middle: `/base/#/app`
       routerBase += '#'
     }
@@ -62,7 +65,9 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
       : createMemoryHistory(routerBase)
     )
 
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): history → ${history}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     const routes = routerOptions.routes ? await routerOptions.routes(_routes) ?? _routes : _routes
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): routes → ${routes}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
 
     let startPosition: Parameters<RouterScrollBehavior>[2] | null
 
@@ -100,7 +105,9 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
 
     const previousRoute = shallowRef(router.currentRoute.value)
     router.afterEach((_to, from) => {
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): previousRoute → ${previousRoute}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
       previousRoute.value = from
+	NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): previousRoute.value → ${previousRoute.value}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     })
 
     Object.defineProperty(nuxtApp.vueApp.config.globalProperties, 'previousRoute', {
@@ -114,11 +121,14 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
     // Allows suspending the route object until page navigation completes
     const _route = shallowRef(router.currentRoute.value)
     const syncCurrentRoute = () => { _route.value = router.currentRoute.value }
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): _route → ${_route}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     router.afterEach((to, from) => {
       // `_route` is usually re-synced by `<NuxtPage>`'s `Suspense.onResolve`. When no Suspense
       // remounts (leaf component reused, or navigating up the tree) we sync manually.
       const lastTo = to.matched.at(-1)?.components?.default
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): lastTo → ${lastTo}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
       const lastFrom = from.matched.at(-1)?.components?.default
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): lastFrom → ${lastFrom}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
       if (lastTo === lastFrom) {
         // Only sync eagerly when the reused page is not remounted (unchanged key). When the key
         // changes (e.g. catch-all/param navigation) the page remounts and `Suspense.onResolve`
@@ -126,6 +136,7 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
         const toKey = generateRouteKey({ route: to, Component: { type: lastTo } as VNode })
         const fromKey = generateRouteKey({ route: from, Component: { type: lastFrom } as VNode })
         if (toKey === fromKey) {
+		NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): toKey → ${toKey}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
           syncCurrentRoute()
         }
         return
@@ -137,6 +148,7 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
 
     // https://github.com/vuejs/router/blob/8487c3e18882a0883e464a0f25fb28fa50eeda38/packages/router/src/router.ts#L1283-L1289
     const route = { sync: syncCurrentRoute } as NuxtApp['_route']
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): route → ${route}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     for (const key in _route.value) {
       Object.defineProperty(route, key, {
         get: () => _route.value[key as keyof RouteLocationNormalizedLoadedGeneric],
@@ -153,8 +165,10 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
 
     const error = useError()
     // we only skip redirect handlers for component islands, not page islands
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): error → ${error}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     const isServerPage = import.meta.server && nuxtApp.ssrContext?.islandContext?.name?.startsWith('page_')
     if (import.meta.client || !nuxtApp.ssrContext?.islandContext || isServerPage) {
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): isServerPage → ${isServerPage}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
       router.afterEach(async (to, _from, failure) => {
         delete nuxtApp._processingMiddleware
         if (import.meta.server) {
@@ -184,6 +198,7 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
       }
       await router.isReady()
     } catch (error: any) {
+	NuxtLogger.error(`Exception in setup(nuxtApp=${nuxtApp}): ${(error as Error).message}`, error, { "event.action": "setup", "event.category": "process", "logrite.nuxtApp": nuxtApp });
       // We'll catch 404s here
       await _showErrorUnlessCrawler(nuxtApp, error)
     }
@@ -196,6 +211,7 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
     // snapshot the starting route so a plugin that calls `navigateTo`
     // during `applyPlugins` is not clobbered later on
     const prePluginRoutePath = import.meta.client ? router.currentRoute.value.fullPath : ''
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): prePluginRoutePath → ${prePluginRoutePath}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
 
     // Detect if we're hydrating a prerendered page that doesn't match the current URL
     // (for example, if the browser URL has different query params than the
@@ -217,9 +233,11 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
     // Reflect the target route in the URL (matching SSR) so the back button
     // returns to the previous page after a fatal middleware error (#19954).
     function pushErroredRoute (to: { fullPath: string }) {
+	NuxtLogger.error(`>>> Entering pushErroredRoute(to=${to})`, { "event.action": "pushErroredRoute", "logrite.to": to });
       if (import.meta.client && !nuxtApp.isHydrating && to.fullPath !== createCurrentLocation(routerBase, window.location)) {
         history.push(to.fullPath)
       }
+		NuxtLogger.warn(`<<< Exiting pushErroredRoute(to=${to})`, { "event.action": "pushErroredRoute", "logrite.to": to });
     }
 
     // Routes served under a `noScripts` route rule must be loaded as full
@@ -378,6 +396,7 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
           await router.replace({ ...payloadRoute, force: true })
 
           const restoreDeferredRoute = () => {
+			NuxtLogger.error('>>> Entering restoreDeferredRoute()', { "event.action": "restoreDeferredRoute" });
             if (!nuxtApp['~restoreDeferredRoute']) { return }
             nuxtApp['~restoreDeferredRoute'] = undefined
             // Assign synchronously: `router.replace` only finalises `currentRoute` a microtask
@@ -385,6 +404,7 @@ const plugin: Plugin<{ router: Router }> = defineNuxtPlugin({
             ;(router.currentRoute as Ref<RouteLocationNormalizedLoadedGeneric>).value = router.resolve(initialURL) as RouteLocationNormalizedLoadedGeneric
             syncCurrentRoute()
             router.replace({ ...resolvedInitialRoute, force: true }).catch(() => {})
+			NuxtLogger.error('Exception in restoreDeferredRoute()', { "event.action": "restoreDeferredRoute", "event.category": "process" });
           }
           // `<NuxtPage>` calls this before its mounted hooks flush; the hook is the fallback when
           // there is no page to render.

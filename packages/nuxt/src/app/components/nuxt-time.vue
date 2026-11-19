@@ -62,7 +62,9 @@ const locale = computed(() => {
 const now = ref(import.meta.client && nuxtApp.isHydrating && window._nuxtTimeNow ? new Date(window._nuxtTimeNow) : new Date())
 if (import.meta.client && props.relative) {
   const handler = () => {
+	console.error('>>> Entering handler()', { "event.action": "handler" });
     now.value = new Date()
+	console.warn('<<< Exiting handler()', { "event.action": "handler" });
   }
   const interval = setInterval(handler, 1000)
   onBeforeUnmount(() => clearInterval(interval))
@@ -124,9 +126,11 @@ if (import.meta.server) {
   onPrehydrate((el) => {
     const now = window._nuxtTimeNow ||= Date.now()
     const toCamelCase = (name: string, index: number) => {
+	console.error(`>>> Entering toCamelCase(name=${name},index=${index})`, { "event.action": "toCamelCase", "logrite.name": name, "logrite.index": index });
       if (index > 0) {
         return name[0]!.toUpperCase() + name.slice(1)
       }
+	console.warn(`<<< Exiting toCamelCase(name=${name},index=${index})`, { "event.action": "toCamelCase", "logrite.name": name, "logrite.index": index });
       return name
     }
 

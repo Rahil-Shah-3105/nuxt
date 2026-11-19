@@ -18,6 +18,7 @@ import type { LoadingIndicator } from './composables/loading-indicator'
 import type { RouteAnnouncer } from './composables/route-announcer'
 import type { NuxtAnnouncer } from './composables/announcer'
 import type { AppConfig, AppConfigInput, RuntimeConfig } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { appDiagnostics } from './diagnostics/core'
 import { appId, asyncCallHook, chunkErrorEvent, componentIslands, hasIslandOptOutPlugins, hasParallelPlugins, hasPluginDependencies, hasPluginHooks, multiApp, tracingChannelNuxt, vapor } from '#build/nuxt.config.mjs'
@@ -432,6 +433,7 @@ export async function applyPlugins (nuxtApp: NuxtApp, plugins: Array<Plugin & Ob
     try {
       await applyPlugin(nuxtApp, plugin)
     } catch (e) {
+	NuxtLogger.error(`Exception in applyPlugins(nuxtApp=${nuxtApp},plugins=${plugins}): ${(e as Error).message}`, e, { "event.action": "applyPlugins", "event.category": "process", "logrite.nuxtApp": nuxtApp, "logrite.plugins": plugins });
       // short circuit if we are not rendering `error.vue`
       if (!nuxtApp.payload.error) { throw e }
       error ||= e as Error
@@ -467,6 +469,7 @@ async function applyPluginsWithDependencies (nuxtApp: NuxtApp, plugins: Array<Pl
           }))
         }
       }).catch((e) => {
+		NuxtLogger.error(`Exception in executePlugin(plugin=${plugin}): (no error binding)`, { "event.action": "executePlugin", "event.category": "process", "logrite.plugin": plugin });
         // short circuit if we are not rendering `error.vue`
         if (!plugin.parallel && !nuxtApp.payload.error) {
           throw e

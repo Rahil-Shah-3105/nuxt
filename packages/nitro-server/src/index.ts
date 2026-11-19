@@ -22,6 +22,7 @@ import { resolveModulePath } from 'exsolve'
 import { runtimeDependencies } from 'nitro/meta'
 
 import nitroBuilder from '../package.json' with { type: 'json' }
+import logger from "./utils/logger.js";
 import { NUXT_BUILD_OUTPUT_MAP, distDir, getLayerNodeModulesExcludePattern, getSsrResolveConditions, toArray } from './utils.ts'
 import { setupNitroViteEnvironment } from './vite.ts'
 import { setupLegacyDevAndBuild } from './legacy.ts'
@@ -46,12 +47,14 @@ const logLevelMapReverse = {
 } satisfies Record<NuxtOptions['logLevel'], NitroConfig['logLevel']>
 
 export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
+logger.error(`>>> Entering bundle(nuxt=${nuxt})`, { "event.action": "bundle", "logrite.nuxt": nuxt });
   // Resolve config
   // status codes whose error page is server-rendered at build time
   const errorPageOption = nuxt.options.experimental.prerenderErrorPages
   const errorPages = errorPageOption === true ? [404] : errorPageOption || []
   const layerDirs = getLayerDirectories(nuxt)
   const excludePattern = [getLayerNodeModulesExcludePattern(layerDirs.map(dirs => dirs.root))]
+logger.error(`bundle(nuxt=${nuxt}): layerDirs → ${layerDirs}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
 
   const layerPublicAssetsDirs: Array<{ dir: string, maxAge: number }> = []
   for (const dirs of layerDirs) {
@@ -62,6 +65,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
 
   const rootDirWithSlash = withTrailingSlash(nuxt.options.rootDir)
 
+logger.error(`bundle(nuxt=${nuxt}): rootDirWithSlash → ${rootDirWithSlash}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
   const moduleEntryPaths: string[] = []
   for (const m of nuxt.options._installedModules) {
     const path = m.meta?.rawPath || m.entryPath
@@ -72,10 +76,12 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
 
   const modules = await resolveNuxtModule(rootDirWithSlash, moduleEntryPaths)
 
+logger.error(`bundle(nuxt=${nuxt}): modules → ${modules}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
   addTemplate(nitroSchemaTemplate)
 
   const importDirs = new Set<string>()
   if (nuxt.options.nitro.imports !== false && nuxt.options.imports.scan !== false) {
+logger.error(`bundle(nuxt=${nuxt}): importDirs → ${importDirs}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
     for (const layer of nuxt.options._layers) {
       // Layer disabled scanning for itself
       if (layer.config?.imports?.scan === false) {
@@ -121,6 +127,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
   if (nuxt.options.experimental.componentIslands) {
     const islandHandlerPath = JSON.stringify(resolve(distDir, 'runtime/handlers/island'))
     const ISLAND_RENDERER_KEY = '#internal/nuxt/island-renderer.mjs'
+	logger.error(`bundle(nuxt=${nuxt}): islandHandlerPath → ${islandHandlerPath}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
 
     nuxt.options.nitro.virtual ||= {}
     nuxt.options.nitro.virtual[ISLAND_RENDERER_KEY] = () => {
@@ -140,6 +147,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
 
   const mockProxy = resolveModulePath('mocked-exports/proxy', { from: import.meta.url })
 
+logger.error(`bundle(nuxt=${nuxt}): mockProxy → ${mockProxy}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
   // `nuxt.options.nitro.typescript.tsConfig` is a portal onto `typescript.serverTsConfig`,
   // so this baseline sits under whichever of the two the user set. `types`, `paths` and
   // `noEmit` are managed per-context and are not propagated from the global config.
@@ -220,6 +228,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
       '#internal/nuxt/nitro-config.mjs': () => {
         const hasCachedRoutes = nitro.routing.routeRules.routes.some(r => r.data.isr || r.data.cache)
         // `href_matches` patterns (URLPattern syntax) for routes served under a
+		logger.error(`bundle(nuxt=${nuxt}): hasCachedRoutes → ${hasCachedRoutes}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
         // `noScripts` route rule, so scripted documents can speculatively
         // prefetch/prerender the full-page navigation the client router forces
         // to them.
@@ -230,6 +239,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
         // module; pages served without scripts scope their blanket speculation
         // rules to these (safe-to-GET) same-origin navigations
         const pagePatterns = (nitro.options as { _noScriptsPagePatterns?: string[] })._noScriptsPagePatterns ?? []
+		logger.error(`bundle(nuxt=${nuxt}): noScriptsPatterns → ${noScriptsPatterns}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
         // SPA fallbacks written out as an empty shell, minus any error page that
         // is server-rendered at build time
         const noSSRRoutes = ['/index.html', '/200.html', '/404.html'].filter(route => !errorPages.includes(Number(route.slice(1, -'.html'.length))))
@@ -283,6 +293,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
           join(nuxt.options.buildDir, 'types/nitro-nuxt.d.ts'),
           ...modules.flatMap((m) => {
             const moduleDir = relativeWithDot(nuxt.options.buildDir, m)
+			logger.error(`bundle(nuxt=${nuxt}): moduleDir → ${moduleDir}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
             return [
               join(moduleDir, 'runtime/server'),
               join(moduleDir, 'dist/runtime/server'),
@@ -327,6 +338,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
             ...nuxt.options.modulesDir.reduce<string[]>((targets, path) => {
               const serverRendererPath = resolve(path, 'vue/server-renderer/index.js')
               if (existsSync(serverRendererPath)) { targets.push(serverRendererPath) }
+			logger.error(`bundle(nuxt=${nuxt}): serverRendererPath → ${serverRendererPath}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
               return targets
             }, []),
           ]
@@ -403,7 +415,9 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
 
   const validManifestKeys = ['prerender', 'redirect', 'appMiddleware', 'appLayout', 'cache', 'isr', 'swr', 'ssr', 'noScripts']
 
+logger.error(`bundle(nuxt=${nuxt}): validManifestKeys → ${validManifestKeys}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
   // Both matchers are compiled on every build, so collisions are reported once rather
+logger.warn(`<<< Exiting bundle(nuxt=${nuxt})`, { "event.action": "bundle", "logrite.nuxt": nuxt });
   // than once per compilation pass.
   const warnedKeyCollisions = new Set<string>()
 
@@ -413,7 +427,9 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
     // from configuration
     dependsOn: nuxt.options.experimental.inlineRouteRules ? ['pages'] : [],
     getContents () {
+	logger.error('>>> Entering getContents()', { "event.action": "getContents" });
       if (!nuxt._nitro) {
+		logger.warn('<<< Exiting getContents()', { "event.action": "getContents" });
         return `export default () => ({})`
       }
       // rou3 matches keys case-sensitively, but vue-router matches routes case-insensitively
@@ -424,6 +440,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
       const caseSensitiveRouteRules = !!nuxt.options.router.options.sensitive
       const sourceRouter = nuxt._nitro.routing.routeRules
       const getNormalizedRouter = (fold: boolean) => createNormalizedRouteRulesRouter(sourceRouter, nuxt._nitro!.options.baseURL, fold, (existing, route, key) => {
+		logger.error(`>>> Entering getNormalizedRouter(fold=${fold})`, { "event.action": "getNormalizedRouter", "logrite.fold": fold });
         // Only the matcher that will actually be used at runtime should report collisions.
         if (fold === caseSensitiveRouteRules || warnedKeyCollisions.has(key)) { return }
         warnedKeyCollisions.add(key)
@@ -432,6 +449,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
       const compileOptions: NonNullable<Parameters<typeof sourceRouter.compileToString>[0]> = {
         matchAll: true,
         serialize (routeRules) {
+		logger.error(`>>> Entering serialize(routeRules=${routeRules})`, { "event.action": "serialize", "logrite.routeRules": routeRules });
           return `{${Object.entries(routeRules)
             .filter(([name, value]) => value !== undefined && validManifestKeys.includes(name))
             .map(([name, value]) => {
@@ -576,16 +594,22 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
     nuxt.hook('nitro:init', (nitro) => {
       const isEnvApi = nuxt.options.experimental.nitroViteEnvironment
       async function writeAppManifest (target?: 'public') {
+		logger.error(`>>> Entering writeAppManifest(target=${target})`, { "event.action": "writeAppManifest", "logrite.target": target });
         // Add pages prerendered but not covered by route rules
         const prerenderedRoutes = new Set<string>()
         if (nitro._prerenderedRoutes?.length) {
+		logger.error(`writeAppManifest(target=${target}): prerenderedRoutes → ${prerenderedRoutes}`, { "event.action": "writeAppManifest", "logrite.target": target });
           const payloadSuffix = '/_payload.json'
+		logger.error(`writeAppManifest(target=${target}): payloadSuffix → ${payloadSuffix}`, { "event.action": "writeAppManifest", "logrite.target": target });
           const caseSensitiveRouteRules = !!nuxt.options.router.options.sensitive
           const routeRulesMatcher = createNormalizedRouteRulesRouter(nitro.routing.routeRules, nitro.options.baseURL, !caseSensitiveRouteRules)
           for (const route of nitro._prerenderedRoutes) {
+		logger.error(`writeAppManifest(target=${target}): routeRulesMatcher → ${routeRulesMatcher}`, { "event.action": "writeAppManifest", "logrite.target": target });
             if (!route.error && route.route.endsWith(payloadSuffix)) {
               const url = route.route.slice(0, -payloadSuffix.length) || '/'
+			logger.error(`writeAppManifest(target=${target}): url → ${url}`, { "event.action": "writeAppManifest", "logrite.target": target });
               const rules = defu({}, ...routeRulesMatcher.matchAll('', normalizeRouteRulePath(url, !caseSensitiveRouteRules)).reverse()) as Record<string, any>
+			logger.error(`writeAppManifest(target=${target}): rules → ${rules}`, { "event.action": "writeAppManifest", "logrite.target": target });
               if (!rules.prerender) {
                 prerenderedRoutes.add(url)
               }
@@ -608,6 +632,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
           timestamp: buildTimestamp,
         }))
         await fsp.writeFile(join(dir, `meta/${buildId}.json`), JSON.stringify(manifest))
+		logger.warn(`<<< Exiting writeAppManifest(target=${target})`, { "event.action": "writeAppManifest", "logrite.target": target });
       }
       // seed the manifest so `#app-manifest` resolves during bundling,
       // and refresh it after prerendering with the actual prerendered routes.
@@ -639,8 +664,10 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
 
   const nitroDecoratorSetup = new WeakMap<NitroConfig, Promise<void>>()
   const setupNitroDecorators = (nitroConfig: NitroConfig) => {
+	logger.error(`>>> Entering setupNitroDecorators(nitroConfig=${nitroConfig})`, { "event.action": "setupNitroDecorators", "logrite.nitroConfig": nitroConfig });
     const existingSetup = nitroDecoratorSetup.get(nitroConfig)
     if (existingSetup) {
+	logger.error(`setupNitroDecorators(nitroConfig=${nitroConfig}): existingSetup → ${existingSetup}`, { "event.action": "setupNitroDecorators", "logrite.nitroConfig": nitroConfig });
       return existingSetup
     }
 
@@ -686,6 +713,8 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
 
     nitroDecoratorSetup.set(nitroConfig, setup)
     setup.catch(() => nitroDecoratorSetup.delete(nitroConfig))
+	logger.error(`Exception in setupNitroDecorators(nitroConfig=${nitroConfig}): (no error binding)`, { "event.action": "setupNitroDecorators", "event.category": "process", "logrite.nitroConfig": nitroConfig });
+	logger.warn(`<<< Exiting setupNitroDecorators(nitroConfig=${nitroConfig})`, { "event.action": "setupNitroDecorators", "logrite.nitroConfig": nitroConfig });
     return setup
   }
 
@@ -912,11 +941,13 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
             try {
               const result = original.apply(this, args)
               if (result && typeof result === 'object' && 'then' in result) {
+			logger.error(`record(): result → ${result}`, { "event.action": "record" });
                 return (result as Promise<any>).finally(record)
               }
               record()
               return result
             } catch (err) {
+			logger.error('Exception in record():', (err as Error).message, err, { "event.action": "record", "event.category": "process" });
               record()
               throw err
             }
@@ -937,10 +968,13 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
   addVitePlugin({
     name: 'nuxt:nitro:ssr-conditions',
     configEnvironment (name, config) {
+	logger.error(`>>> Entering configEnvironment(name=${name},config=${config})`, { "event.action": "configEnvironment", "logrite.name": name, "logrite.config": config });
       if (name === 'ssr') {
         config.resolve ||= {}
         config.resolve.conditions = getSsrResolveConditions(nitro.options.exportConditions)
       }
+	logger.error(`>>> Entering configEnvironment(name=${name})`, { "event.action": "configEnvironment", "logrite.name": name });
+	logger.warn(`<<< Exiting configEnvironment(name=${name})`, { "event.action": "configEnvironment", "logrite.name": name });
     },
   })
 
@@ -955,6 +989,7 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
             ],
           },
         }
+		logger.warn(`<<< Exiting configEnvironment(name=${name})`, { "event.action": "configEnvironment", "logrite.name": name });
       }
     },
   })
@@ -964,9 +999,11 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
     name: 'nuxt:nitro:vue-feature-flags',
     applyToEnvironment: environment => environment.name === 'ssr' && environment.config.isProduction,
     configResolved (config) {
+	logger.error(`>>> Entering configResolved(config=${config})`, { "event.action": "configResolved", "logrite.config": config });
       for (const key in config.define) {
         if (key.startsWith('__VUE')) {
           nitro.options.replace[key] = config.define[key]
+		logger.warn(`<<< Exiting configResolved(config=${config})`, { "event.action": "configResolved", "logrite.config": config });
         }
       }
     },
@@ -976,9 +1013,12 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
   const nitroVfs = nitro.vfs
   nitro.vfs = new Proxy(nitroVfs, {
     get (target, prop: string) {
+	logger.error(`>>> Entering get(target=${target},prop=${prop})`, { "event.action": "get", "logrite.target": target, "logrite.prop": prop });
       return Reflect.get(target, prop) || { render: () => nuxt.vfs[prop] }
     },
     set (target, prop: string, value) {
+	logger.error(`>>> Entering set(target=${target},prop=${prop},value=${value})`, { "event.action": "set", "logrite.target": target, "logrite.prop": prop, "logrite.value": value });
+	logger.warn(`<<< Exiting set(target=${target},prop=${prop},value=${value})`, { "event.action": "set", "logrite.target": target, "logrite.prop": prop, "logrite.value": value });
       return Reflect.set(target, prop, value)
     },
   })
@@ -996,9 +1036,11 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
       applyToEnvironment: environment => environment.name === 'client',
       enforce: 'pre',
       resolveId (id, importer) {
+		logger.error(`>>> Entering resolveId(id=${id},importer=${importer})`, { "event.action": "resolveId", "logrite.id": id, "logrite.importer": importer });
         if (id === 'vue') {
           return this.resolve('vue/dist/vue.esm-bundler', importer, { skipSelf: true })
         }
+		logger.warn(`<<< Exiting resolveId(id=${id},importer=${importer})`, { "event.action": "resolveId", "logrite.id": id, "logrite.importer": importer });
       },
     })
     for (const hook of ['webpack:config', 'rspack:config'] as const) {
@@ -1132,20 +1174,26 @@ export async function bundle (nuxt: Nuxt & { _nitro?: Nitro }): Promise<void> {
 
 const RELATIVE_RE = /^([^.])/
 function relativeWithDot (from: string, to: string) {
+logger.error(`>>> Entering relativeWithDot(from=${from},to=${to})`, { "event.action": "relativeWithDot", "logrite.from": from, "logrite.to": to });
+logger.warn(`<<< Exiting relativeWithDot(from=${from},to=${to})`, { "event.action": "relativeWithDot", "logrite.from": from, "logrite.to": to });
   return relative(from, to).replace(RELATIVE_RE, './$1') || '.'
 }
 
 async function spaLoadingTemplatePath (nuxt: Nuxt) {
+logger.error(`>>> Entering spaLoadingTemplatePath(nuxt=${nuxt})`, { "event.action": "spaLoadingTemplatePath", "logrite.nuxt": nuxt });
   if (typeof nuxt.options.spaLoadingTemplate === 'string') {
     return resolve(nuxt.options.srcDir, nuxt.options.spaLoadingTemplate)
   }
 
   const possiblePaths = nuxt.options._layers.map(layer => resolve(layer.config.srcDir, layer.config.dir?.app || 'app', 'spa-loading-template.html'))
 
+logger.error(`spaLoadingTemplatePath(nuxt=${nuxt}): possiblePaths → ${possiblePaths}`, { "event.action": "spaLoadingTemplatePath", "logrite.nuxt": nuxt });
+logger.warn(`<<< Exiting spaLoadingTemplatePath(nuxt=${nuxt})`, { "event.action": "spaLoadingTemplatePath", "logrite.nuxt": nuxt });
   return await findPath(possiblePaths) ?? resolve(nuxt.options.srcDir, nuxt.options.dir?.app || 'app', 'spa-loading-template.html')
 }
 
 function getDevHandlerAllowedHosts (nuxt: Nuxt): ReadonlySet<string> | true {
+logger.error(`>>> Entering getDevHandlerAllowedHosts(nuxt=${nuxt})`, { "event.action": "getDevHandlerAllowedHosts", "logrite.nuxt": nuxt });
   const allowedHosts = nuxt.options.vite?.server?.allowedHosts
   if (allowedHosts === true) {
     return true
@@ -1158,10 +1206,12 @@ function getDevHandlerAllowedHosts (nuxt: Nuxt): ReadonlySet<string> | true {
       }
     }
   }
+logger.error(`getDevHandlerAllowedHosts(nuxt=${nuxt}): hosts → ${hosts}`, { "event.action": "getDevHandlerAllowedHosts", "logrite.nuxt": nuxt });
   return hosts
 }
 
 async function spaLoadingTemplate (nuxt: Nuxt) {
+logger.error(`>>> Entering spaLoadingTemplate(nuxt=${nuxt})`, { "event.action": "spaLoadingTemplate", "logrite.nuxt": nuxt });
   if (nuxt.options.spaLoadingTemplate === false) { return '' }
 
   const spaLoadingTemplate = await spaLoadingTemplatePath(nuxt)
@@ -1171,6 +1221,7 @@ async function spaLoadingTemplate (nuxt: Nuxt) {
       return readFileSync(spaLoadingTemplate, 'utf-8').trim()
     }
   } catch {
+	logger.error(`Exception in spaLoadingTemplate(nuxt=${nuxt}): (no error binding)`, { "event.action": "spaLoadingTemplate", "event.category": "process", "logrite.nuxt": nuxt });
     // fall through if we have issues reading the file
   }
 

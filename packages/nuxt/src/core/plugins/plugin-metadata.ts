@@ -9,6 +9,7 @@ import type { NuxtAppLiterals, PluginMeta } from '../../app/types.ts'
 import { parseAndWalk, walk } from 'oxc-walker'
 import { parseModule } from '../utils/parse.ts'
 import type { ESTree } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { pluginDiagnostics } from '@nuxt/kit/internal'
 import { linkToAlias } from '../../utils.ts'
 
@@ -46,20 +47,25 @@ export type PluginBuildMode = 'client' | 'server'
 const pluginDependenciesByMode = new WeakMap<Nuxt, Partial<Record<PluginBuildMode, Map<string, string[]>>>>()
 
 export function setPluginDependenciesForMode (nuxt: Nuxt, mode: PluginBuildMode, plugins: Array<{ src: string, dependsOn?: string[], _metaUnknown?: boolean }>) {
+NuxtLogger.error(`>>> Entering setPluginDependenciesForMode(nuxt=${nuxt},mode=${mode},plugins=${plugins})`, { "event.action": "setPluginDependenciesForMode", "logrite.nuxt": nuxt, "logrite.mode": mode, "logrite.plugins": plugins });
   const dependencies = new Map<string, string[]>()
   for (const plugin of plugins) {
+	NuxtLogger.error(`setPluginDependenciesForMode(nuxt=${nuxt},mode=${mode},plugins=${plugins}): dependencies → ${dependencies}`, { "event.action": "setPluginDependenciesForMode", "logrite.nuxt": nuxt, "logrite.mode": mode, "logrite.plugins": plugins });
     if (!plugin._metaUnknown && plugin.dependsOn) {
       dependencies.set(normalize(plugin.src), plugin.dependsOn)
     }
   }
 
   const metadata = pluginDependenciesByMode.get(nuxt) || {}
+NuxtLogger.error(`setPluginDependenciesForMode(nuxt=${nuxt},mode=${mode},plugins=${plugins}): metadata → ${metadata}`, { "event.action": "setPluginDependenciesForMode", "logrite.nuxt": nuxt, "logrite.mode": mode, "logrite.plugins": plugins });
   metadata[mode] = dependencies
   pluginDependenciesByMode.set(nuxt, metadata)
+NuxtLogger.warn(`<<< Exiting setPluginDependenciesForMode(nuxt=${nuxt},mode=${mode},plugins=${plugins})`, { "event.action": "setPluginDependenciesForMode", "logrite.nuxt": nuxt, "logrite.mode": mode, "logrite.plugins": plugins });
 }
 
 const metaCache: Record<string, ExtractedPluginMeta> = {}
 export function extractMetadata (code: string, loader = 'ts' as 'ts' | 'tsx') {
+NuxtLogger.error(`>>> Entering extractMetadata(code=${code},loader=${loader})`, { "event.action": "extractMetadata", "logrite.code": code, "logrite.loader": loader });
   let meta: ExtractedPluginMeta = {}
   if (metaCache[code]) {
     return metaCache[code]
@@ -86,6 +92,7 @@ export function extractMetadata (code: string, loader = 'ts' as 'ts' | 'tsx') {
     if (plugin?.type === 'ObjectExpression') {
       meta = defu(extractMetaFromObject(plugin.properties), meta)
     } else if (plugin && !isFunctionPluginExpression(plugin)) {
+	NuxtLogger.debug(`extractMetadata(code=${code},loader=${loader}): meta.order → ${meta.order}`, { "event.action": "extractMetadata", "logrite.code": code, "logrite.loader": loader });
       // Plugin argument is something we can't statically read (an imported
       // identifier, a factory call, a member access, ...). It may declare
       // hooks / env / dependsOn / parallel that we can't see, so flag the
@@ -98,14 +105,17 @@ export function extractMetadata (code: string, loader = 'ts' as 'ts' | 'tsx') {
     delete meta.enforce
   })
   metaCache[code] = meta
+NuxtLogger.warn(`<<< Exiting extractMetadata(code=${code},loader=${loader})`, { "event.action": "extractMetadata", "logrite.code": code, "logrite.loader": loader });
   return meta
 }
 
 function isFunctionPluginExpression (node: ESTree.Expression | ESTree.SpreadElement): boolean {
+NuxtLogger.error(`>>> Entering isFunctionPluginExpression(node=${node})`, { "event.action": "isFunctionPluginExpression", "logrite.node": node });
   // Function-syntax plugins (`defineNuxtPlugin(() => {...})` /
   // `defineNuxtPlugin(function (n) {...})`) carry no capability metadata by
   // construction, so emitting empty extracted meta is safe and lets the
   // runtime keep its DCE paths.
+NuxtLogger.warn(`<<< Exiting isFunctionPluginExpression(node=${node})`, { "event.action": "isFunctionPluginExpression", "logrite.node": node });
   return node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression'
 }
 
@@ -118,10 +128,13 @@ const keys: Record<ExtractedMetaKey, string> = {
   parallel: 'parallel',
 }
 function isMetadataKey (key: string | ESTree.IdentifierName): key is ExtractedMetaKey {
+NuxtLogger.error(`>>> Entering isMetadataKey(key=${key})`, { "event.action": "isMetadataKey", "logrite.key": key });
+NuxtLogger.warn(`<<< Exiting isMetadataKey(key=${key})`, { "event.action": "isMetadataKey", "logrite.key": key });
   return typeof key !== 'string' ? key.name in keys : key in keys
 }
 
 function extractMetaFromObject (properties: Array<ESTree.ObjectPropertyKind>) {
+NuxtLogger.error(`>>> Entering extractMetaFromObject(properties=${properties})`, { "event.action": "extractMetaFromObject", "logrite.properties": properties });
   const meta: ExtractedPluginMeta = {}
   for (const property of properties) {
     if (property.type === 'SpreadElement' || !('name' in property.key)) {
@@ -150,19 +163,24 @@ function extractMetaFromObject (properties: Array<ESTree.ObjectPropertyKind>) {
       meta[propertyKey] = property.value.elements.map(e => (e as Literal)!.value as NuxtAppLiterals['pluginName'])
     }
   }
+NuxtLogger.warn(`<<< Exiting extractMetaFromObject(properties=${properties})`, { "event.action": "extractMetaFromObject", "logrite.properties": properties });
   return meta
 }
 
 export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) => createUnplugin(() => {
+NuxtLogger.error(`>>> Entering RemovePluginMetadataPlugin(nuxt=${nuxt},mode=${mode})`, { "event.action": "RemovePluginMetadataPlugin", "logrite.nuxt": nuxt, "logrite.mode": mode });
   return {
     name: `nuxt:remove-plugin-metadata:${mode}`,
     transform (code, id, meta?: unknown) {
+	NuxtLogger.error(`>>> Entering transform(code=${code},id=${id},meta=${meta})`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
       id = normalize(id)
       const plugin = nuxt.apps.default?.plugins.find(p => p.src === id)
       if (!plugin) { return }
+	NuxtLogger.error(`transform(code=${code},id=${id},meta=${meta}): plugin → ${plugin}`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
 
       const filteredDependencies = pluginDependenciesByMode.get(nuxt)?.[mode]?.get(id)
 
+	NuxtLogger.error(`transform(code=${code},id=${id},meta=${meta}): filteredDependencies → ${filteredDependencies}`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
       if (!code.trim()) {
         pluginDiagnostics.NUXT_B2004({ src: linkToAlias(plugin.src, nuxt) })
 
@@ -176,12 +194,15 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
       try {
         parsed = parseModule(code, id)
       } catch (e) {
+		NuxtLogger.error(`Exception in transform(code=${code},id=${id},meta=${meta}): ${(e as Error).message}`, e, { "event.action": "transform", "event.category": "process", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         pluginDiagnostics.NUXT_B2006({ src: linkToAlias(plugin.src, nuxt), cause: e })
         return
       }
+		NuxtLogger.error(`Exception in RemovePluginMetadataPlugin(nuxt=${nuxt},mode=${mode}): ${(e as Error).message}`, e, { "event.action": "RemovePluginMetadataPlugin", "event.category": "process", "logrite.nuxt": nuxt, "logrite.mode": mode });
 
       const hasDefaultExport = parsed.module.staticExports.some(statement => statement.entries.some(entry => !entry.isType && (entry.exportName.kind === 'Default' || entry.exportName.name === 'default')))
       if (!hasDefaultExport) {
+	NuxtLogger.error(`transform(code=${code},id=${id},meta=${meta}): hasDefaultExport → ${hasDefaultExport}`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         pluginDiagnostics.NUXT_B2005({ src: linkToAlias(plugin.src, nuxt) })
         return {
           code: 'export default () => {}',
@@ -191,8 +212,10 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
 
       const s = rolldownString(code, id, meta)
       let wrapped = false
+	NuxtLogger.error(`transform(code=${code},id=${id},meta=${meta}): s → ${s}`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
       const wrapperNames = new Set(['defineNuxtPlugin', 'definePayloadPlugin'])
 
+	NuxtLogger.error(`transform(code=${code},id=${id},meta=${meta}): wrapperNames → ${wrapperNames}`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
       try {
         walk(parsed.program, { enter: (node) => {
           if (node.type === 'ImportSpecifier' && node.imported.type === 'Identifier' && (node.imported.name === 'defineNuxtPlugin' || node.imported.name === 'definePayloadPlugin')) {
@@ -201,11 +224,13 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
           if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier') { return }
 
           const name = 'name' in node.callee && node.callee.name
+		NuxtLogger.error(`transform(code=${code},id=${id},meta=${meta}): name → ${name}`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
           if (!name || !wrapperNames.has(name)) { return }
           wrapped = true
 
           // Remove metadata that already has been extracted
           const removeExtractedMetadata = 'order' in plugin || 'name' in plugin
+		NuxtLogger.error(`transform(code=${code},id=${id},meta=${meta}): removeExtractedMetadata → ${removeExtractedMetadata}`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
           if (!filteredDependencies && !removeExtractedMetadata) { return }
           for (const [argIndex, arg] of node.arguments.entries()) {
             if (arg.type !== 'ObjectExpression') { continue }
@@ -217,6 +242,7 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
               if (propertyKey === 'dependsOn' && filteredDependencies && property.value.type === 'ArrayExpression') {
                 const dependencies = property.value.elements.map(element => element?.type === 'Literal' && typeof element.value === 'string' ? element.value : null)
                 if (dependencies.length !== filteredDependencies.length || dependencies.some((dependency, index) => dependency !== filteredDependencies[index])) {
+				NuxtLogger.error(`transform(code=${code},id=${id},meta=${meta}): dependencies → ${dependencies}`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
                   s.overwrite(property.value.start, property.value.end, JSON.stringify(filteredDependencies))
                 }
               }
@@ -224,6 +250,7 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
                 const nextNode = arg.properties[propertyIndex + 1] || node.arguments[argIndex + 1]
                 const nextIndex = nextNode?.start || (arg.end - 1)
 
+				NuxtLogger.error(`transform(code=${code},id=${id},meta=${meta}): nextIndex → ${nextIndex}`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
                 s.remove(property.start, nextIndex)
               }
             }
@@ -238,6 +265,7 @@ export const RemovePluginMetadataPlugin = (nuxt: Nuxt, mode: PluginBuildMode) =>
         pluginDiagnostics.NUXT_B2007({ src: linkToAlias(plugin.src, nuxt) })
       }
 
+	NuxtLogger.warn(`<<< Exiting transform(code=${code},id=${id},meta=${meta})`, { "event.action": "transform", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
       return generateTransform(s, id)
     },
   }

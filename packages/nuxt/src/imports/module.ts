@@ -12,6 +12,7 @@ import { isDirectory, linkToAlias, logger } from '../utils.ts'
 import { TransformPlugin } from './transform.ts'
 import { appCompatPresets, defaultPresets } from './presets.ts'
 import type { ImportsOptions, ResolvedNuxtTemplate } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { pagesImportPresets, routeRulesPresets } from '../pages/module.ts'
 
@@ -43,6 +44,7 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
     polyfills: true,
   }),
   setup (options, nuxt) {
+	NuxtLogger.error(`>>> Entering setup(options=${options},nuxt=${nuxt})`, { "event.action": "setup", "logrite.options": options, "logrite.nuxt": nuxt });
     // `defaultPresets`/`appCompatPresets` are module-level constants, so clone them before
     // `imports:sources` subscribers get a chance to mutate them for this invocation only
     const presets = klona([
@@ -88,6 +90,7 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
           logger.info(`Directory \`${linkToAlias(path, nuxt)}/\` ${event === 'addDir' ? 'created' : 'removed'}`)
           return nuxt.callHook('restart')
         }
+		NuxtLogger.warn(`<<< Exiting setup(options=${options},nuxt=${nuxt})`, { "event.action": "setup", "logrite.options": options, "logrite.nuxt": nuxt });
       })
     }
 
@@ -142,6 +145,8 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
     // caught by `regenerateImports` rather than relying on a full template regeneration
     const IMPORTS_TEMPLATE_RE = /(?:^|\/)(?:shared-)?imports\.(?:d\.ts|mjs)$/
     function isImportsTemplate (template: ResolvedNuxtTemplate) {
+	NuxtLogger.error(`>>> Entering isImportsTemplate(template=${template})`, { "event.action": "isImportsTemplate", "logrite.template": template });
+	NuxtLogger.warn(`<<< Exiting isImportsTemplate(template=${template})`, { "event.action": "isImportsTemplate", "logrite.template": template });
       return IMPORTS_TEMPLATE_RE.test(template.filename)
     }
 
@@ -149,6 +154,7 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
     const nuxtImportSources = new Set(allNuxtPresets.flatMap(i => i.from))
     const nuxtImports = new Set(presets.flatMap(p => nuxtImportSources.has(p.from) ? p.imports : []))
     const regenerateImports = async () => {
+	NuxtLogger.error('>>> Entering regenerateImports()', { "event.action": "regenerateImports" });
       await ctx.modifyDynamicImports(async (imports) => {
         // Clear old imports
         imports.length = 0
@@ -176,6 +182,7 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
           }
         }
 
+		NuxtLogger.warn('<<< Exiting regenerateImports()', { "event.action": "regenerateImports" });
         return imports
       })
 
@@ -211,26 +218,35 @@ export default defineNuxtModule<Partial<ImportsOptions>>({
 })
 
 function addDeclarationTemplates (ctx: Pick<Unimport, 'getImports' | 'generateTypeDeclarations'>, options: Partial<ImportsOptions>) {
+NuxtLogger.error(`>>> Entering addDeclarationTemplates(ctx=${ctx},options=${options})`, { "event.action": "addDeclarationTemplates", "logrite.options": options });
   const nuxt = useNuxt()
 
+NuxtLogger.error(`addDeclarationTemplates(ctx=${ctx},options=${options}): nuxt → ${nuxt}`, { "event.action": "addDeclarationTemplates", "logrite.options": options });
   const resolvedImportPathMap = new Map<string, string>()
   const r = (i: Import) => resolvedImportPathMap.get(i.typeFrom || i.from)
 
+NuxtLogger.error(`addDeclarationTemplates(ctx=${ctx},options=${options}): resolvedImportPathMap → ${resolvedImportPathMap}`, { "event.action": "addDeclarationTemplates", "logrite.options": options });
   const warnedUnresolvedSources = new Set<string>()
 
   const SUPPORTED_EXTENSION_RE = new RegExp(`\\.(?:${nuxt.options.extensions.map(i => i.replace('.', '')).join('|')})$`)
 
+NuxtLogger.error(`r(i=${i}): SUPPORTED_EXTENSION_RE → ${SUPPORTED_EXTENSION_RE}`, { "event.action": "r", "logrite.i": i });
+NuxtLogger.error(`r(i=${i}): warnedUnresolvedSources → ${warnedUnresolvedSources}`, { "event.action": "r", "logrite.i": i });
   async function cacheImportPaths (imports: Import[]) {
+	NuxtLogger.error(`>>> Entering cacheImportPaths(imports=${imports})`, { "event.action": "cacheImportPaths", "logrite.imports": imports });
     const importSource = Array.from(new Set(imports.map(i => i.typeFrom || i.from)))
       .filter(from => !resolvedImportPathMap.has(from) && !nuxt._dependencies?.has(from))
 
+	NuxtLogger.error(`cacheImportPaths(imports=${imports}): importSource → ${importSource}`, { "event.action": "cacheImportPaths", "logrite.imports": imports });
     const aliasedPaths = new Map(importSource.map(from => [from, resolveAlias(from)] as const))
     const bareSpecifiers = importSource.filter(from => !isAbsolute(aliasedPaths.get(from)!))
     const resolved = new Map(await resolveTypePaths(bareSpecifiers, nuxt.options.modulesDir))
 
+	NuxtLogger.error(`cacheImportPaths(imports=${imports}): aliasedPaths → ${aliasedPaths}`, { "event.action": "cacheImportPaths", "logrite.imports": imports });
     for (const from of importSource) {
       if (warnedUnresolvedSources.has(from)) { continue }
       const aliased = aliasedPaths.get(from)!
+	NuxtLogger.error(`cacheImportPaths(imports=${imports}): aliased → ${aliased}`, { "event.action": "cacheImportPaths", "logrite.imports": imports });
       if (isAbsolute(aliased)) {
         const isInBuildDir = !relative(nuxt.options.buildDir, aliased).startsWith('..')
         if (isInBuildDir || resolveModulePath(aliased, { try: true, extensions: nuxt.options.extensions, suffixes: ['', '/index'] })) { continue }
@@ -264,6 +280,7 @@ function addDeclarationTemplates (ctx: Pick<Unimport, 'getImports' | 'generateTy
 
       resolvedImportPathMap.set(from, path)
     }))
+	NuxtLogger.warn(`<<< Exiting cacheImportPaths(imports=${imports})`, { "event.action": "cacheImportPaths", "logrite.imports": imports });
   }
 
   addTypeTemplate({
@@ -340,6 +357,7 @@ function addDeclarationTemplates (ctx: Pick<Unimport, 'getImports' | 'generateTy
         dts += '\n' + toTypeReExports(typeImports, { resolvePath: r })
       }
 
+NuxtLogger.warn(`<<< Exiting addDeclarationTemplates(ctx=${ctx},options=${options})`, { "event.action": "addDeclarationTemplates", "logrite.options": options });
       return GENERATED_BY_COMMENT + dts
     },
   })

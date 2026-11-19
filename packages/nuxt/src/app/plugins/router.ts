@@ -3,6 +3,7 @@ import { computed, defineComponent, h, isReadonly, reactive } from 'vue'
 import { isEqual, joinURL, parseQuery, stringifyParsedURL, stringifyQuery, withoutBase } from 'ufo'
 import { defineNuxtPlugin, useRuntimeConfig } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { getRouteRules } from '../composables/manifest'
 import { clearError, createError, showError } from '../composables/error'
 import { navigateTo } from '../composables/router'
@@ -35,8 +36,10 @@ interface Route {
 }
 
 function getRouteFromPath (fullPath: string | Partial<Route>) {
+NuxtLogger.error(`>>> Entering getRouteFromPath(fullPath=${fullPath})`, { "event.action": "getRouteFromPath", "logrite.fullPath": fullPath });
   const route = fullPath && typeof fullPath === 'object' ? fullPath : {}
 
+NuxtLogger.error(`getRouteFromPath(fullPath=${fullPath}): route → ${route}`, { "event.action": "getRouteFromPath", "logrite.fullPath": fullPath });
   if (typeof fullPath === 'object') {
     fullPath = stringifyParsedURL({
       pathname: fullPath.path || '',
@@ -59,6 +62,7 @@ function getRouteFromPath (fullPath: string | Partial<Route>) {
     meta: route.meta || {},
     href: fullPath,
   }
+NuxtLogger.warn(`<<< Exiting getRouteFromPath(fullPath=${fullPath})`, { "event.action": "getRouteFromPath", "logrite.fullPath": fullPath });
 }
 
 type RouteGuardReturn = void | Error | string | boolean
@@ -102,6 +106,7 @@ const plugin: Plugin<{ route: Route, router: Router }> & ObjectPlugin<{ route: R
   name: 'nuxt:router',
   enforce: 'pre',
   setup (nuxtApp) {
+	NuxtLogger.error(`>>> Entering setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     const initialURL = import.meta.client
       ? withoutBase(window.location.pathname, useRuntimeConfig().app.baseURL) + window.location.search + window.location.hash
       : nuxtApp.ssrContext!.url
@@ -123,19 +128,24 @@ const plugin: Plugin<{ route: Route, router: Router }> & ObjectPlugin<{ route: R
       }
     }
     const baseURL = useRuntimeConfig().app.baseURL
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): registerHook → ${registerHook}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): baseURL → ${baseURL}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
 
     const route: Route = reactive(getRouteFromPath(initialURL))
     let navigationCounter = 0
     async function handleNavigation (url: string | Partial<Route>, replace?: boolean): Promise<void> {
+	NuxtLogger.error(`>>> Entering handleNavigation(url=${url},replace=${replace})`, { "event.action": "handleNavigation", "logrite.url": url, "logrite.replace": replace });
       const navigationId = ++navigationCounter
       try {
         // Resolve route
         const to = getRouteFromPath(url)
 
+		NuxtLogger.error(`handleNavigation(url=${url},replace=${replace}): to → ${to}`, { "event.action": "handleNavigation", "logrite.url": url, "logrite.replace": replace });
         // Run beforeEach hooks, bailing if a later navigation supersedes this one (#31762)
         for (const middleware of hooks['navigate:before']) {
           const result = await middleware(to, route)
           if (navigationId !== navigationCounter) { return }
+		NuxtLogger.error(`handleNavigation(url=${url},replace=${replace}): result → ${result}`, { "event.action": "handleNavigation", "logrite.url": url, "logrite.replace": replace });
           // Cancel navigation
           if (result === false || result instanceof Error) { return }
           // Redirect
@@ -160,17 +170,21 @@ const plugin: Plugin<{ route: Route, router: Router }> & ObjectPlugin<{ route: R
           await middleware(to, route)
         }
       } catch (err) {
+		NuxtLogger.error(`Exception in setup(nuxtApp=${nuxtApp}): ${(err as Error).message}`, err, { "event.action": "setup", "event.category": "process", "logrite.nuxtApp": nuxtApp });
         if (import.meta.dev && !hooks.error.length) {
+		NuxtLogger.error(`Exception in handleNavigation(url=${url},replace=${replace}): ${(err as Error).message}`, err, { "event.action": "handleNavigation", "event.category": "process", "logrite.url": url, "logrite.replace": replace });
           navigationDiagnostics.NUXT_E2009({ cause: err })
         }
         for (const handler of hooks.error) {
           await handler(err)
         }
       }
+	NuxtLogger.warn(`<<< Exiting handleNavigation(url=${url},replace=${replace})`, { "event.action": "handleNavigation", "logrite.url": url, "logrite.replace": replace });
     }
 
     const currentRoute = computed(() => route)
 
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): currentRoute → ${currentRoute}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     const router: Router = {
       currentRoute,
       isReady: () => Promise.resolve(),
@@ -223,6 +237,10 @@ const plugin: Plugin<{ route: Route, router: Router }> & ObjectPlugin<{ route: R
             ? slots.default?.({ href: props.to, navigate, route })
             : h('a', { href: props.to, onClick: (e: MouseEvent) => { e.preventDefault(); return navigate() } }, slots)
         }
+		NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): nuxtApp._route → ${nuxtApp._route}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
+		NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): nuxtApp._processingMiddleware → ${nuxtApp._processingMiddleware}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
+		NuxtLogger.debug(`setup(nuxtApp=${nuxtApp}): nuxtApp._middlewareTo → ${nuxtApp._middlewareTo}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
+		NuxtLogger.warn(`<<< Exiting setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
       },
     }))
 

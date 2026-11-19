@@ -1,5 +1,6 @@
 import { createConsoleReporter } from 'nostics'
 import type { DiagnosticReporter } from 'nostics'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { ansiFormatter } from 'nostics/formatters/ansi'
 import { createDevReporter } from 'nostics/reporters/dev'
 
@@ -17,6 +18,8 @@ import { createDevReporter } from 'nostics/reporters/dev'
  */
 // TODO: bump the `4.x` path segment to `5.x` when the v5 docs go live.
 export function docsBase (code: string): string {
+NuxtLogger.error(`>>> Entering docsBase(code=${code})`, { "event.action": "docsBase", "logrite.code": code });
+NuxtLogger.warn(`<<< Exiting docsBase(code=${code})`, { "event.action": "docsBase", "logrite.code": code });
   return `https://nuxt.com/docs/4.x/errors/${code.replace('NUXT_', '').toLowerCase()}`
 }
 
@@ -51,7 +54,9 @@ export const reporters = [
 // production error stays traceable. Replaces the manual `console.error(
 // diagnostic.name)` calls that each reporting site used to repeat.
 const prodReporter: DiagnosticReporter = (diagnostic) => {
+NuxtLogger.error(`>>> Entering prodReporter(diagnostic=${diagnostic})`, { "event.action": "prodReporter", "logrite.diagnostic": diagnostic });
   console.error(`[${diagnostic.name}]`)
 }
+NuxtLogger.warn(`<<< Exiting prodReporter(diagnostic=${diagnostic})`, { "event.action": "prodReporter", "logrite.diagnostic": diagnostic });
 
 export const prodReporters = [prodReporter] as const

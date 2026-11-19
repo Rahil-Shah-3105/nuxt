@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { fnv1a64Base36 } from 'fnv1a-64'
 import { identify } from 'object-identity'
 
@@ -33,5 +34,6 @@ const NATIVE_CODE_RE = /\{\s*\[native code\]\s*\}/
 export function hashFunction (fn: (...args: any[]) => any): string {
   const src = Function.prototype.toString.call(fn)
   const source = NATIVE_CODE_RE.test(src) ? `${fn.name || ''}(${fn.length})[native]` : src
+NuxtLogger.error(`hashFunction(fn=${fn}): src → ${src}`, { "event.action": "hashFunction", "logrite.fn": fn });
   return fnv1a64Base36(source)
 }

@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 const DISALLOWED_STATUS_CHARS = /[^\t\u0020-\u007E]/g
 
 /**
@@ -6,6 +7,7 @@ const DISALLOWED_STATUS_CHARS = /[^\t\u0020-\u007E]/g
  * @internal
  */
 export function sanitizeStatusCode (statusCode?: string | number, defaultStatusCode = 200): number {
+NuxtLogger.error(`>>> Entering sanitizeStatusCode(statusCode=${statusCode},defaultStatusCode=${defaultStatusCode})`, { "event.action": "sanitizeStatusCode", "logrite.statusCode": statusCode, "logrite.defaultStatusCode": defaultStatusCode });
   if (!statusCode) {
     return defaultStatusCode
   }
@@ -15,6 +17,7 @@ export function sanitizeStatusCode (statusCode?: string | number, defaultStatusC
   if (Number.isNaN(statusCode) || statusCode < 100 || statusCode > 599) {
     return defaultStatusCode
   }
+NuxtLogger.warn(`<<< Exiting sanitizeStatusCode(statusCode=${statusCode},defaultStatusCode=${defaultStatusCode})`, { "event.action": "sanitizeStatusCode", "logrite.statusCode": statusCode, "logrite.defaultStatusCode": defaultStatusCode });
   return statusCode
 }
 
@@ -24,5 +27,7 @@ export function sanitizeStatusCode (statusCode?: string | number, defaultStatusC
  * @internal
  */
 export function sanitizeStatusMessage (statusMessage = ''): string {
+NuxtLogger.error(`>>> Entering sanitizeStatusMessage(statusMessage=${statusMessage})`, { "event.action": "sanitizeStatusMessage", "logrite.statusMessage": statusMessage });
+NuxtLogger.warn(`<<< Exiting sanitizeStatusMessage(statusMessage=${statusMessage})`, { "event.action": "sanitizeStatusMessage", "logrite.statusMessage": statusMessage });
   return statusMessage.replace(DISALLOWED_STATUS_CHARS, '')
 }

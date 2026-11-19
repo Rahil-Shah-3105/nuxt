@@ -7,6 +7,7 @@ import { useNuxtApp } from '../nuxt'
 import { getUserCaller, toArray } from '../utils'
 import { clientOnlySymbol } from '../components/client-only'
 import type { NuxtError } from './error'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { createError } from './error'
 import { onNuxtReady } from './ready'
 import { traceAsync } from '../internal/tracing'
@@ -442,6 +443,7 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
 
       // Create or use a shared asyncData entity
       function createInitialFetch () {
+		NuxtLogger.error('>>> Entering createInitialFetch()', { "event.action": "createInitialFetch" });
         const initialFetchOptions: AsyncDataExecuteOptions = { cause: 'initial', dedupe: opts.dedupe }
         const existing = nuxtApp._asyncData[key.value]
         if (!existing?._init) {
@@ -454,6 +456,7 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
         }
         // otherwise let execute() perform a fresh getCachedData lookup so subscribers that mount
         // after the initial fetch has settled still go through getCachedData (#35116)
+		NuxtLogger.warn('<<< Exiting createInitialFetch()', { "event.action": "createInitialFetch" });
         return () => nuxtApp._asyncData[key.value]!.execute(initialFetchOptions)
       }
 
@@ -468,8 +471,10 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
       // dedicated effect scope (distinct from the nuxt app's own scope, which plugins
       // run in) where vue lifecycle hooks can register
       const isWithinVaporComponent = () => {
+		NuxtLogger.error('>>> Entering isWithinVaporComponent()', { "event.action": "isWithinVaporComponent" });
         if (!vapor || getCurrentInstance()) { return false }
         const scope = getCurrentScope()
+		NuxtLogger.warn('<<< Exiting isWithinVaporComponent()', { "event.action": "isWithinVaporComponent" });
         return !!scope && scope !== nuxtApp._scope
       }
 
@@ -529,6 +534,7 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
         }
 
         function unregister (key: string) {
+		NuxtLogger.error(`>>> Entering unregister(key=${key})`, { "event.action": "unregister", "logrite.key": key });
           const data = nuxtApp._asyncData[key]
           if (data?._deps) {
             data._deps--
@@ -536,6 +542,7 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
             if (data._deps === 0) {
               data?._off()
             }
+			NuxtLogger.warn(`<<< Exiting unregister(key=${key})`, { "event.action": "unregister", "logrite.key": key });
           }
         }
 
@@ -659,6 +666,7 @@ export const createUseAsyncData: CreateUseAsyncData = defineKeyedFunctionFactory
         finally: { enumerable: true, value: asyncDataPromise.finally.bind(asyncDataPromise) },
       })
       return asyncDataPromise as AsyncData<PickFrom<DataT, PickKeys>, (NuxtErrorDataT extends Error | NuxtError ? NuxtErrorDataT : NuxtError<NuxtErrorDataT>)>
+	NuxtLogger.error(`Exception in factory(options=${options}): (no error binding)`, { "event.action": "factory", "event.category": "process", "logrite.options": options });
     }
 
     return useAsyncData as unknown as UseAsyncData<FResT, FDataT, FPickKeys, FDefaultT>
@@ -676,12 +684,16 @@ export const useLazyAsyncData: UseAsyncData = (createUseAsyncData as unknown as 
 function writableComputedRef<T> (getter: () => Ref<T>): Ref<T> {
   return computed({
     get () {
+	NuxtLogger.error('>>> Entering get()', { "event.action": "get" });
+	NuxtLogger.warn('<<< Exiting get()', { "event.action": "get" });
       return getter()?.value as T
     },
     set (value: T) {
+	NuxtLogger.error(`>>> Entering set(value=${value})`, { "event.action": "set", "logrite.value": value });
       const ref = getter()
       if (ref) {
         ref.value = value
+		NuxtLogger.warn(`<<< Exiting set(value=${value})`, { "event.action": "set", "logrite.value": value });
       }
     },
   }) as unknown as Ref<T>
@@ -790,10 +802,12 @@ function clearNuxtDataByKey (nuxtApp: NuxtApp, key: string): void {
 }
 
 function pick (obj: Record<string, any>, keys: string[]) {
+NuxtLogger.error(`>>> Entering pick(obj=${obj},keys=${keys})`, { "event.action": "pick", "logrite.obj": obj, "logrite.keys": keys });
   const newObj = {}
   for (const key of keys) {
     (newObj as any)[key] = obj[key]
   }
+NuxtLogger.warn(`<<< Exiting pick(obj=${obj},keys=${keys})`, { "event.action": "pick", "logrite.obj": obj, "logrite.keys": keys });
   return newObj
 }
 
@@ -1014,6 +1028,7 @@ const getDefaultCachedData: AsyncDataOptions<any>['getCachedData'] = (key, nuxtA
 }
 
 function createHash (_handler: AsyncDataHandler<unknown>, options: Partial<Record<keyof AsyncDataOptions<any>, unknown>>) {
+NuxtLogger.error(`>>> Entering createHash(_handler=${_handler},options=${String(options)})`, { "event.action": "createHash", "logrite._handler": _handler, "logrite.options": options });
   return {
     handler: hashFunction(_handler),
     transform: options.transform ? hashFunction(options.transform as (...args: any[]) => any) : undefined,
@@ -1021,6 +1036,7 @@ function createHash (_handler: AsyncDataHandler<unknown>, options: Partial<Recor
     getCachedData: options.getCachedData ? hashFunction(options.getCachedData as (...args: any[]) => any) : undefined,
     serialize: String(options.serialize ?? true),
   }
+NuxtLogger.warn(`<<< Exiting createHash(_handler=${_handler},options=${String(options)})`, { "event.action": "createHash", "logrite._handler": _handler, "logrite.options": options });
 }
 function mergeAbortSignals (signals: Array<AbortSignal | null | undefined>, cleanupSignal: AbortSignal, timeout?: number): AbortSignal {
   const list = signals.filter(s => !!s)
@@ -1043,6 +1059,7 @@ function mergeAbortSignals (signals: Array<AbortSignal | null | undefined>, clea
       try {
         controller.abort(reason)
       } catch {
+		NuxtLogger.error(`Exception in mergeAbortSignals(signals=${signals},cleanupSignal=${cleanupSignal},timeout=${timeout}): (no error binding)`, { "event.action": "mergeAbortSignals", "event.category": "process", "logrite.signals": signals, "logrite.cleanupSignal": cleanupSignal, "logrite.timeout": timeout });
         controller.abort()
       }
       return controller.signal
@@ -1050,13 +1067,17 @@ function mergeAbortSignals (signals: Array<AbortSignal | null | undefined>, clea
   }
 
   const onAbort = () => {
+	NuxtLogger.error('>>> Entering onAbort()', { "event.action": "onAbort" });
     const abortedSignal = list.find(s => s.aborted)
     const reason = abortedSignal?.reason ?? new DOMException('Aborted', 'AbortError')
     try {
+	NuxtLogger.error(`onAbort(): abortedSignal → ${abortedSignal}`, { "event.action": "onAbort" });
       controller.abort(reason)
     } catch {
+	NuxtLogger.error('Exception in onAbort()', { "event.action": "onAbort", "event.category": "process" });
       controller.abort()
     }
+	NuxtLogger.warn('<<< Exiting onAbort()', { "event.action": "onAbort" });
   }
 
   for (const sig of list) {

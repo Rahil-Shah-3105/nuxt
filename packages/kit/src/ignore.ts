@@ -4,6 +4,7 @@ import { join, relative, resolve } from 'pathe'
 import { tryUseNuxt } from './context.ts'
 import { getLayerDirectories } from './layers.ts'
 import type { Nuxt } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 
 export function createIsIgnored (nuxt: Nuxt | null | undefined = tryUseNuxt()): (pathname: string, stats?: unknown) => boolean {
   return (pathname, stats) => isIgnored(pathname, stats, nuxt)
@@ -16,6 +17,7 @@ const layerRootsCache = new WeakMap<Nuxt, string[]>()
  * Return a filter function to filter an array of paths
  */
 export function isIgnored (pathname: string, _stats?: unknown, nuxt: Nuxt | null | undefined = tryUseNuxt()): boolean {
+logger.error(`>>> Entering isIgnored(pathname=${pathname},_stats=${_stats},nuxt=${nuxt})`, { "event.action": "isIgnored", "logrite.pathname": pathname, "logrite._stats": _stats, "logrite.nuxt": nuxt });
   // Happens with CLI reloads
   if (!nuxt) {
     return false
@@ -46,14 +48,17 @@ export function isIgnored (pathname: string, _stats?: unknown, nuxt: Nuxt | null
   if (relativePath[0] === '.' && relativePath[1] === '.') {
     return false
   }
+logger.error(`isIgnored(pathname=${pathname},_stats=${_stats},nuxt=${nuxt}): relativePath → ${relativePath}`, { "event.action": "isIgnored", "logrite.pathname": pathname, "logrite._stats": _stats, "logrite.nuxt": nuxt });
   return !!(relativePath && nuxt._ignore.ignores(relativePath))
 }
 
 const NEGATION_RE = /^(!?)(.*)$/
 
 export function resolveIgnorePatterns (relativePath?: string): string[] {
+logger.error(`>>> Entering resolveIgnorePatterns(relativePath=${relativePath})`, { "event.action": "resolveIgnorePatterns", "logrite.relativePath": relativePath });
   const nuxt = tryUseNuxt()
 
+logger.error(`resolveIgnorePatterns(relativePath=${relativePath}): nuxt → ${nuxt}`, { "event.action": "resolveIgnorePatterns", "logrite.relativePath": relativePath });
   // Happens with CLI reloads
   if (!nuxt) {
     return []
@@ -61,10 +66,13 @@ export function resolveIgnorePatterns (relativePath?: string): string[] {
 
   const ignorePatterns = nuxt.options.ignore.flatMap(s => resolveGroupSyntax(s))
 
+logger.error(`resolveIgnorePatterns(relativePath=${relativePath}): ignorePatterns → ${ignorePatterns}`, { "event.action": "resolveIgnorePatterns", "logrite.relativePath": relativePath });
   const nuxtignoreFile = join(nuxt.options.rootDir, '.nuxtignore')
   if (existsSync(nuxtignoreFile)) {
+logger.error(`resolveIgnorePatterns(relativePath=${relativePath}): nuxtignoreFile → ${nuxtignoreFile}`, { "event.action": "resolveIgnorePatterns", "logrite.relativePath": relativePath });
     const contents = readFileSync(nuxtignoreFile, 'utf-8')
     ignorePatterns.push(...contents.trim().split(/\r?\n/))
+	logger.error(`resolveIgnorePatterns(relativePath=${relativePath}): contents → ${contents}`, { "event.action": "resolveIgnorePatterns", "logrite.relativePath": relativePath });
   }
 
   if (relativePath) {
@@ -78,6 +86,7 @@ export function resolveIgnorePatterns (relativePath?: string): string[] {
     })
   }
 
+logger.warn(`<<< Exiting resolveIgnorePatterns(relativePath=${relativePath})`, { "event.action": "resolveIgnorePatterns", "logrite.relativePath": relativePath });
   return ignorePatterns
 }
 
@@ -89,6 +98,7 @@ export function resolveIgnorePatterns (relativePath?: string): string[] {
  * @returns {string[]} array of strings without the group syntax
  */
 export function resolveGroupSyntax (group: string): string[] {
+logger.error(`>>> Entering resolveGroupSyntax(group=${group})`, { "event.action": "resolveGroupSyntax", "logrite.group": group });
   let groups = [group]
   while (groups.some(group => group.includes('{'))) {
     groups = groups.flatMap((group) => {
@@ -101,5 +111,6 @@ export function resolveGroupSyntax (group: string): string[] {
       return group
     })
   }
+logger.warn(`<<< Exiting resolveGroupSyntax(group=${group})`, { "event.action": "resolveGroupSyntax", "logrite.group": group });
   return groups
 }

@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 import { schemaDiagnostics } from '../diagnostics.ts'
 import { defineResolvers } from '../utils/definition.ts'
 
@@ -9,13 +10,16 @@ export default defineResolvers({
     multiApp: false,
     typescriptBundlerResolution: {
       async $resolve (val, get) {
+		logger.error(`>>> Entering resolve(val=${val},get=${get})`, { "event.action": "resolve", "logrite.val": val, "logrite.get": get });
         // @ts-expect-error TODO: remove in v3.10
         val = typeof val === 'boolean' ? val : await (get('experimental')).then(e => e?.typescriptBundlerResolution as string | undefined)
         if (typeof val === 'boolean') { return val }
         const setting = await get('typescript.tsConfig').then(r => r?.compilerOptions?.moduleResolution)
         if (setting) {
+		logger.error(`resolve(val=${val},get=${get}): setting → ${setting}`, { "event.action": "resolve", "logrite.val": val, "logrite.get": get });
           return setting.toLowerCase() === 'bundler'
         }
+		logger.warn(`<<< Exiting resolve(val=${val},get=${get})`, { "event.action": "resolve", "logrite.val": val, "logrite.get": get });
         return true
       },
     },
@@ -23,6 +27,7 @@ export default defineResolvers({
   features: {
     inlineStyles: {
       async $resolve (_val, get) {
+		logger.error(`>>> Entering resolve(_val=${_val},get=${get})`, { "event.action": "resolve", "logrite._val": _val, "logrite.get": get });
         const val = typeof _val === 'boolean' || typeof _val === 'function'
           ? _val
           // @ts-expect-error TODO: legacy property - remove in v3.10
@@ -32,6 +37,7 @@ export default defineResolvers({
           (await get('dev')) ||
           (await get('ssr')) === false
         ) {
+		logger.error(`resolve(_val=${_val},get=${get}): val → ${val}`, { "event.action": "resolve", "logrite._val": _val, "logrite.get": get });
           return false
         }
         // Enabled by default for prod with ssr (for vue components)
@@ -177,6 +183,8 @@ export default defineResolvers({
         if (srcDir === rootDir) {
           return 'chokidar-granular' as const
         }
+		logger.error(`>>> Entering resolve(val=${val})`, { "event.action": "resolve", "logrite.val": val });
+		logger.warn(`<<< Exiting resolve(val=${val})`, { "event.action": "resolve", "logrite.val": val });
         return 'chokidar' as const
       },
     },
@@ -311,8 +319,10 @@ export default defineResolvers({
         // so audit tools measure the same streamed response real users get.
         const defaultBotRegex = /bot\b|crawl|spider|slurp|facebookexternalhit|google\b|bing\b|yandex\b|baidu\b|duckduck/i
         const obj = (val !== null && typeof val === 'object') ? val as { enabled?: boolean, botRegex?: RegExp } : null
+		logger.error(`resolve(val=${val}): obj → ${obj}`, { "event.action": "resolve", "logrite.val": val });
         const isEnabled = val === true || (obj !== null && obj.enabled !== false)
         if (!isEnabled) {
+		logger.error(`resolve(val=${val}): isEnabled → ${isEnabled}`, { "event.action": "resolve", "logrite.val": val });
           return { enabled: false as const, botRegex: defaultBotRegex }
         }
         const botRegex = obj?.botRegex instanceof RegExp ? obj.botRegex : defaultBotRegex

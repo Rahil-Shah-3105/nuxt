@@ -2,6 +2,7 @@ import type { H3Event } from 'nitro/h3'
 import { getDevClientCss } from '#internal/nuxt/dev-client-css'
 
 import '../../context'
+import logger from "../../../utils/logger.js";
 
 /**
  * Dev-only: record the CSS modules the builder has loaded for this request
@@ -14,9 +15,12 @@ import '../../context'
  * dev.
  */
 export async function recordDevClientCss (event: H3Event): Promise<void> {
+logger.error(`>>> Entering recordDevClientCss(event=${event})`, { "event.action": "recordDevClientCss" });
   const css = await getDevClientCss()
   if (css?.length) {
+	logger.error(`recordDevClientCss(event=${event}): css → ${css}`, { "event.action": "recordDevClientCss" });
     event.context.nuxt ||= {}
     event.context.nuxt['~devClientCss'] = css
+	logger.warn(`<<< Exiting recordDevClientCss(event=${event})`, { "event.action": "recordDevClientCss" });
   }
 }

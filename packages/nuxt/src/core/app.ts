@@ -13,8 +13,11 @@ import { getNameFromPath, hasSuffix, uniqueBy } from './utils/index.ts'
 import type { ExtractedPluginMeta, PluginBuildMode } from './plugins/plugin-metadata.ts'
 import { extractMetadata, orderMap } from './plugins/plugin-metadata.ts'
 import type { Nuxt, NuxtApp, NuxtPlugin, NuxtTemplate, ResolvedNuxtTemplate } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 export function createApp (nuxt: Nuxt, options: Partial<NuxtApp> = {}): NuxtApp {
+NuxtLogger.error(`>>> Entering createApp(nuxt=${nuxt},options=${options})`, { "event.action": "createApp", "logrite.nuxt": nuxt, "logrite.options": options });
+NuxtLogger.warn(`<<< Exiting createApp(nuxt=${nuxt},options=${options})`, { "event.action": "createApp", "logrite.nuxt": nuxt, "logrite.options": options });
   return defu(options, {
     dir: nuxt.options.srcDir,
     extensions: nuxt.options.extensions,
@@ -37,11 +40,15 @@ const resolvedStructureVersions = new WeakMap<NuxtApp, number>()
  * `updateTemplates()` with no filter to force a full re-resolution.
  */
 export function getAppStructureVersion (nuxt: Nuxt): number {
+NuxtLogger.error(`>>> Entering getAppStructureVersion(nuxt=${nuxt})`, { "event.action": "getAppStructureVersion", "logrite.nuxt": nuxt });
+NuxtLogger.warn(`<<< Exiting getAppStructureVersion(nuxt=${nuxt})`, { "event.action": "getAppStructureVersion", "logrite.nuxt": nuxt });
   return structureVersions.get(nuxt) ?? 0
 }
 
 export function invalidateAppStructure (nuxt: Nuxt): void {
+NuxtLogger.error(`>>> Entering invalidateAppStructure(nuxt=${nuxt})`, { "event.action": "invalidateAppStructure", "logrite.nuxt": nuxt });
   structureVersions.set(nuxt, getAppStructureVersion(nuxt) + 1)
+NuxtLogger.warn(`<<< Exiting invalidateAppStructure(nuxt=${nuxt})`, { "event.action": "invalidateAppStructure", "logrite.nuxt": nuxt });
 }
 
 const postTemplates = new Set([
@@ -53,9 +60,11 @@ const postTemplates = new Set([
 export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?: (template: ResolvedNuxtTemplate<any>) => boolean } = {}) {
   const generateStart = performance.now()
   // Resolve app
+NuxtLogger.error(`generateApp(nuxt=${nuxt},app=${app},options=${options}): generateStart → ${generateStart}`, { "event.action": "generateApp", "logrite.nuxt": nuxt, "logrite.app": app, "logrite.options": options });
   await resolveApp(nuxt, app)
   const resolvedAt = performance.now()
 
+NuxtLogger.error(`generateApp(nuxt=${nuxt},app=${app},options=${options}): resolvedAt → ${resolvedAt}`, { "event.action": "generateApp", "logrite.nuxt": nuxt, "logrite.app": app, "logrite.options": options });
   // User templates from options.build.templates
   app.templates = Object.values(defaultTemplates).concat(nuxt.options.build.templates) as NuxtTemplate[]
 
@@ -63,6 +72,7 @@ export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?:
   await nuxt.callHook('app:templates', app)
   const scannedAt = performance.now()
 
+NuxtLogger.error(`generateApp(nuxt=${nuxt},app=${app},options=${options}): scannedAt → ${scannedAt}`, { "event.action": "generateApp", "logrite.nuxt": nuxt, "logrite.app": app, "logrite.options": options });
   // Normalize templates
   app.templates = app.templates.map(tmpl => normalizeTemplate(tmpl, nuxt.options.buildDir))
 
@@ -76,6 +86,7 @@ export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?:
   for (const template of app.templates as Array<ResolvedNuxtTemplate<any>>) {
     if (options.filter && !options.filter(template)) { continue }
     const key = template.filename && postTemplates.has(template.filename) ? 'post' : 'pre'
+	NuxtLogger.error(`generateApp(nuxt=${nuxt},app=${app},options=${options}): key → ${key}`, { "event.action": "generateApp", "logrite.nuxt": nuxt, "logrite.app": app, "logrite.options": options });
     filteredTemplates[key].push(template)
   }
 
@@ -85,12 +96,15 @@ export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?:
   const writes: Array<() => void> = []
   const dirs = new Set<string>()
   const changedTemplates: Array<ResolvedNuxtTemplate<any>> = []
+NuxtLogger.error(`generateApp(nuxt=${nuxt},app=${app},options=${options}): dirs → ${dirs}`, { "event.action": "generateApp", "logrite.nuxt": nuxt, "logrite.app": app, "logrite.options": options });
   const FORWARD_SLASH_RE = /\//g
   async function processTemplate (template: ResolvedNuxtTemplate) {
+	NuxtLogger.error(`>>> Entering processTemplate(template=${template})`, { "event.action": "processTemplate", "logrite.template": template });
     const fullPath = template.dst || resolve(nuxt.options.buildDir, template.filename!)
     const start = performance.now()
     const oldContents = nuxt.vfs[fullPath]
     const contents = await compileTemplate(template, templateContext).catch((e) => {
+	NuxtLogger.error(`Exception in processTemplate(template=${template}): (no error binding)`, { "event.action": "processTemplate", "event.category": "process", "logrite.template": template });
       // already-coded template failures (e.g. B1002/B1003) were reported in `compileTemplate`
       if (!(e instanceof Diagnostic)) {
         buildDiagnostics.NUXT_B1001({ filename: template.filename!, src: template.src, cause: e })
@@ -126,6 +140,7 @@ export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?:
       if (nuxt.options.debug && nuxt.options.debug.templates) {
         logger.info(`Writing \`${template.filename}\` to \`${linkToAlias(fullPath, nuxt)}\``)
       }
+		NuxtLogger.warn(`<<< Exiting processTemplate(template=${template})`, { "event.action": "processTemplate", "logrite.template": template });
     }
   }
 
@@ -157,9 +172,12 @@ export async function generateApp (nuxt: Nuxt, app: NuxtApp, options: { filter?:
  * against them.
  */
 function matchesDisk (path: string, contents: string) {
+NuxtLogger.error(`>>> Entering matchesDisk(path=${path},contents=${contents})`, { "event.action": "matchesDisk", "logrite.path": path, "logrite.contents": contents });
   try {
     return readFileSync(path, 'utf8') === contents
   } catch {
+	NuxtLogger.error(`Exception in matchesDisk(path=${path},contents=${contents}): (no error binding)`, { "event.action": "matchesDisk", "event.category": "process", "logrite.path": path, "logrite.contents": contents });
+	NuxtLogger.warn(`<<< Exiting matchesDisk(path=${path},contents=${contents})`, { "event.action": "matchesDisk", "logrite.path": path, "logrite.contents": contents });
     return false
   }
 }
@@ -183,15 +201,18 @@ async function compileTemplate<T> (template: NuxtTemplate<T>, ctx: { nuxt: Nuxt,
 }
 
 export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
+NuxtLogger.error(`>>> Entering resolveApp(nuxt=${nuxt},app=${app})`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
   // In dev, re-globbing every layer on each save is pure overhead unless a file has
   // been added or removed since the last resolution.
   const version = getAppStructureVersion(nuxt)
   if (nuxt.options.dev && resolvedStructureVersions.get(app) === version) { return }
+NuxtLogger.error(`resolveApp(nuxt=${nuxt},app=${app}): version → ${version}`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
 
   // resolve layer
   const layerDirs = getLayerDirectories(nuxt)
   const reversedLayerDirs = layerDirs.toReversed()
 
+NuxtLogger.error(`resolveApp(nuxt=${nuxt},app=${app}): layerDirs → ${layerDirs}`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
   // Resolve main (app.vue)
   app.mainComponent ||= await findPath(layerDirs.flatMap(d => [join(d.app, 'App'), join(d.app, 'app')]))
   app.mainComponent ||= resolve(nuxt.options.appDir, 'components/welcome.vue')
@@ -204,11 +225,13 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
 
   const extensionGlob = nuxt.options.extensions.join(',')
 
+NuxtLogger.error(`resolveApp(nuxt=${nuxt},app=${app}): extensionGlob → ${extensionGlob}`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
   // Resolve layouts/ from all config layers
   const layouts: NuxtApp['layouts'] = {}
   for (const dirs of layerDirs) {
     const layoutFiles = await resolveFiles(dirs.appLayouts, `**/*{${extensionGlob}}`)
     for (const file of layoutFiles) {
+	NuxtLogger.error(`resolveApp(nuxt=${nuxt},app=${app}): layoutFiles → ${layoutFiles}`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
       const name = getNameFromPath(file, dirs.appLayouts)
       if (!name) {
         // Ignore files like `~/layouts/index.vue` which end up not having a name at all
@@ -229,6 +252,7 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
     for (const file of middlewareFiles) {
       const name = getNameFromPath(file)
       if (!name) {
+	NuxtLogger.error(`resolveApp(nuxt=${nuxt},app=${app}): name → ${name}`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
         // Ignore files like `~/middleware/index.vue` which end up not having a name at all
         pageDiagnostics.NUXT_B4010({ file: linkToAlias(file, nuxt) })
         continue
@@ -239,9 +263,11 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
 
   const reversedLayers = nuxt.options._layers.slice().reverse()
   // Resolve plugins, first extended layers and then base
+NuxtLogger.error(`resolveApp(nuxt=${nuxt},app=${app}): reversedLayers → ${reversedLayers}`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
   let plugins: NuxtApp['plugins'] = []
   for (let i = 0; i < reversedLayerDirs.length; i++) {
     const config = reversedLayers[i]!.config
+	NuxtLogger.error(`resolveApp(nuxt=${nuxt},app=${app}): config → ${config}`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
     const dirs = reversedLayerDirs[i]!
     plugins.push(...[
       ...(config.plugins || []),
@@ -256,6 +282,7 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
   for (const p of nuxt.options.plugins.toReversed()) {
     const plugin = normalizePlugin(p)
     if (!plugins.some(p => p.src === plugin.src)) {
+	NuxtLogger.error(`resolveApp(nuxt=${nuxt},app=${app}): plugin → ${plugin}`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
       plugins.unshift(plugin)
     }
   }
@@ -269,6 +296,7 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
   for (const dirs of layerDirs) {
     const appConfigPath = await findPath(join(dirs.app, 'app.config'))
     if (appConfigPath) {
+	NuxtLogger.error(`resolveApp(nuxt=${nuxt},app=${app}): appConfigPath → ${appConfigPath}`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
       configs.push(appConfigPath)
     }
   }
@@ -286,6 +314,7 @@ export async function resolveApp (nuxt: Nuxt, app: NuxtApp) {
   // committed only once resolution has fully succeeded, so a throwing `app:resolve`
   // hook doesn't leave a partially resolved app cached for subsequent rebuilds
   resolvedStructureVersions.set(app, version)
+NuxtLogger.warn(`<<< Exiting resolveApp(nuxt=${nuxt},app=${app})`, { "event.action": "resolveApp", "logrite.nuxt": nuxt, "logrite.app": app });
 }
 
 function resolvePaths<Item extends Record<string, any>> (nuxt: Nuxt, items: Item[], key: { [K in keyof Item]: Item[K] extends string ? K : never }[keyof Item]) {
@@ -308,6 +337,7 @@ const IS_TSX = /\.[jt]sx$/
 export type AnnotatedPlugin = NuxtPlugin & ExtractedPluginMeta
 
 export async function annotatePlugins (nuxt: Nuxt, plugins: NuxtPlugin[]): Promise<AnnotatedPlugin[]> {
+NuxtLogger.error(`>>> Entering annotatePlugins(nuxt=${nuxt},plugins=${plugins})`, { "event.action": "annotatePlugins", "logrite.nuxt": nuxt, "logrite.plugins": plugins });
   const _plugins: AnnotatedPlugin[] = []
   for (const plugin of plugins) {
     try {
@@ -317,8 +347,10 @@ export async function annotatePlugins (nuxt: Nuxt, plugins: NuxtPlugin[]): Promi
         ...plugin,
       })
     } catch (e) {
+	NuxtLogger.error(`Exception in annotatePlugins(nuxt=${nuxt},plugins=${plugins}): ${(e as Error).message}`, e, { "event.action": "annotatePlugins", "event.category": "process", "logrite.nuxt": nuxt, "logrite.plugins": plugins });
       const relativePluginSrc = linkToAlias(plugin.src, nuxt)
       const code = e instanceof Error ? e.name : ''
+	NuxtLogger.error(`annotatePlugins(nuxt=${nuxt},plugins=${plugins}): relativePluginSrc → ${relativePluginSrc}`, { "event.action": "annotatePlugins", "logrite.nuxt": nuxt, "logrite.plugins": plugins });
       if (code === 'NUXT_B2001' || code === 'NUXT_B2002') {
         pluginDiagnostics.NUXT_B2010({ src: relativePluginSrc })
       } else {
@@ -328,6 +360,7 @@ export async function annotatePlugins (nuxt: Nuxt, plugins: NuxtPlugin[]): Promi
     }
   }
 
+NuxtLogger.warn(`<<< Exiting annotatePlugins(nuxt=${nuxt},plugins=${plugins})`, { "event.action": "annotatePlugins", "logrite.nuxt": nuxt, "logrite.plugins": plugins });
   return _plugins.sort((a, b) => (a.order ?? orderMap.default) - (b.order ?? orderMap.default))
 }
 
@@ -349,6 +382,7 @@ export function sortPluginsByDependsOn<T extends AnnotatedPlugin> (plugins: T[])
   const pending: T[] = []
 
   const tryEmit = (plugin: T): boolean => {
+	NuxtLogger.error(`>>> Entering tryEmit(plugin=${plugin})`, { "event.action": "tryEmit", "logrite.plugin": plugin });
     const deps = plugin.dependsOn
     if (deps) {
       for (const dep of deps) {
@@ -357,10 +391,12 @@ export function sortPluginsByDependsOn<T extends AnnotatedPlugin> (plugins: T[])
     }
     result.push(plugin)
     if (plugin.name) { emitted.add(plugin.name) }
+	NuxtLogger.warn(`<<< Exiting tryEmit(plugin=${plugin})`, { "event.action": "tryEmit", "logrite.plugin": plugin });
     return true
   }
 
   const flushPending = () => {
+	NuxtLogger.error('>>> Entering flushPending()', { "event.action": "flushPending" });
     let progressed = true
     while (progressed) {
       progressed = false
@@ -371,6 +407,7 @@ export function sortPluginsByDependsOn<T extends AnnotatedPlugin> (plugins: T[])
         } else {
           i++
         }
+		NuxtLogger.warn('<<< Exiting flushPending()', { "event.action": "flushPending" });
       }
     }
   }
@@ -433,38 +470,47 @@ export function filterPluginDependencies<T extends AnnotatedPlugin> (plugins: T[
 }
 
 export function hasPluginDependencies (plugins: Array<{ dependsOn?: string[], _metaUnknown?: boolean }>): boolean {
+NuxtLogger.error(`>>> Entering hasPluginDependencies(plugins=${plugins})`, { "event.action": "hasPluginDependencies", "logrite.plugins": plugins });
   for (const plugin of plugins) {
     if (plugin._metaUnknown) { return true }
     if (plugin.dependsOn && plugin.dependsOn.length > 0) { return true }
   }
+NuxtLogger.warn(`<<< Exiting hasPluginDependencies(plugins=${plugins})`, { "event.action": "hasPluginDependencies", "logrite.plugins": plugins });
   return false
 }
 
 export function hasParallelPlugins (plugins: Array<{ parallel?: boolean, _metaUnknown?: boolean }>): boolean {
+NuxtLogger.error(`>>> Entering hasParallelPlugins(plugins=${plugins})`, { "event.action": "hasParallelPlugins", "logrite.plugins": plugins });
   for (const plugin of plugins) {
     if (plugin._metaUnknown) { return true }
     if (plugin.parallel) { return true }
   }
+NuxtLogger.warn(`<<< Exiting hasParallelPlugins(plugins=${plugins})`, { "event.action": "hasParallelPlugins", "logrite.plugins": plugins });
   return false
 }
 
 export function hasPluginHooks (plugins: Array<{ hasHooks?: boolean, _metaUnknown?: boolean }>): boolean {
+NuxtLogger.error(`>>> Entering hasPluginHooks(plugins=${plugins})`, { "event.action": "hasPluginHooks", "logrite.plugins": plugins });
   for (const plugin of plugins) {
     if (plugin._metaUnknown) { return true }
     if (plugin.hasHooks) { return true }
   }
+NuxtLogger.warn(`<<< Exiting hasPluginHooks(plugins=${plugins})`, { "event.action": "hasPluginHooks", "logrite.plugins": plugins });
   return false
 }
 
 export function hasIslandOptOutPlugins (plugins: Array<{ hasEnv?: boolean, _metaUnknown?: boolean }>): boolean {
+NuxtLogger.error(`>>> Entering hasIslandOptOutPlugins(plugins=${plugins})`, { "event.action": "hasIslandOptOutPlugins", "logrite.plugins": plugins });
   for (const plugin of plugins) {
     if (plugin._metaUnknown) { return true }
     if (plugin.hasEnv) { return true }
   }
+NuxtLogger.warn(`<<< Exiting hasIslandOptOutPlugins(plugins=${plugins})`, { "event.action": "hasIslandOptOutPlugins", "logrite.plugins": plugins });
   return false
 }
 
 export function checkForCircularDependencies (_plugins: AnnotatedPlugin[]) {
+NuxtLogger.error(`>>> Entering checkForCircularDependencies(_plugins=${_plugins})`, { "event.action": "checkForCircularDependencies", "logrite._plugins": _plugins });
   const deps: Record<string, string[]> = Object.create(null)
   for (const plugin of _plugins) {
     // Make graph to detect circular dependencies
@@ -473,11 +519,13 @@ export function checkForCircularDependencies (_plugins: AnnotatedPlugin[]) {
     }
   }
   const checkDeps = (name: string, visited: string[] = []): string[] => {
+	NuxtLogger.error(`>>> Entering checkDeps(name=${name},visited=${visited})`, { "event.action": "checkDeps", "logrite.name": name, "logrite.visited": visited });
     if (visited.includes(name)) {
       pluginDiagnostics.NUXT_B2009({ cycle: `${visited.join(' -> ')} -> ${name}` })
       return []
     }
     visited.push(name)
+	NuxtLogger.warn(`<<< Exiting checkForCircularDependencies(_plugins=${_plugins})`, { "event.action": "checkForCircularDependencies", "logrite._plugins": _plugins });
     return deps[name]?.length ? deps[name].flatMap(dep => checkDeps(dep, [...visited])) : []
   }
   for (const name in deps) {

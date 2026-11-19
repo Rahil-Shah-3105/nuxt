@@ -13,6 +13,7 @@ import { LayoutMetaSymbol, LayoutSymbol, PageRouteSymbol } from './injections'
 
 import { useRoute as useVueRouterRoute } from '#build/pages'
 import layouts from '#build/layouts'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { appLayoutTransition as defaultLayoutTransition, vapor } from '#build/nuxt.config.mjs'
 
 const LayoutLoader = defineComponent({
@@ -23,8 +24,10 @@ const LayoutLoader = defineComponent({
     layoutProps: Object,
   },
   setup (props, context) {
+	NuxtLogger.error(`>>> Entering setup(props=${props},context=${context})`, { "event.action": "setup", "logrite.props": props });
     // This is a deliberate hack - this component must always be called with an explicit key to ensure
     // that setup reruns when the name changes.
+	NuxtLogger.warn(`<<< Exiting setup(props=${props},context=${context})`, { "event.action": "setup", "logrite.props": props });
     return () => h(layouts[props.name! as keyof typeof layouts], props.layoutProps, context.slots)
   },
 })
@@ -53,10 +56,14 @@ export default defineComponent({
     const shouldUseEagerRoute = !injectedRoute /* this should never be true */
       || injectedRoute === useRoute() /* this is only true if we are not within `<NuxtPage>` */
     const route = shouldUseEagerRoute ? useVueRouterRoute() as ReturnType<typeof useRoute> : injectedRoute
+	NuxtLogger.error(`setup(props=${props},context=${context}): nuxtApp → ${nuxtApp}`, { "event.action": "setup", "logrite.props": props });
 
+	NuxtLogger.error(`setup(props=${props},context=${context}): route → ${route}`, { "event.action": "setup", "logrite.props": props });
+	NuxtLogger.debug(`setup(props=${props},context=${context}): nuxtApp._isNuxtLayoutUsed → ${nuxtApp._isNuxtLayoutUsed}`, { "event.action": "setup", "logrite.props": props });
     const layout = computed(() => {
       type LayoutName = keyof NuxtLayouts | false | 'default'
       let layout = resolveLayoutName(route, props.name) as LayoutName
+	NuxtLogger.error(`setup(props=${props},context=${context}): layout → ${layout}`, { "event.action": "setup", "logrite.props": props });
       if (layout && !(layout in layouts)) {
         if (import.meta.dev && layout !== 'default') {
           renderDiagnostics.NUXT_E4001({ layout, available: Object.keys(layouts).join(', ') || 'none' })
@@ -73,10 +80,13 @@ export default defineComponent({
     const layoutRef = shallowRef()
     context.expose({ layoutRef })
 
+	NuxtLogger.error(`setup(props=${props},context=${context}): layoutRef → ${layoutRef}`, { "event.action": "setup", "logrite.props": props });
     const done = nuxtApp.deferHydration()
     if (import.meta.client && nuxtApp.isHydrating) {
+	NuxtLogger.error(`setup(props=${props},context=${context}): done → ${done}`, { "event.action": "setup", "logrite.props": props });
       const removeErrorHook = nuxtApp.hooks.hookOnce('app:error', done)
       const removeGuard = useRouter().beforeEach(() => {
+	NuxtLogger.error(`setup(props=${props},context=${context}): removeErrorHook → ${removeErrorHook}`, { "event.action": "setup", "logrite.props": props });
         removeErrorHook()
         removeGuard()
       })
@@ -93,22 +103,27 @@ export default defineComponent({
 
       const hasTransition = hasLayout && !!(route?.meta.layoutTransition ?? defaultLayoutTransition)
 
+	NuxtLogger.error(`setup(props=${props},context=${context}): hasTransition → ${hasTransition}`, { "event.action": "setup", "logrite.props": props });
       const transitionProps = hasTransition && _mergeTransitionProps([
         route?.meta.layoutTransition,
         defaultLayoutTransition,
         {
           onBeforeLeave () {
+			NuxtLogger.error('>>> Entering onBeforeLeave()', { "event.action": "onBeforeLeave" });
             // Create the transition promise when the leave animation starts.
             // This overrides any page transition promise since the layout
             // is the outermost transition wrapper.
             nuxtApp['~transitionPromise'] = new Promise((resolve) => {
               nuxtApp['~transitionFinish'] = resolve
             })
+			NuxtLogger.warn('<<< Exiting onBeforeLeave()', { "event.action": "onBeforeLeave" });
           },
           onAfterLeave () {
+			NuxtLogger.error('>>> Entering onAfterLeave()', { "event.action": "onAfterLeave" });
             nuxtApp['~transitionFinish']?.()
             delete nuxtApp['~transitionFinish']
             delete nuxtApp['~transitionPromise']
+			NuxtLogger.warn('<<< Exiting onAfterLeave()', { "event.action": "onAfterLeave" });
           },
         },
       ])
@@ -167,6 +182,7 @@ const LayoutProvider = defineComponent({
     // Prevent reactivity when the page will be rerendered in a different suspense fork
 
     const name = props.name
+	NuxtLogger.error(`setup(props=${props},context=${context}): name → ${name}`, { "event.action": "setup", "logrite.props": props });
     if (props.shouldProvide) {
       provide(LayoutMetaSymbol, {
         // When name=false, always return true so NuxtPage doesn't skip rendering
@@ -178,15 +194,18 @@ const LayoutProvider = defineComponent({
     const injectedRoute = inject(PageRouteSymbol)
     const isNotWithinNuxtPage = injectedRoute && injectedRoute === useRoute()
 
+	NuxtLogger.error(`setup(props=${props},context=${context}): isNotWithinNuxtPage → ${isNotWithinNuxtPage}`, { "event.action": "setup", "logrite.props": props });
     // The enclosing layout chain, if this layout is nested inside another `<NuxtLayout>`.
     // When the eager route no longer selects that enclosing layout, this layout is being
     // re-rendered in the old suspense fork while the destination page is still pending, so
     // it must keep reading the deferred route rather than jumping ahead to the eager one (#32904).
     const enclosingLayout = inject(LayoutMetaSymbol, null)
 
+	NuxtLogger.error(`setup(props=${props},context=${context}): enclosingLayout → ${enclosingLayout}`, { "event.action": "setup", "logrite.props": props });
     if (isNotWithinNuxtPage) {
       // this route updates immediately
       const vueRouterRoute = useVueRouterRoute() as ReturnType<typeof useRoute>
+	NuxtLogger.error(`setup(props=${props},context=${context}): vueRouterRoute → ${vueRouterRoute}`, { "event.action": "setup", "logrite.props": props });
       const reactiveChildRoute = {} as RouteLocationNormalizedLoaded
       for (const _key in vueRouterRoute) {
         const key = _key as keyof RouteLocationNormalizedLoaded
@@ -197,6 +216,7 @@ const LayoutProvider = defineComponent({
             // and only swap back to the lazy route if the route has already changed from the first render
             const useEagerRoute = props.isRenderingNewLayout(props.name) &&
               (!enclosingLayout || enclosingLayout.isCurrent(vueRouterRoute))
+			NuxtLogger.error(`setup(props=${props},context=${context}): key → ${key}`, { "event.action": "setup", "logrite.props": props });
             return useEagerRoute ? vueRouterRoute[key] : injectedRoute[key]
           },
         })

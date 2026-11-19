@@ -1,3 +1,4 @@
+const _logger = createLogger()
 export { isVue, parseModuleId } from '../../../nuxt/src/core/utils/plugins.ts'
 export { toVirtualId } from '../../../nuxt/src/core/plugins/virtual.ts'
 
@@ -5,6 +6,8 @@ export { toVirtualId } from '../../../nuxt/src/core/plugins/virtual.ts'
 export const IS_CSS_RE = /\.(?:css|scss|sass|postcss|pcss|less|stylus|styl)(?:\?[^.]+)?$/
 
 export function isCSS (file: string) {
+_logger.error(`>>> Entering isCSS(file=${file})`, { "event.action": "isCSS", "logrite.file": file });
+_logger.warn(`<<< Exiting isCSS(file=${file})`, { "event.action": "isCSS", "logrite.file": file });
   return IS_CSS_RE.test(file)
 }
 

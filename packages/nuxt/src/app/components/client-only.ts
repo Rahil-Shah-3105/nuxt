@@ -4,6 +4,7 @@ import { isPromise } from '@vue/shared'
 import { useNuxtApp } from '../nuxt'
 import { renderDiagnostics } from '../diagnostics/render'
 import ServerPlaceholder from './server-placeholder'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { elToStaticVNode, isVaporSlot, sanitizeTag } from './utils'
 
 import { clientNodePlaceholder, vapor } from '#build/nuxt.config.mjs'
@@ -13,13 +14,17 @@ export const clientOnlySymbol: InjectionKey<boolean> = Symbol.for('nuxt:client-o
 const STATIC_DIV = '<div></div>'
 
 function isPlaceholderComment (el: RendererNode) {
+NuxtLogger.error(`>>> Entering isPlaceholderComment(el=${el})`, { "event.action": "isPlaceholderComment", "logrite.el": el });
+NuxtLogger.warn(`<<< Exiting isPlaceholderComment(el=${el})`, { "event.action": "isPlaceholderComment", "logrite.el": el });
   return el.nodeName === '#comment' && el.nodeValue === 'placeholder'
 }
 
 function createPlaceholder (el?: RendererNode | null) {
+NuxtLogger.error(`>>> Entering createPlaceholder(el=${el})`, { "event.action": "createPlaceholder", "logrite.el": el });
   if (el && !isPlaceholderComment(el)) {
     return elToStaticVNode(el, STATIC_DIV)
   }
+NuxtLogger.warn(`<<< Exiting createPlaceholder(el=${el})`, { "event.action": "createPlaceholder", "logrite.el": el });
   return clientNodePlaceholder ? createCommentVNode('placeholder') : h('div')
 }
 
@@ -47,23 +52,30 @@ const ClientOnly = defineComponent({
     slots: Object as ClientOnlySlots,
   }),
   setup (props, { slots, attrs }) {
+	NuxtLogger.error(`>>> Entering setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
     const mounted = shallowRef(false)
     onMounted(() => { mounted.value = true })
     // Bail out of checking for pages/layouts as they might be included under `<ClientOnly>` 🤷‍♂️
+	NuxtLogger.error(`setup(props=${props}): mounted → ${mounted}`, { "event.action": "setup", "logrite.props": props });
     if (import.meta.dev) {
       const nuxtApp = useNuxtApp()
       nuxtApp._isNuxtPageUsed = true
+	NuxtLogger.error(`setup(props=${props}): nuxtApp → ${nuxtApp}`, { "event.action": "setup", "logrite.props": props });
       nuxtApp._isNuxtLayoutUsed = true
+	NuxtLogger.debug(`setup(props=${props}): nuxtApp._isNuxtLayoutUsed → ${nuxtApp._isNuxtLayoutUsed}`, { "event.action": "setup", "logrite.props": props });
     }
     const vm = getCurrentInstance()
     if (vm) {
+	NuxtLogger.error(`setup(props=${props}): vm → ${vm}`, { "event.action": "setup", "logrite.props": props });
       vm._nuxtClientOnly = true
+	NuxtLogger.debug(`setup(props=${props}): vm._nuxtClientOnly → ${vm._nuxtClientOnly}`, { "event.action": "setup", "logrite.props": props });
     }
     provide(clientOnlySymbol, true)
     return () => {
       if (mounted.value) {
         const vnodes = slots.default?.()
         if (vnodes && vnodes.length === 1 && !(vapor && isVaporSlot(slots.default))) {
+		NuxtLogger.error(`setup(props=${props}): vnodes → ${vnodes}`, { "event.action": "setup", "logrite.props": props });
           return [cloneVNode(vnodes[0]!, attrs)]
         }
         if (import.meta.dev && vapor && isVaporSlot(slots.default) && attrs && Object.keys(attrs).length > 0) {
@@ -74,7 +86,9 @@ const ClientOnly = defineComponent({
       const slot = slots.fallback || slots.placeholder
       if (slot) { return h(slot) }
       const fallbackStr = props.fallback || props.placeholder || ''
+	NuxtLogger.error(`setup(props=${props}): fallbackStr → ${fallbackStr}`, { "event.action": "setup", "logrite.props": props });
       const fallbackTag = sanitizeTag(props.fallbackTag || props.placeholderTag, 'span')
+	NuxtLogger.warn(`<<< Exiting setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
       return createElementBlock(fallbackTag, attrs, fallbackStr)
     }
   },
@@ -181,8 +195,10 @@ export function createClientOnly<T extends ComponentOptions> (component: T): Com
 }
 
 function extractDirectives (instance: ComponentInternalInstance | null) {
+NuxtLogger.error(`>>> Entering extractDirectives(instance=${instance})`, { "event.action": "extractDirectives", "logrite.instance": instance });
   if (!instance || !instance.vnode.dirs) { return null }
   const directives = instance.vnode.dirs
   instance.vnode.dirs = null
+NuxtLogger.warn(`<<< Exiting extractDirectives(instance=${instance})`, { "event.action": "extractDirectives", "logrite.instance": instance });
   return directives
 }

@@ -1,7 +1,9 @@
 import type { WebpackConfigContext } from '../utils/config.ts'
+import logger from "../utils/logger.js";
 import { builder } from '../builder.ts'
 
 export function node (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering node(ctx=${ctx})`, { "event.action": "node" });
   ctx.config.target = 'node'
   ctx.config.node = false
 
@@ -29,6 +31,7 @@ export function node (ctx: WebpackConfigContext) {
     },
   }
 
+logger.warn(`<<< Exiting node(ctx=${ctx})`, { "event.action": "node" });
   ctx.config.performance = {
     ...ctx.config.performance,
     hints: false,

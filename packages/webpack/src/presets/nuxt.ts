@@ -1,4 +1,5 @@
 import type { WebpackConfigContext } from '../utils/config.ts'
+import logger from "../utils/logger.js";
 import { applyPresets } from '../utils/config.ts'
 
 import { assets } from './assets.ts'
@@ -9,6 +10,7 @@ import { style } from './style.ts'
 import { vue } from './vue.ts'
 
 export async function nuxt (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering nuxt(ctx=${ctx})`, { "event.action": "nuxt" });
   await applyPresets(ctx, [
     base,
     assets,
@@ -17,4 +19,5 @@ export async function nuxt (ctx: WebpackConfigContext) {
     style,
     vue,
   ])
+logger.warn(`<<< Exiting nuxt(ctx=${ctx})`, { "event.action": "nuxt" });
 }

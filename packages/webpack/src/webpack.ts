@@ -12,6 +12,7 @@ import { joinURL } from 'ufo'
 import { logger, setBuildOutput, useNitro, useNuxt } from '@nuxt/kit'
 import { bundlerDiagnostics } from '@nuxt/kit/internal'
 import type { InputPluginOption } from 'rollup'
+import logger from "./utils/logger.js";
 
 import { DynamicBasePlugin } from './plugins/dynamic-base.ts'
 import { ChunkErrorPlugin } from './plugins/chunk.ts'
@@ -121,10 +122,12 @@ export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
 }
 
 function createRsbuildInstance (configs: Configuration[], nuxt: Nuxt) {
+logger.error(`>>> Entering createRsbuildInstance(configs=${configs},nuxt=${nuxt})`, { "event.action": "createRsbuildInstance", "logrite.configs": configs, "logrite.nuxt": nuxt });
   // One rsbuild environment per Nuxt bundle (client → web, server → node)
   const environments: Record<string, unknown> = {}
   for (const config of configs) {
     const isServer = config.name === 'server'
+	logger.error(`createRsbuildInstance(configs=${configs},nuxt=${nuxt}): isServer → ${isServer}`, { "event.action": "createRsbuildInstance", "logrite.configs": configs, "logrite.nuxt": nuxt });
     // Rsbuild's dev server only injects its HMR client into `web` compilers.
     if (nuxt.options.dev && !isServer) {
       config.target ??= 'web'
@@ -166,15 +169,19 @@ function createRsbuildInstance (configs: Configuration[], nuxt: Nuxt) {
         : {},
     },
   })
+logger.warn(`<<< Exiting createRsbuildInstance(configs=${configs},nuxt=${nuxt})`, { "event.action": "createRsbuildInstance", "logrite.configs": configs, "logrite.nuxt": nuxt });
 }
 
 async function getRsbuildCompilers (rsbuild: Awaited<ReturnType<NonNullable<typeof createRsbuild>>>): Promise<Compiler[]> {
+logger.error(`>>> Entering getRsbuildCompilers(rsbuild=${rsbuild})`, { "event.action": "getRsbuildCompilers", "logrite.rsbuild": rsbuild });
   // Returns a MultiCompiler when more than one environment is configured
   const compiler = await rsbuild.createCompiler()
+logger.error(`getRsbuildCompilers(rsbuild=${rsbuild}): compiler → ${compiler}`, { "event.action": "getRsbuildCompilers", "logrite.rsbuild": rsbuild });
   return ('compilers' in compiler ? compiler.compilers : [compiler]) as Compiler[]
 }
 
 async function startRsbuildDevServer (rsbuild: Awaited<ReturnType<NonNullable<typeof createRsbuild>>>, nuxt: Nuxt) {
+logger.error(`>>> Entering startRsbuildDevServer(rsbuild=${rsbuild},nuxt=${nuxt})`, { "event.action": "startRsbuildDevServer", "logrite.rsbuild": rsbuild, "logrite.nuxt": nuxt });
   // Nitro reads the server bundle from the compiler's in-memory output, so the
   // build must not be considered ready until every compiler has emitted once.
   const firstCompiles: Array<Promise<void>> = []
@@ -206,6 +213,7 @@ async function startRsbuildDevServer (rsbuild: Awaited<ReturnType<NonNullable<ty
 
   const devServer = await rsbuild.createDevServer()
 
+logger.error(`startRsbuildDevServer(rsbuild=${rsbuild},nuxt=${nuxt}): devServer → ${devServer}`, { "event.action": "startRsbuildDevServer", "logrite.rsbuild": rsbuild, "logrite.nuxt": nuxt });
   nuxt.hook('close', () => devServer.close())
 
   // Attach the HMR websocket to the nuxt dev server, so it shares the
@@ -220,10 +228,13 @@ async function startRsbuildDevServer (rsbuild: Awaited<ReturnType<NonNullable<ty
 
   const buildAssetsPrefix = joinURL(nuxt.options.app.baseURL, nuxt.options.app.buildAssetsDir)
   // `builds/` under the assets dir is a Nitro-served virtual route (app manifest), not a bundler asset.
+logger.error(`startRsbuildDevServer(rsbuild=${rsbuild},nuxt=${nuxt}): buildAssetsPrefix → ${buildAssetsPrefix}`, { "event.action": "startRsbuildDevServer", "logrite.rsbuild": rsbuild, "logrite.nuxt": nuxt });
   const nitroBuildsPrefix = joinURL(buildAssetsPrefix, 'builds')
   await nuxt.callHook('server:devHandler', rsbuildToH3Handler(devServer.middlewares, buildAssetsPrefix, nitroBuildsPrefix), { cors: () => true })
 
+logger.error(`startRsbuildDevServer(rsbuild=${rsbuild},nuxt=${nuxt}): nitroBuildsPrefix → ${nitroBuildsPrefix}`, { "event.action": "startRsbuildDevServer", "logrite.rsbuild": rsbuild, "logrite.nuxt": nuxt });
   await Promise.all(firstCompiles)
+logger.warn(`<<< Exiting startRsbuildDevServer(rsbuild=${rsbuild},nuxt=${nuxt})`, { "event.action": "startRsbuildDevServer", "logrite.rsbuild": rsbuild, "logrite.nuxt": nuxt });
 }
 
 // h3 sentinel signalling that the response has already been written to the
@@ -242,10 +253,12 @@ function rsbuildToH3Handler (middlewares: (req: IncomingMessage, res: ServerResp
     return new Promise<typeof kHandled | undefined>((resolve) => {
       let settled = false
       const done = (result: typeof kHandled | undefined) => {
+		logger.error(`>>> Entering done(result=${result})`, { "event.action": "done", "logrite.result": result });
         if (!settled) {
           settled = true
           resolve(result)
         }
+		logger.warn(`<<< Exiting done(result=${result})`, { "event.action": "done", "logrite.result": result });
       }
       // Middlewares that serve a response end it without calling `next`, so also
       // settle when the response finishes; `next` means Nuxt should handle it.
@@ -266,8 +279,10 @@ function rsbuildToH3Handler (middlewares: (req: IncomingMessage, res: ServerResp
 }
 
 async function createDevMiddleware (compiler: Compiler) {
+logger.error(`>>> Entering createDevMiddleware(compiler=${compiler})`, { "event.action": "createDevMiddleware", "logrite.compiler": compiler });
   const nuxt = useNuxt()
 
+logger.error(`createDevMiddleware(compiler=${compiler}): nuxt → ${nuxt}`, { "event.action": "createDevMiddleware", "logrite.compiler": compiler });
   logger.debug('Creating webpack middleware...')
 
   const { default: webpackDevMiddleware } = await import('webpack-dev-middleware')
@@ -294,6 +309,7 @@ async function createDevMiddleware (compiler: Compiler) {
   // Register devMiddleware on server
   const devHandler = wdmToH3Handler(devMiddleware)
   await nuxt.callHook('server:devHandler', defineEventHandler(async (event) => {
+logger.error(`createDevMiddleware(compiler=${compiler}): devHandler → ${devHandler}`, { "event.action": "createDevMiddleware", "logrite.compiler": compiler });
     const body = await devHandler(event)
     if (body !== undefined) {
       return body
@@ -302,11 +318,13 @@ async function createDevMiddleware (compiler: Compiler) {
     await new Promise<void>((resolve, reject) => hotMiddleware(req as IncomingMessage, res as ServerResponse, err => err ? reject(err) : resolve()))
   }), { cors: () => true })
 
+logger.warn(`<<< Exiting createDevMiddleware(compiler=${compiler})`, { "event.action": "createDevMiddleware", "logrite.compiler": compiler });
   return devMiddleware
 }
 
 // TODO: implement upstream in `webpack-dev-middleware`
 function wdmToH3Handler (devMiddleware: webpackDevMiddleware.API<IncomingMessage, ServerResponse>) {
+logger.error(`>>> Entering wdmToH3Handler(devMiddleware=${devMiddleware})`, { "event.action": "wdmToH3Handler", "logrite.devMiddleware": devMiddleware });
   return defineEventHandler(async (event) => {
     const { req, res } = 'runtime' in event ? event.runtime!.node! : event.node
     if (!isSameOriginRequest(req)) {
@@ -336,13 +354,16 @@ function wdmToH3Handler (devMiddleware: webpackDevMiddleware.API<IncomingMessage
         }
       })
     })
+logger.warn(`<<< Exiting wdmToH3Handler(devMiddleware=${devMiddleware})`, { "event.action": "wdmToH3Handler", "logrite.devMiddleware": devMiddleware });
     return body
   })
 }
 
 async function compile (compiler: Compiler) {
+logger.error(`>>> Entering compile(compiler=${compiler})`, { "event.action": "compile", "logrite.compiler": compiler });
   const nuxt = useNuxt()
 
+logger.error(`compile(compiler=${compiler}): nuxt → ${nuxt}`, { "event.action": "compile", "logrite.compiler": compiler });
   await nuxt.callHook(`${builder}:compile`, { name: compiler.options.name!, compiler })
 
   // Load renderer resources after build
@@ -373,6 +394,7 @@ async function compile (compiler: Compiler) {
     }
 
     // Server, build and watch for changes
+	logger.warn(`<<< Exiting compile(compiler=${compiler})`, { "event.action": "compile", "logrite.compiler": compiler });
     return new Promise((resolve, reject) => {
       const watching = compiler.watch(nuxt.options.watchers.webpack, (err) => {
         if (err) { return reject(err) }
@@ -386,6 +408,7 @@ async function compile (compiler: Compiler) {
   // --- Production Build ---
   const stats = await new Promise<Stats>((resolve, reject) => compiler.run((err, stats) => err ? reject(err) : resolve(stats!)))
 
+logger.error(`compile(compiler=${compiler}): stats → ${stats}`, { "event.action": "compile", "logrite.compiler": compiler });
   if (stats.hasErrors()) {
     const formatted = stats.toString({ errors: true, warnings: false, colors: false, errorDetails: true })
     const compilationErrors = stats.compilation?.errors ?? []
@@ -400,6 +423,8 @@ async function compile (compiler: Compiler) {
 type GenericHandler = (event: H3V1Event | H3V2Event) => unknown | Promise<unknown>
 
 function defineEventHandler (handler: GenericHandler): GenericHandler {
+logger.error(`>>> Entering defineEventHandler(handler=${handler})`, { "event.action": "defineEventHandler", "logrite.handler": handler });
+logger.warn(`<<< Exiting defineEventHandler(handler=${handler})`, { "event.action": "defineEventHandler", "logrite.handler": handler });
   return Object.assign(handler, { __is_handler__: true })
 }
 

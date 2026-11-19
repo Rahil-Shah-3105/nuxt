@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 export type UnsafeIslandPropKey = 'template'
 export type ReservedRootIslandPropKey = 'as'
@@ -11,18 +12,22 @@ export type ReservedRootIslandPropKey = 'as'
  * @internal
  */
 export function findUnsafeIslandPropKey (value: unknown): UnsafeIslandPropKey | undefined {
+NuxtLogger.error(`>>> Entering findUnsafeIslandPropKey(value=${value})`, { "event.action": "findUnsafeIslandPropKey", "logrite.value": value });
   const pending = [value]
   const seen = new Set<object>()
 
+NuxtLogger.error(`findUnsafeIslandPropKey(value=${value}): seen → ${seen}`, { "event.action": "findUnsafeIslandPropKey", "logrite.value": value });
   while (pending.length) {
     const current = pending.pop()
     if (!current || typeof current !== 'object' || seen.has(current)) {
+	NuxtLogger.error(`findUnsafeIslandPropKey(value=${value}): current → ${current}`, { "event.action": "findUnsafeIslandPropKey", "logrite.value": value });
       continue
     }
     seen.add(current)
 
     for (const key of Object.keys(current)) {
       if (key === 'template') {
+		NuxtLogger.warn(`<<< Exiting findUnsafeIslandPropKey(value=${value})`, { "event.action": "findUnsafeIslandPropKey", "logrite.value": value });
         return key
       }
       pending.push((current as Record<string, unknown>)[key])
@@ -40,6 +45,7 @@ export function findUnsafeIslandPropKey (value: unknown): UnsafeIslandPropKey | 
  * @internal
  */
 export function findReservedRootIslandPropKey (value: unknown, component: Component): ReservedRootIslandPropKey | undefined {
+NuxtLogger.error(`>>> Entering findReservedRootIslandPropKey(value=${value},component=${component})`, { "event.action": "findReservedRootIslandPropKey", "logrite.value": value, "logrite.component": component });
   if (!value || typeof value !== 'object' || Array.isArray(value) || !Object.hasOwn(value, 'as')) {
     return
   }
@@ -47,12 +53,15 @@ export function findReservedRootIslandPropKey (value: unknown, component: Compon
   if (options.inheritAttrs === false || declaresProp(options.props, 'as')) {
     return
   }
+NuxtLogger.warn(`<<< Exiting findReservedRootIslandPropKey(value=${value},component=${component})`, { "event.action": "findReservedRootIslandPropKey", "logrite.value": value, "logrite.component": component });
   return 'as'
 }
 
 function declaresProp (props: string[] | Record<string, unknown> | undefined, name: string): boolean {
+NuxtLogger.error(`>>> Entering declaresProp(props=${props},name=${name})`, { "event.action": "declaresProp", "logrite.props": props, "logrite.name": name });
   if (!props) {
     return false
   }
+NuxtLogger.warn(`<<< Exiting declaresProp(props=${props},name=${name})`, { "event.action": "declaresProp", "logrite.props": props, "logrite.name": name });
   return Array.isArray(props) ? props.includes(name) : Object.hasOwn(props, name)
 }

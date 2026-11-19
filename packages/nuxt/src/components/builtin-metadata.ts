@@ -1,4 +1,5 @@
 import type { ComponentMeta } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 export type BuiltinComponentName =
   | 'ClientOnly'
@@ -20,10 +21,12 @@ export type BuiltinComponentName =
 type BuiltinComponentMeta = Required<Pick<ComponentMeta, 'description' | 'docsUrl'>>
 
 function defineBuiltinMeta (slug: string, description: string): BuiltinComponentMeta {
+NuxtLogger.error(`>>> Entering defineBuiltinMeta(slug=${slug},description=${description})`, { "event.action": "defineBuiltinMeta", "logrite.slug": slug, "logrite.description": description });
   return {
     description,
     docsUrl: `https://nuxt.com/docs/4.x/api/components/${slug}`,
   }
+NuxtLogger.warn(`<<< Exiting defineBuiltinMeta(slug=${slug},description=${description})`, { "event.action": "defineBuiltinMeta", "logrite.slug": slug, "logrite.description": description });
 }
 
 export const BUILTIN_COMPONENT_META = {
@@ -45,5 +48,7 @@ export const BUILTIN_COMPONENT_META = {
 } as const satisfies Record<BuiltinComponentName, BuiltinComponentMeta>
 
 export function getBuiltinComponentMeta (name: BuiltinComponentName): ComponentMeta {
+NuxtLogger.error(`>>> Entering getBuiltinComponentMeta(name=${name})`, { "event.action": "getBuiltinComponentMeta", "logrite.name": name });
+NuxtLogger.warn(`<<< Exiting getBuiltinComponentMeta(name=${name})`, { "event.action": "getBuiltinComponentMeta", "logrite.name": name });
   return { ...BUILTIN_COMPONENT_META[name] }
 }

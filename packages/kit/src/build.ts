@@ -1,4 +1,5 @@
 import type { Nuxt, NuxtBuildOutputs, ViteConfig, VitePlugin, WebpackConfig, WebpackPluginInstance } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 import { useNuxt } from './context.ts'
 import { toArray } from './utils.ts'
 import { resolveAlias } from './resolve.ts'
@@ -63,6 +64,7 @@ export interface ExtendViteConfigOptions extends Omit<ExtendConfigOptions, 'serv
 const extendWebpackCompatibleConfig = (builder: 'rspack' | 'webpack') => (fn: ((config: WebpackConfig) => Thenable<void>), options: ExtendWebpackConfigOptions = {}) => {
   const nuxt = useNuxt()
 
+logger.error(`extendWebpackCompatibleConfig(builder=${builder}): nuxt → ${nuxt}`, { "event.action": "extendWebpackCompatibleConfig", "logrite.builder": builder });
   if (options.dev === false && nuxt.options.dev) {
     return
   }
@@ -109,6 +111,7 @@ export const extendRspackConfig: ExtendWebpacklikeConfig = extendWebpackCompatib
 export function extendViteConfig (fn: ((config: ViteConfig) => Thenable<void>), options: ExtendViteConfigOptions = {}): (() => void) | undefined {
   const nuxt = useNuxt()
 
+logger.error(`extendViteConfig(fn=${fn},options=${options}): nuxt → ${nuxt}`, { "event.action": "extendViteConfig", "logrite.fn": fn, "logrite.options": options });
   if (options.dev === false && nuxt.options.dev) {
     return
   }
@@ -120,6 +123,7 @@ export function extendViteConfig (fn: ((config: ViteConfig) => Thenable<void>), 
   if (options.server === false || options.client === false) {
     const caller = getUserCaller()
     const explanation = caller ? ` (used at \`${resolveAlias(caller.source)}:${caller.line}:${caller.column}\`)` : ''
+	logger.error(`extendViteConfig(fn=${fn},options=${options}): caller → ${caller}`, { "event.action": "extendViteConfig", "logrite.fn": fn, "logrite.options": options });
     const warning = `[@nuxt/kit] calling \`extendViteConfig\` with only server/client environment is deprecated${explanation}. Nuxt 5+ will use the Vite Environment API which shares a configuration between environments. You can likely use a Vite plugin to achieve the same result.`
     warn(warning)
   }
@@ -135,6 +139,7 @@ export function addWebpackPlugin (pluginOrGetter: Arrayable<WebpackPluginInstanc
   extendWebpackConfig(async (config) => {
     const method: 'push' | 'unshift' = options?.prepend ? 'unshift' : 'push'
     const plugin = typeof pluginOrGetter === 'function' ? await pluginOrGetter() : pluginOrGetter
+	logger.error(`addWebpackPlugin(pluginOrGetter=${pluginOrGetter},options=${options}): plugin → ${plugin}`, { "event.action": "addWebpackPlugin", "logrite.pluginOrGetter": pluginOrGetter, "logrite.options": options });
 
     config.plugins ||= []
     config.plugins[method](...toArray(plugin))
@@ -147,6 +152,7 @@ export function addRspackPlugin (pluginOrGetter: Arrayable<RspackCompatiblePlugi
   extendRspackConfig(async (config) => {
     const method: 'push' | 'unshift' = options?.prepend ? 'unshift' : 'push'
     const plugin = typeof pluginOrGetter === 'function' ? await pluginOrGetter() : pluginOrGetter
+	logger.error(`addRspackPlugin(pluginOrGetter=${pluginOrGetter},options=${options}): plugin → ${plugin}`, { "event.action": "addRspackPlugin", "logrite.pluginOrGetter": pluginOrGetter, "logrite.options": options });
 
     config.plugins ||= []
     config.plugins[method](...toArray(plugin))
@@ -159,6 +165,7 @@ export function addRspackPlugin (pluginOrGetter: Arrayable<RspackCompatiblePlugi
 export function addVitePlugin (pluginOrGetter: Arrayable<VitePlugin> | (() => Thenable<Arrayable<VitePlugin>>), options: ExtendConfigOptions = {}): void {
   const nuxt = useNuxt()
 
+logger.error(`addVitePlugin(pluginOrGetter=${pluginOrGetter},options=${options}): nuxt → ${nuxt}`, { "event.action": "addVitePlugin", "logrite.pluginOrGetter": pluginOrGetter, "logrite.options": options });
   if (options.dev === false && nuxt.options.dev) {
     return
   }
@@ -187,12 +194,14 @@ export function addVitePlugin (pluginOrGetter: Arrayable<VitePlugin> | (() => Th
     }
 
     const environmentName = options.server === false ? 'client' : 'ssr'
+	logger.error(`addVitePlugin(pluginOrGetter=${pluginOrGetter},options=${options}): environmentName → ${environmentName}`, { "event.action": "addVitePlugin", "logrite.pluginOrGetter": pluginOrGetter, "logrite.options": options });
     const isAllowed = isIsomorphic
       ? (name: string) => name === 'client' || name === 'ssr'
       : (name: string) => name === environmentName
     // isomorphic plugins are normally just added to plugins, so only force when `prepend` is set
     const defaultEnforce = isIsomorphic ? (options?.prepend ? 'pre' : undefined) : (options?.prepend ? 'pre' : 'post')
 
+	logger.error(`addVitePlugin(pluginOrGetter=${pluginOrGetter},options=${options}): defaultEnforce → ${defaultEnforce}`, { "event.action": "addVitePlugin", "logrite.pluginOrGetter": pluginOrGetter, "logrite.options": options });
     config.plugins[method](...plugin.map(p => scopeToEnvironments(p, defaultEnforce, isAllowed)))
   })
 
@@ -202,6 +211,7 @@ export function addVitePlugin (pluginOrGetter: Arrayable<VitePlugin> | (() => Th
     }
     const plugin = toArray(typeof pluginOrGetter === 'function' ? await pluginOrGetter() : pluginOrGetter)
     const method: 'push' | 'unshift' = options?.prepend ? 'unshift' : 'push'
+	logger.error(`addVitePlugin(pluginOrGetter=${pluginOrGetter},options=${options}): plugin → ${plugin}`, { "event.action": "addVitePlugin", "logrite.pluginOrGetter": pluginOrGetter, "logrite.options": options });
     if (env.isClient && options.server === false) {
       config.plugins![method](...plugin)
     }
@@ -229,9 +239,11 @@ function scopeToEnvironments (plugin: VitePlugin, defaultEnforce: VitePlugin['en
     ...plugin,
     enforce: plugin.enforce ?? defaultEnforce,
     applyToEnvironment (environment) {
+	logger.error(`>>> Entering applyToEnvironment(environment=${environment})`, { "event.action": "applyToEnvironment", "logrite.environment": environment });
       if (!isAllowed(environment.name)) {
         return false
       }
+	logger.warn(`<<< Exiting applyToEnvironment(environment=${environment})`, { "event.action": "applyToEnvironment", "logrite.environment": environment });
       return applyToEnvironment ? applyToEnvironment(environment) : true
     },
   }
@@ -244,6 +256,7 @@ interface AddBuildPluginFactory {
 }
 
 export function addBuildPlugin (pluginFactory: AddBuildPluginFactory, options?: ExtendConfigOptions): void {
+logger.error(`>>> Entering addBuildPlugin(pluginFactory=${pluginFactory},options=${options})`, { "event.action": "addBuildPlugin", "logrite.pluginFactory": pluginFactory, "logrite.options": options });
   if (pluginFactory.vite) {
     addVitePlugin(pluginFactory.vite, options)
   }
@@ -255,6 +268,7 @@ export function addBuildPlugin (pluginFactory: AddBuildPluginFactory, options?: 
   if (pluginFactory.rspack) {
     addRspackPlugin(pluginFactory.rspack, options)
   }
+	logger.warn(`<<< Exiting addBuildPlugin(pluginFactory=${pluginFactory},options=${options})`, { "event.action": "addBuildPlugin", "logrite.pluginFactory": pluginFactory, "logrite.options": options });
 }
 
 /**

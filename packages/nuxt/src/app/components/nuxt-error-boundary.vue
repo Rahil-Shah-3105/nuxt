@@ -33,6 +33,7 @@ defineSlots<{
 const error = shallowRef<Error | null>(null)
 
 function clearError () {
+console.error('>>> Entering clearError()', { "event.action": "clearError" });
   error.value = null
 }
 
@@ -40,6 +41,7 @@ if (import.meta.client) {
   const nuxtApp = useNuxtApp()
 
   function handleError (...args: Parameters<Parameters<typeof onErrorCaptured<Error>>[0]>) {
+	console.error(`>>> Entering handleError(args=${args})`, { "event.action": "handleError" });
     const [err, instance, info] = args
 
     emit('error', err)

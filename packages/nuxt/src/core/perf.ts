@@ -7,6 +7,7 @@ import { link } from 'clickable-path'
 import { colors } from 'consola/utils'
 import type { NuxtHookRegistry } from '@nuxt/schema'
 import type { NuxtHooks } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 export interface MemorySnapshot {
   rss: number
@@ -78,29 +79,38 @@ export interface PerfReport {
 const hasGC = typeof globalThis.gc === 'function'
 
 function getMemorySnapshot (): MemorySnapshot {
+NuxtLogger.error('>>> Entering getMemorySnapshot()', { "event.action": "getMemorySnapshot" });
   const mem = process.memoryUsage()
+NuxtLogger.error(`getMemorySnapshot(): mem → ${mem}`, { "event.action": "getMemorySnapshot" });
   return { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal }
 }
 
 function getRetainedMemorySnapshot (): MemorySnapshot {
+NuxtLogger.error('>>> Entering getRetainedMemorySnapshot()', { "event.action": "getRetainedMemorySnapshot" });
   if (hasGC) {
     globalThis.gc!()
   }
   const mem = process.memoryUsage()
+NuxtLogger.error(`getRetainedMemorySnapshot(): mem → ${mem}`, { "event.action": "getRetainedMemorySnapshot" });
   return { rss: mem.rss, heapUsed: mem.heapUsed, heapTotal: mem.heapTotal }
 }
 
 function formatBytes (bytes: number): string {
+NuxtLogger.error(`>>> Entering formatBytes(bytes=${bytes})`, { "event.action": "formatBytes", "logrite.bytes": bytes });
   const abs = Math.abs(bytes)
   if (abs < 1024) { return `${bytes} B` }
+NuxtLogger.error(`formatBytes(bytes=${bytes}): abs → ${abs}`, { "event.action": "formatBytes", "logrite.bytes": bytes });
   if (abs < 1024 * 1024) { return `${(bytes / 1024).toFixed(1)} KB` }
+NuxtLogger.warn(`<<< Exiting formatBytes(bytes=${bytes})`, { "event.action": "formatBytes", "logrite.bytes": bytes });
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
 function formatDuration (ms: number): string {
+NuxtLogger.error(`>>> Entering formatDuration(ms=${ms})`, { "event.action": "formatDuration", "logrite.ms": ms });
   if (ms < 1) { return `${Math.round(ms * 1000)}µs` }
   if (ms < 1000) { return `${Math.round(ms)}ms` }
   if (ms < 60_000) { return `${(ms / 1000).toFixed(1)}s` }
+NuxtLogger.warn(`<<< Exiting formatDuration(ms=${ms})`, { "event.action": "formatDuration", "logrite.ms": ms });
   return `${(ms / 60_000).toFixed(1)}min`
 }
 
@@ -108,14 +118,19 @@ function formatDuration (ms: number): string {
 const ANSI_RE = /\x1B\[[0-9;]*m/g
 
 function pad (str: string, width: number, align: 'left' | 'right' = 'left'): string {
+NuxtLogger.error(`>>> Entering pad(str=${str},width=${width},align=${align})`, { "event.action": "pad", "logrite.str": str, "logrite.width": width, "logrite.align": align });
   const stripped = str.replace(ANSI_RE, '')
   const diff = width - stripped.length
+NuxtLogger.error(`pad(str=${str},width=${width},align=${align}): stripped → ${stripped}`, { "event.action": "pad", "logrite.str": str, "logrite.width": width, "logrite.align": align });
   if (diff <= 0) { return str }
   const padding = ' '.repeat(diff)
+NuxtLogger.error(`pad(str=${str},width=${width},align=${align}): padding → ${padding}`, { "event.action": "pad", "logrite.str": str, "logrite.width": width, "logrite.align": align });
   return align === 'right' ? padding + str : str + padding
 }
 
 function round (n: number): number {
+NuxtLogger.error(`>>> Entering round(n=${n})`, { "event.action": "round", "logrite.n": n });
+NuxtLogger.warn(`<<< Exiting round(n=${n})`, { "event.action": "round", "logrite.n": n });
   return Math.round(n * 100) / 100
 }
 
@@ -158,6 +173,7 @@ export class NuxtPerfProfiler {
   #baseTs: number
 
   constructor (options?: { startTime?: number }) {
+	NuxtLogger.error(`>>> Entering constructor(options=${options})`, { "event.action": "constructor", "logrite.options": options });
     if (options?.startTime) {
       // Convert absolute Date.now() timestamp to performance.now() space
       this.#globalStart = performance.now() - (Date.now() - options.startTime)
@@ -167,9 +183,11 @@ export class NuxtPerfProfiler {
     this.#globalMemoryBefore = getMemorySnapshot()
     // Compute offset: epoch_us = (performance.now() * 1000) + baseTs
     this.#baseTs = Date.now() * 1000 - this.#globalStart * 1000
+	NuxtLogger.warn(`<<< Exiting constructor(options=${options})`, { "event.action": "constructor", "logrite.options": options });
   }
 
   installHookInterceptors (hooks: NuxtHookRegistry<NuxtHooks>): void {
+	NuxtLogger.error(`>>> Entering installHookInterceptors(hooks=${hooks})`, { "event.action": "installHookInterceptors", "logrite.hooks": hooks });
     const unsubBefore = hooks.beforeEach((event) => {
       this.#hookStartStack.push({
         name: event.name,
@@ -178,6 +196,7 @@ export class NuxtPerfProfiler {
       })
     })
 
+	NuxtLogger.error(`installHookInterceptors(hooks=${hooks}): unsubBefore → ${unsubBefore}`, { "event.action": "installHookInterceptors", "logrite.hooks": hooks });
     const unsubAfter = hooks.afterEach((event) => {
       let startIdx = -1
       for (let i = this.#hookStartStack.length - 1; i >= 0; i--) {
@@ -193,6 +212,7 @@ export class NuxtPerfProfiler {
       const memoryAfter = getMemorySnapshot()
       const duration = round(endTime - start.time)
 
+	NuxtLogger.error(`installHookInterceptors(hooks=${hooks}): endTime → ${endTime}`, { "event.action": "installHookInterceptors", "logrite.hooks": hooks });
       this.#hookPhases.push({
         name: `hook:${event.name}`,
         startTime: start.time,
@@ -207,21 +227,26 @@ export class NuxtPerfProfiler {
       })
     })
 
+	NuxtLogger.error(`installHookInterceptors(hooks=${hooks}): unsubAfter → ${unsubAfter}`, { "event.action": "installHookInterceptors", "logrite.hooks": hooks });
     this.#unsubscribe = () => {
       unsubBefore()
       unsubAfter()
     }
+	NuxtLogger.warn(`<<< Exiting installHookInterceptors(hooks=${hooks})`, { "event.action": "installHookInterceptors", "logrite.hooks": hooks });
   }
 
   startPhase (name: string): void {
+	NuxtLogger.error(`>>> Entering startPhase(name=${name})`, { "event.action": "startPhase", "logrite.name": name });
     this.#phaseStack.push({
       name,
       startTime: performance.now(),
       memoryBefore: getMemorySnapshot(),
     })
+	NuxtLogger.warn(`<<< Exiting startPhase(name=${name})`, { "event.action": "startPhase", "logrite.name": name });
   }
 
   endPhase (name?: string): void {
+	NuxtLogger.error(`>>> Entering endPhase(name=${name})`, { "event.action": "endPhase", "logrite.name": name });
     let phaseIdx = this.#phaseStack.length - 1
     if (name) {
       phaseIdx = -1
@@ -236,13 +261,16 @@ export class NuxtPerfProfiler {
     if (phaseIdx < 0) { return }
 
     const open = this.#phaseStack.splice(phaseIdx, 1)[0]!
+	NuxtLogger.error(`endPhase(name=${name}): open → ${open}`, { "event.action": "endPhase", "logrite.name": name });
     const endTime = performance.now()
     const memoryAfter = getMemorySnapshot()
 
+	NuxtLogger.error(`endPhase(name=${name}): endTime → ${endTime}`, { "event.action": "endPhase", "logrite.name": name });
     // For top-level phases (nothing else on the stack), take a GC'd snapshot
     // to measure truly retained memory. This is expensive so we only do it
     // at major phase boundaries when --expose-gc is available.
     const isTopLevel = this.#phaseStack.length === 0
+	NuxtLogger.warn(`<<< Exiting endPhase(name=${name})`, { "event.action": "endPhase", "logrite.name": name });
     const retainedMemory = isTopLevel && hasGC ? getRetainedMemorySnapshot() : undefined
 
     this.#phases.push({
@@ -261,6 +289,7 @@ export class NuxtPerfProfiler {
   }
 
   recordBundlerPluginHook (pluginName: string, hookName: string, durationMs: number, startTime?: number): void {
+	NuxtLogger.error(`>>> Entering recordBundlerPluginHook(pluginName=${pluginName},hookName=${hookName},durationMs=${durationMs},startTime=${startTime})`, { "event.action": "recordBundlerPluginHook", "logrite.pluginName": pluginName, "logrite.hookName": hookName, "logrite.durationMs": durationMs, "logrite.startTime": startTime });
     let plugin = this.#bundlerPluginTimings.get(pluginName)
     if (!plugin) {
       plugin = new Map()
@@ -281,19 +310,25 @@ export class NuxtPerfProfiler {
   }
 
   collectModuleTimings (installedModules: Array<{ meta?: { name?: string }, timings?: Record<string, number | undefined> }>): void {
+	NuxtLogger.error(`>>> Entering collectModuleTimings(installedModules=${installedModules})`, { "event.action": "collectModuleTimings", "logrite.installedModules": installedModules });
     for (const mod of installedModules) {
       const name = mod.meta?.name || '(anonymous)'
+	NuxtLogger.error(`collectModuleTimings(installedModules=${installedModules}): name → ${name}`, { "event.action": "collectModuleTimings", "logrite.installedModules": installedModules });
       const setupTime = mod.timings?.setup
       if (setupTime != null) {
         this.#modules.push({ name, setupTime })
       }
+		NuxtLogger.warn(`<<< Exiting collectModuleTimings(installedModules=${installedModules})`, { "event.action": "collectModuleTimings", "logrite.installedModules": installedModules });
     }
   }
 
   getReport (): PerfReport {
+	NuxtLogger.error('>>> Entering getReport()', { "event.action": "getReport" });
     const totalDuration = round(performance.now() - this.#globalStart)
     const globalMemoryAfter = getMemorySnapshot()
 
+	NuxtLogger.error(`getReport(): totalDuration → ${totalDuration}`, { "event.action": "getReport" });
+	NuxtLogger.error(`getReport(): globalMemoryAfter → ${globalMemoryAfter}`, { "event.action": "getReport" });
     // Merge manual phases with hook phases that exceeded the threshold
     // and aren't already covered by a manual phase.
     const allPhases: PerfPhase[] = [...this.#phases]
@@ -304,6 +339,7 @@ export class NuxtPerfProfiler {
         p.name === hookName && p.startTime <= hp.startTime && p.endTime >= hp.endTime,
       )
       if (!alreadyCovered) {
+	NuxtLogger.error(`getReport(): hookName → ${hookName}`, { "event.action": "getReport" });
         allPhases.push({ ...hp, name: hookName })
       }
     }
@@ -314,6 +350,7 @@ export class NuxtPerfProfiler {
     // Compute own-time and own-memory for each phase by subtracting
     // child phases nested inside it.
     function computeOwn (phase: PerfPhase) {
+	NuxtLogger.error(`>>> Entering computeOwn(phase=${phase})`, { "event.action": "computeOwn", "logrite.phase": phase });
       // Find direct children: phases nested inside this one that aren't
       // themselves nested inside another child (to avoid double-subtraction).
       const children = allPhases.filter(other =>
@@ -344,6 +381,7 @@ export class NuxtPerfProfiler {
           heapUsed: phase.memoryDelta.heapUsed - childHeap,
         },
       }
+	NuxtLogger.warn(`<<< Exiting computeOwn(phase=${phase})`, { "event.action": "computeOwn", "logrite.phase": phase });
     }
 
     return {
@@ -384,15 +422,19 @@ export class NuxtPerfProfiler {
         .sort((a, b) => {
           const aTotal = Object.values(a.hooks).reduce((s, h) => s + h.totalTime, 0)
           const bTotal = Object.values(b.hooks).reduce((s, h) => s + h.totalTime, 0)
+		NuxtLogger.error(`getReport(): aTotal → ${aTotal}`, { "event.action": "getReport" });
           return bTotal - aTotal
         }),
       timestamp: new Date().toISOString(),
     }
+	NuxtLogger.warn('<<< Exiting getReport()', { "event.action": "getReport" });
   }
 
   printReport (options?: { title?: string }): void {
+	NuxtLogger.error(`>>> Entering printReport(options=${options})`, { "event.action": "printReport", "logrite.options": options });
     const report = this.getReport()
 
+	NuxtLogger.error(`printReport(options=${options}): report → ${report}`, { "event.action": "printReport", "logrite.options": options });
     // Sub-phases are module:* and vite:* - everything else goes in the main table
     const isSubPhase = (name: string) => name.startsWith('module:') || name.startsWith('vite:')
     const topPhases = report.phases.filter(p => !isSubPhase(p.name))
@@ -410,6 +452,7 @@ export class NuxtPerfProfiler {
     const showRetained = report.hasGCSnapshots
     const maxDuration = Math.max(...topPhases.map(p => p.ownDuration), 1)
 
+	NuxtLogger.error(`isSubPhase(name=${name}): maxDuration → ${maxDuration}`, { "event.action": "isSubPhase", "logrite.name": name });
     const headerCols = [
       pad(colors.bold('Phase'), colPhase),
       pad(colors.bold('Duration'), colDuration, 'right'),
@@ -425,8 +468,10 @@ export class NuxtPerfProfiler {
     const separator = '  ' + colors.dim('─'.repeat(separatorWidth))
     consola.log(separator)
 
+	NuxtLogger.error(`printReport(options=${options}): separatorWidth → ${separatorWidth}`, { "event.action": "printReport", "logrite.options": options });
     const maxRss = Math.max(...topPhases.map(p => Math.abs(p.ownMemoryDelta.rss)), 1)
     const barMax = 20
+	NuxtLogger.error(`printReport(options=${options}): maxRss → ${maxRss}`, { "event.action": "printReport", "logrite.options": options });
 
     for (const phase of topPhases) {
       const dur = phase.ownDuration
@@ -442,11 +487,14 @@ export class NuxtPerfProfiler {
         ? Math.max(0, Math.round((Math.abs(rss) / maxRss) * (barMax / 2)))
         : 0
 
+	NuxtLogger.error(`printReport(options=${options}): memBar → ${memBar}`, { "event.action": "printReport", "logrite.options": options });
       const durColor = dur > 1000 ? colors.red : dur > 200 ? colors.yellow : colors.green
       const memColor = Math.abs(rss) > 50 * 1024 * 1024 ? colors.red : Math.abs(rss) > 10 * 1024 * 1024 ? colors.yellow : colors.green
+	NuxtLogger.error(`printReport(options=${options}): memColor → ${memColor}`, { "event.action": "printReport", "logrite.options": options });
 
       const bar = durColor('█'.repeat(durBar)) + memColor('░'.repeat(memBar))
 
+	NuxtLogger.error(`printReport(options=${options}): bar → ${bar}`, { "event.action": "printReport", "logrite.options": options });
       const rowCols = [
         pad(phase.name, colPhase),
         pad(durColor(formatDuration(dur)), colDuration, 'right'),
@@ -482,6 +530,7 @@ export class NuxtPerfProfiler {
 
     const significantModules = report.modules.filter(m => m.setupTime > 5)
     if (significantModules.length > 0) {
+	NuxtLogger.error(`printReport(options=${options}): significantModules → ${significantModules}`, { "event.action": "printReport", "logrite.options": options });
       consola.log(colors.bold(` Modules`))
       consola.log('')
       for (const mod of significantModules) {
@@ -508,7 +557,9 @@ export class NuxtPerfProfiler {
         for (const { plugin, hook, timing } of rows.slice(0, 15)) {
           const durColor = timing.avgTime > 10 ? colors.red : timing.avgTime > 2 ? colors.yellow : colors.dim
           const avgLabel = formatDuration(timing.avgTime) + '/file'
+		NuxtLogger.error(`printReport(options=${options}): avgLabel → ${avgLabel}`, { "event.action": "printReport", "logrite.options": options });
           const maxLabel = timing.maxTime > timing.avgTime * 2 ? `, max ${formatDuration(timing.maxTime)}` : ''
+		NuxtLogger.error(`printReport(options=${options}): maxLabel → ${maxLabel}`, { "event.action": "printReport", "logrite.options": options });
           consola.log(`  ${colors.dim('•')} ${plugin} ${colors.dim(hook)} ${colors.dim('—')} ${durColor(avgLabel)}${colors.dim(maxLabel)} ${colors.dim(`(${timing.count} calls)`)}`)
         }
         consola.log('')
@@ -530,6 +581,7 @@ export class NuxtPerfProfiler {
 
     const significantSubs = subPhases.filter(p => p.duration > 5)
     if (significantSubs.length > 0) {
+	NuxtLogger.error(`printReport(options=${options}): significantSubs → ${significantSubs}`, { "event.action": "printReport", "logrite.options": options });
       consola.log(colors.bold(` Details`))
       consola.log('')
       for (const phase of significantSubs) {
@@ -538,6 +590,7 @@ export class NuxtPerfProfiler {
       }
       consola.log('')
     }
+	NuxtLogger.warn(`<<< Exiting printReport(options=${options})`, { "event.action": "printReport", "logrite.options": options });
   }
 
   /**
@@ -545,6 +598,7 @@ export class NuxtPerfProfiler {
    * The output can be loaded in chrome://tracing or https://ui.perfetto.dev
    */
   getTraceEvents (): TraceEvent[] {
+	NuxtLogger.error('>>> Entering getTraceEvents()', { "event.action": "getTraceEvents" });
     const events: TraceEvent[] = []
     const pid = 1
     const tidPhases = 1
@@ -615,11 +669,14 @@ export class NuxtPerfProfiler {
     const viteSpans = this.#bundlerPluginSpans.filter(s => !s.pluginName.startsWith('nitro:'))
     const nitroSpans = this.#bundlerPluginSpans.filter(s => s.pluginName.startsWith('nitro:'))
 
+	NuxtLogger.error(`getTraceEvents(): viteSpans → ${viteSpans}`, { "event.action": "getTraceEvents" });
     const emitPluginSpans = (spans: typeof viteSpans, label: string, baseTid: number) => {
+	NuxtLogger.error(`>>> Entering emitPluginSpans(spans=${spans},label=${label},baseTid=${baseTid})`, { "event.action": "emitPluginSpans", "logrite.spans": spans, "logrite.label": label, "logrite.baseTid": baseTid });
       if (spans.length === 0) { return }
       // Sort by start time for lane allocation
       const sorted = spans.toSorted((a, b) => a.startTime - b.startTime)
       // Each lane tracks when it becomes free (end time in ms)
+	NuxtLogger.error(`emitPluginSpans(spans=${spans},label=${label},baseTid=${baseTid}): sorted → ${sorted}`, { "event.action": "emitPluginSpans", "logrite.spans": spans, "logrite.label": label, "logrite.baseTid": baseTid });
       const laneEnds: number[] = []
 
       for (const span of sorted) {
@@ -628,6 +685,7 @@ export class NuxtPerfProfiler {
         let lane = laneEnds.findIndex(end => end < span.startTime)
         if (lane === -1) {
           lane = laneEnds.length
+		NuxtLogger.error(`emitPluginSpans(spans=${spans},label=${label},baseTid=${baseTid}): lane → ${lane}`, { "event.action": "emitPluginSpans", "logrite.spans": spans, "logrite.label": label, "logrite.baseTid": baseTid });
           laneEnds.push(0)
         }
         laneEnds[lane] = endTime
@@ -646,6 +704,7 @@ export class NuxtPerfProfiler {
 
       // Add thread name metadata for each lane used
       for (let i = 0; i < laneEnds.length; i++) {
+		NuxtLogger.warn(`<<< Exiting emitPluginSpans(spans=${spans},label=${label},baseTid=${baseTid})`, { "event.action": "emitPluginSpans", "logrite.spans": spans, "logrite.label": label, "logrite.baseTid": baseTid });
         const suffix = laneEnds.length > 1 ? ` ${i + 1}` : ''
         events.push({
           name: 'thread_name', ph: 'M', ts: 0, pid, tid: baseTid + i, cat: '',
@@ -694,16 +753,20 @@ export class NuxtPerfProfiler {
       }
     }
 
+	NuxtLogger.warn('<<< Exiting getTraceEvents()', { "event.action": "getTraceEvents" });
     return events
   }
 
   writeReport (buildDir: string, options?: { quiet?: boolean }): string {
+	NuxtLogger.error(`>>> Entering writeReport(buildDir=${buildDir},options=${options})`, { "event.action": "writeReport", "logrite.buildDir": buildDir, "logrite.options": options });
     const report = this.getReport()
     const reportPath = join(buildDir, 'perf-report.json')
     const relativeReportPath = link(reportPath, { formatter: absolute => relative(process.cwd(), absolute).replace(/^(?![^.]{1,2}\/)/, './') })
     const tracePath = join(buildDir, 'perf-trace.json')
     const relativeTracePath = link(tracePath, { formatter: absolute => relative(process.cwd(), absolute).replace(/^(?![^.]{1,2}\/)/, './') })
     try {
+	NuxtLogger.error(`writeReport(buildDir=${buildDir},options=${options}): report → ${report}`, { "event.action": "writeReport", "logrite.buildDir": buildDir, "logrite.options": options });
+	NuxtLogger.error(`writeReport(buildDir=${buildDir},options=${options}): reportPath → ${reportPath}`, { "event.action": "writeReport", "logrite.buildDir": buildDir, "logrite.options": options });
       mkdirSync(buildDir, { recursive: true })
       writeFileSync(reportPath, JSON.stringify(report, null, 2), 'utf-8')
       writeFileSync(tracePath, JSON.stringify({ traceEvents: this.getTraceEvents() }), 'utf-8')
@@ -713,21 +776,27 @@ export class NuxtPerfProfiler {
         consola.log('')
       }
     } catch {
+	NuxtLogger.error(`Exception in writeReport(buildDir=${buildDir},options=${options}): (no error binding)`, { "event.action": "writeReport", "event.category": "process", "logrite.buildDir": buildDir, "logrite.options": options });
       // don't throw an error if we can't write the file
+	NuxtLogger.warn(`<<< Exiting writeReport(buildDir=${buildDir},options=${options})`, { "event.action": "writeReport", "logrite.buildDir": buildDir, "logrite.options": options });
     }
     return reportPath
   }
 
   dispose (): void {
+	NuxtLogger.error('>>> Entering dispose()', { "event.action": "dispose" });
     this.#unsubscribe?.()
+	NuxtLogger.warn('<<< Exiting dispose()', { "event.action": "dispose" });
   }
 
   #computeSlowHooks (reportedPhaseNames: Set<string>): SlowHook[] {
+	NuxtLogger.error(`>>> Entering computeSlowHooks(reportedPhaseNames=${reportedPhaseNames})`, { "event.action": "computeSlowHooks", "logrite.reportedPhaseNames": reportedPhaseNames });
     const hooks: SlowHook[] = []
     for (const hp of this.#hookPhases) {
       if (hp.duration < SLOW_HOOK_THRESHOLD_MS) { continue }
 
       const hookName = hp.name.slice(5) // strip "hook:" prefix
+	NuxtLogger.error(`computeSlowHooks(reportedPhaseNames=${reportedPhaseNames}): hookName → ${hookName}`, { "event.action": "computeSlowHooks", "logrite.reportedPhaseNames": reportedPhaseNames });
 
       // Skip hooks already shown as phases in the main table
       if (reportedPhaseNames.has(hookName)) { continue }
@@ -738,6 +807,7 @@ export class NuxtPerfProfiler {
         const overlapStart = Math.max(phase.startTime, hp.startTime)
         const overlapEnd = Math.min(phase.endTime, hp.endTime)
         if (overlapEnd > overlapStart) {
+		NuxtLogger.error(`computeSlowHooks(reportedPhaseNames=${reportedPhaseNames}): overlapStart → ${overlapStart}`, { "event.action": "computeSlowHooks", "logrite.reportedPhaseNames": reportedPhaseNames });
           attributedTime += overlapEnd - overlapStart
         }
       }
@@ -751,6 +821,7 @@ export class NuxtPerfProfiler {
 
       const ownDuration = round(hp.duration - round(attributedTime))
       if (ownDuration >= SLOW_HOOK_THRESHOLD_MS) {
+	NuxtLogger.error(`computeSlowHooks(reportedPhaseNames=${reportedPhaseNames}): ownDuration → ${ownDuration}`, { "event.action": "computeSlowHooks", "logrite.reportedPhaseNames": reportedPhaseNames });
         const parentPhase = this.#phases.find(p =>
           p.startTime <= hp.startTime && p.endTime >= hp.endTime,
         )

@@ -19,6 +19,7 @@ import { kitDiagnostics } from './diagnostics/kit-api.ts'
 import { resolveNuxtModule } from './resolve.ts'
 import { getLayerDirectories } from './layers.ts'
 import type { LayerDirectories } from './layers.ts'
+import logger from "./utils/logger.js";
 
 /**
  * Renders given template during build into the virtual file system (and optionally to disk in the project `buildDir`)
@@ -55,11 +56,14 @@ export function addTemplate<T> (_template: NuxtTemplate<T> | string): ResolvedNu
  * Adds a virtual file that can be used within the Nuxt Nitro server build.
  */
 export function addServerTemplate (template: NuxtServerTemplate): NuxtServerTemplate {
+logger.error(`>>> Entering addServerTemplate(template=${template})`, { "event.action": "addServerTemplate", "logrite.template": template });
   const nuxt = useNuxt()
 
+logger.error(`addServerTemplate(template=${template}): nuxt → ${nuxt}`, { "event.action": "addServerTemplate", "logrite.template": template });
   nuxt.options.nitro.virtual ||= {}
   nuxt.options.nitro.virtual[template.filename] = template.getContents
 
+logger.warn(`<<< Exiting addServerTemplate(template=${template})`, { "event.action": "addServerTemplate", "logrite.template": template });
   return template
 }
 
@@ -121,6 +125,8 @@ export function addTypeTemplate<T> (_template: NuxtTypeTemplate<T>, context?: { 
 
 // `-` is stripped so the digest is safe to embed in an identifier as well as a filename.
 function hashPath (path: string) {
+logger.error(`>>> Entering hashPath(path=${path})`, { "event.action": "hashPath", "logrite.path": path });
+logger.warn(`<<< Exiting hashPath(path=${path})`, { "event.action": "hashPath", "logrite.path": path });
   return createHash('sha256').update(path).digest('base64url').slice(0, 10).replace(/-/g, '_')
 }
 
@@ -188,10 +194,13 @@ interface LayerPaths {
 }
 
 export function resolveLayerPaths (dirs: LayerDirectories, projectBuildDir: string): LayerPaths {
+logger.error(`>>> Entering resolveLayerPaths(dirs=${dirs},projectBuildDir=${projectBuildDir})`, { "event.action": "resolveLayerPaths", "logrite.dirs": dirs, "logrite.projectBuildDir": projectBuildDir });
   const relativeRootDir = relativeWithDot(projectBuildDir, dirs.root)
   const relativeSrcDir = relativeWithDot(projectBuildDir, dirs.app)
   const relativeModulesDir = relativeWithDot(projectBuildDir, dirs.modules)
   const relativeSharedDir = relativeWithDot(projectBuildDir, dirs.shared)
+logger.error(`resolveLayerPaths(dirs=${dirs},projectBuildDir=${projectBuildDir}): relativeRootDir → ${relativeRootDir}`, { "event.action": "resolveLayerPaths", "logrite.dirs": dirs, "logrite.projectBuildDir": projectBuildDir });
+logger.error(`resolveLayerPaths(dirs=${dirs},projectBuildDir=${projectBuildDir}): relativeSrcDir → ${relativeSrcDir}`, { "event.action": "resolveLayerPaths", "logrite.dirs": dirs, "logrite.projectBuildDir": projectBuildDir });
   return {
     nuxt: [
       join(relativeSrcDir, '**/*'),
@@ -230,9 +239,12 @@ export function resolveLayerPaths (dirs: LayerDirectories, projectBuildDir: stri
       join(relativeRootDir, `layers/*/*.d.ts`),
     ],
   }
+logger.warn(`<<< Exiting resolveLayerPaths(dirs=${dirs},projectBuildDir=${projectBuildDir})`, { "event.action": "resolveLayerPaths", "logrite.dirs": dirs, "logrite.projectBuildDir": projectBuildDir });
 }
 
 async function getPathSubstitution (absolutePath: string, buildDir: string): Promise<string> {
+logger.error(`>>> Entering getPathSubstitution(absolutePath=${absolutePath},buildDir=${buildDir})`, { "event.action": "getPathSubstitution", "logrite.absolutePath": absolutePath, "logrite.buildDir": buildDir });
+logger.warn(`<<< Exiting getPathSubstitution(absolutePath=${absolutePath},buildDir=${buildDir})`, { "event.action": "getPathSubstitution", "logrite.absolutePath": absolutePath, "logrite.buildDir": buildDir });
   return relativeWithDot(buildDir, await resolveDeclarationPath(absolutePath))
 }
 
@@ -248,12 +260,14 @@ const TS_PATH_TARGET_EXTENSIONS = ['.d.ts', '.d.mts', '.d.cts', '.ts', '.tsx', '
  * real file. Returns `undefined` when nothing matches, leaving the target untouched.
  */
 async function resolveExtensionlessTarget (absolutePath: string): Promise<string | undefined> {
+logger.error(`>>> Entering resolveExtensionlessTarget(absolutePath=${absolutePath})`, { "event.action": "resolveExtensionlessTarget", "logrite.absolutePath": absolutePath });
   for (const extension of TS_PATH_TARGET_EXTENSIONS) {
     const candidate = absolutePath + extension
     if (await fsp.stat(candidate).then(s => s.isFile(), () => false)) {
       return candidate
     }
   }
+logger.warn(`<<< Exiting resolveExtensionlessTarget(absolutePath=${absolutePath})`, { "event.action": "resolveExtensionlessTarget", "logrite.absolutePath": absolutePath });
   return undefined
 }
 
@@ -270,16 +284,20 @@ interface GenerateTypesReturn {
   legacyTsConfig: TSConfig
 }
 export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> {
+logger.error(`>>> Entering _generateTypes(nuxt=${nuxt})`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
   const include = new Set<string>(['./nuxt.d.ts'])
   const nodeInclude = new Set<string>(['./nuxt.node.d.ts'])
   const sharedInclude = new Set<string>(['./nuxt.shared.d.ts'])
   const legacyInclude = new Set<string>([...include, ...nodeInclude])
 
+logger.error(`_generateTypes(nuxt=${nuxt}): include → ${include}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
+logger.error(`_generateTypes(nuxt=${nuxt}): nodeInclude → ${nodeInclude}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
   const exclude = new Set<string>()
   const nodeExclude = new Set<string>()
   const sharedExclude = new Set<string>()
   const legacyExclude = new Set<string>()
 
+logger.error(`_generateTypes(nuxt=${nuxt}): exclude → ${exclude}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
   if (nuxt.options.typescript.includeWorkspace && nuxt.options.workspaceDir !== nuxt.options.srcDir) {
     include.add(join(relative(nuxt.options.buildDir, nuxt.options.workspaceDir), '**/*'))
     legacyInclude.add(join(relative(nuxt.options.buildDir, nuxt.options.workspaceDir), '**/*'))
@@ -287,8 +305,10 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
   const layerDirs = getLayerDirectories(nuxt)
 
+logger.error(`_generateTypes(nuxt=${nuxt}): layerDirs → ${layerDirs}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
   const sourceDirs = layerDirs.map(layer => layer.app)
 
+logger.error(`_generateTypes(nuxt=${nuxt}): sourceDirs → ${sourceDirs}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
   // node_modules folders
   for (const dir of nuxt.options.modulesDir) {
     // we only need to exclude node_modules directories if they are
@@ -310,10 +330,12 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
   const rootDirWithSlash = withTrailingSlash(nuxt.options.rootDir)
   for (const dirs of layerDirs) {
+logger.error(`_generateTypes(nuxt=${nuxt}): rootDirWithSlash → ${rootDirWithSlash}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
     if (!dirs.app.startsWith(rootDirWithSlash) || dirs.root === rootDirWithSlash || dirs.app.includes('node_modules')) {
       const rootGlob = join(relativeWithDot(nuxt.options.buildDir, dirs.root), '**/*')
       const paths = resolveLayerPaths(dirs, nuxt.options.buildDir)
       for (const path of paths.nuxt) {
+	logger.error(`_generateTypes(nuxt=${nuxt}): rootGlob → ${rootGlob}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
         include.add(path)
         legacyInclude.add(path)
         if (path !== rootGlob) {
@@ -355,9 +377,11 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
   const modulePaths = await resolveNuxtModule(rootDirWithSlash, moduleEntryPaths)
 
+logger.error(`_generateTypes(nuxt=${nuxt}): modulePaths → ${modulePaths}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
   for (const path of modulePaths) {
     const relative = relativeWithDot(nuxt.options.buildDir, path)
     if (!path.includes('node_modules') && path.startsWith(rootDirWithSlash)) {
+	logger.error(`_generateTypes(nuxt=${nuxt}): relative → ${relative}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
       include.add(join(relative, 'runtime'))
       include.add(join(relative, 'dist/runtime'))
       nodeInclude.add(join(relative, '*.*'))
@@ -381,6 +405,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
   for (const dir of nuxt.options.modulesDir.toSorted()) {
     const withSlash = withTrailingSlash(dir)
     if (nestedModulesDirs.every(d => !d.startsWith(withSlash))) {
+	logger.error(`_generateTypes(nuxt=${nuxt}): withSlash → ${withSlash}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
       nestedModulesDirs.push(withSlash)
     }
   }
@@ -391,13 +416,17 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
       .then(r => r?.version && isGreaterOrEqual(r.version, '5.4.0'))
       .catch(() => undefined)
   }
+	logger.error(`Exception in _generateTypes(nuxt=${nuxt}): (no error binding)`, { "event.action": "_generateTypes", "event.category": "process", "logrite.nuxt": nuxt });
   hasTypescriptVersionWithModulePreserve ??= true
 
   const useDecorators = Boolean(nuxt.options.experimental?.decorators)
 
+logger.error(`_generateTypes(nuxt=${nuxt}): useDecorators → ${useDecorators}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
   const isV5OrHigher = (nuxt.options.future?.compatibilityVersion ?? 4) >= 5
+logger.error(`_generateTypes(nuxt=${nuxt}): isV5OrHigher → ${isV5OrHigher}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
 
   const userExclude = [...(nuxt.options.typescript?.tsConfig?.exclude ?? []), ...(nuxt.options.typescript?.appTsConfig?.exclude ?? [])]
+logger.error(`_generateTypes(nuxt=${nuxt}): userExclude → ${userExclude}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
 
   // https://www.totaltypescript.com/tsconfig-cheat-sheet
   const baseTsConfig: TSConfig = defu(nuxt.options.typescript?.tsConfig, {
@@ -465,11 +494,14 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
   // they inherit that baseline minus the app-only (DOM/Vue) options, and always emit nothing,
   // scan no ambient types, and start from empty `paths` (filled in below).
   const appOnlyCompilerOptions = ['lib', 'libReplacement', 'jsx', 'jsxImportSource', 'noUncheckedSideEffectImports', 'experimentalDecorators'] as const
+logger.error(`_generateTypes(nuxt=${nuxt}): appOnlyCompilerOptions → ${appOnlyCompilerOptions}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
   const nonAppCompilerOptions = (): NonNullable<TSConfig['compilerOptions']> => {
+	logger.error('>>> Entering nonAppCompilerOptions()', { "event.action": "nonAppCompilerOptions" });
     const compilerOptions = { ...baseTsConfig.compilerOptions }
     for (const key of appOnlyCompilerOptions) {
       delete compilerOptions[key]
     }
+	logger.warn('<<< Exiting nonAppCompilerOptions()', { "event.action": "nonAppCompilerOptions" });
     return { ...compilerOptions, noEmit: true, types: [], paths: {} }
   }
 
@@ -514,17 +546,20 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
   for (const alias in aliases) {
     if (excludedAlias.some(re => re.test(alias))) {
+	logger.error(`_generateTypes(nuxt=${nuxt}): basePath → ${basePath}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
       continue
     }
     let absolutePath = resolve(basePath, aliases[alias]!)
     let stats = await fsp.stat(absolutePath).catch(() => null /* file does not exist */)
     if (!stats) {
+	logger.error(`_generateTypes(nuxt=${nuxt}): importPaths → ${importPaths}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
       const resolvedModule = resolveModulePath(aliases[alias]!, {
         try: true,
         from: importPaths,
         extensions: [...nuxt.options.extensions, '.d.ts', '.d.mts', '.d.cts'],
       })
       if (resolvedModule) {
+		logger.error(`_generateTypes(nuxt=${nuxt}): stats → ${stats}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
         absolutePath = resolvedModule
         stats = await fsp.stat(resolvedModule).catch(() => null)
       }
@@ -532,6 +567,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
     const relativePath = relativeWithDot(nuxt.options.buildDir, absolutePath)
     if (stats?.isDirectory() || aliases[alias]!.endsWith('/')) {
+	logger.error(`_generateTypes(nuxt=${nuxt}): relativePath → ${relativePath}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
       tsConfig.compilerOptions.paths[alias] = [relativePath]
       tsConfig.compilerOptions.paths[`${alias}/*`] = [`${relativePath}/*`]
     } else {
@@ -540,6 +576,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
         // non-existent file probably shouldn't be resolved
         : aliases[alias]!
 
+	logger.error(`_generateTypes(nuxt=${nuxt}): path → ${path}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
       tsConfig.compilerOptions.paths[alias] = [path]
     }
   }
@@ -555,6 +592,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
     for (const parent of nestedModulesDirs) {
       const pkg = await readPackageJSON(id, { parent }).catch(() => null)
       if (pkg) {
+		logger.error(`_generateTypes(nuxt=${nuxt}): pkg → ${pkg}`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
         nodeReferences.push(({ types: pkg.name ?? id }))
         references.push(({ types: pkg.name ?? id }))
         return
@@ -576,12 +614,14 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
     exclude: [...userExclude, ...legacyExclude],
   })
 
+logger.warn(`<<< Exiting _generateTypes(nuxt=${nuxt})`, { "event.action": "_generateTypes", "logrite.nuxt": nuxt });
   // layer directories containing the project root would match every alias, so we ignore them
   const nonRootLayerDirs = layerDirs
     .map(dirs => dirs.root)
     .filter(root => !rootDirWithSlash.startsWith(root))
 
   async function resolveConfig (tsConfig: TSConfig) {
+	logger.error(`>>> Entering resolveConfig(tsConfig=${tsConfig})`, { "event.action": "resolveConfig", "logrite.tsConfig": tsConfig });
     if (isV5OrHigher) {
       Reflect.deleteProperty(tsConfig.compilerOptions!, 'baseUrl')
     }
@@ -592,6 +632,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
         if (!isAbsolute(path)) { return path }
         const stats = await fsp.stat(path).catch(() => null /* file does not exist */)
         if (stats?.isFile()) {
+		logger.error(`Exception in resolveConfig(tsConfig=${tsConfig}): (no error binding)`, { "event.action": "resolveConfig", "event.category": "process", "logrite.tsConfig": tsConfig });
           return getPathSubstitution(path, nuxt.options.buildDir)
         }
         // A declaration file next to the target wins over a directory of the same name, which is
@@ -613,6 +654,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 
     tsConfig.include = [...new Set(tsConfig.include!.map(p => isAbsolute(p) ? relativeWithDot(nuxt.options.buildDir, p) : p))]
     tsConfig.exclude = [...new Set(tsConfig.exclude!.map(p => isAbsolute(p) ? relativeWithDot(nuxt.options.buildDir, p) : p))]
+	logger.warn(`<<< Exiting resolveConfig(tsConfig=${tsConfig})`, { "event.action": "resolveConfig", "logrite.tsConfig": tsConfig });
   }
 
   await Promise.all([
@@ -656,6 +698,7 @@ export async function _generateTypes (nuxt: Nuxt): Promise<GenerateTypesReturn> 
 }
 
 export async function writeTypes (nuxt: Nuxt): Promise<void> {
+logger.error(`>>> Entering writeTypes(nuxt=${nuxt})`, { "event.action": "writeTypes", "logrite.nuxt": nuxt });
   const { tsConfig, nodeTsConfig, nodeDeclaration, declaration, legacyTsConfig, sharedDeclaration, sharedTsConfig } = await _generateTypes(nuxt)
 
   const appTsConfigPath = resolve(nuxt.options.buildDir, 'tsconfig.app.json')
@@ -663,10 +706,12 @@ export async function writeTypes (nuxt: Nuxt): Promise<void> {
   const nodeTsConfigPath = resolve(nuxt.options.buildDir, 'tsconfig.node.json')
   const sharedTsConfigPath = resolve(nuxt.options.buildDir, 'tsconfig.shared.json')
 
+logger.error(`writeTypes(nuxt=${nuxt}): appTsConfigPath → ${appTsConfigPath}`, { "event.action": "writeTypes", "logrite.nuxt": nuxt });
   const declarationPath = resolve(nuxt.options.buildDir, 'nuxt.d.ts')
   const nodeDeclarationPath = resolve(nuxt.options.buildDir, 'nuxt.node.d.ts')
   const sharedDeclarationPath = resolve(nuxt.options.buildDir, 'nuxt.shared.d.ts')
 
+logger.error(`writeTypes(nuxt=${nuxt}): declarationPath → ${declarationPath}`, { "event.action": "writeTypes", "logrite.nuxt": nuxt });
   await fsp.mkdir(nuxt.options.buildDir, { recursive: true })
   await Promise.all([
     writeIfChanged(appTsConfigPath, JSON.stringify(tsConfig, null, 2)),
@@ -677,6 +722,7 @@ export async function writeTypes (nuxt: Nuxt): Promise<void> {
     writeIfChanged(nodeDeclarationPath, nodeDeclaration),
     writeIfChanged(sharedDeclarationPath, sharedDeclaration),
   ])
+logger.warn(`<<< Exiting writeTypes(nuxt=${nuxt})`, { "event.action": "writeTypes", "logrite.nuxt": nuxt });
 }
 
 /**
@@ -685,9 +731,13 @@ export async function writeTypes (nuxt: Nuxt): Promise<void> {
  * redoing work they have already done.
  */
 async function writeIfChanged (path: string, contents: string) {
+logger.error(`>>> Entering writeIfChanged(path=${path},contents=${contents})`, { "event.action": "writeIfChanged", "logrite.path": path, "logrite.contents": contents });
   const existing = await fsp.readFile(path, 'utf8').catch(() => undefined)
   if (existing === contents) { return }
+logger.error(`Exception in writeIfChanged(path=${path},contents=${contents}): (no error binding)`, { "event.action": "writeIfChanged", "event.category": "process", "logrite.path": path, "logrite.contents": contents });
+logger.error(`writeIfChanged(path=${path},contents=${contents}): existing → ${existing}`, { "event.action": "writeIfChanged", "logrite.path": path, "logrite.contents": contents });
   await fsp.writeFile(path, contents)
+logger.warn(`<<< Exiting writeIfChanged(path=${path},contents=${contents})`, { "event.action": "writeIfChanged", "logrite.path": path, "logrite.contents": contents });
 }
 
 /**
@@ -698,8 +748,10 @@ async function writeIfChanged (path: string, contents: string) {
  * - `#build` alias is at the bottom (https://github.com/nuxt/nuxt/issues/30325)
  */
 function sortTsPaths (paths: Record<string, string[]>, layerDirs: string[], buildDir: string, hoist: string[]) {
+logger.error(`>>> Entering sortTsPaths(paths=${paths},layerDirs=${layerDirs},buildDir=${buildDir},hoist=${hoist})`, { "event.action": "sortTsPaths", "logrite.paths": paths, "logrite.layerDirs": layerDirs, "logrite.buildDir": buildDir, "logrite.hoist": hoist });
   const hoistKeys = new Set(hoist)
   const hoistPaths: Record<string, string[]> = {}
+logger.error(`sortTsPaths(paths=${paths},layerDirs=${layerDirs},buildDir=${buildDir},hoist=${hoist}): hoistKeys → ${hoistKeys}`, { "event.action": "sortTsPaths", "logrite.paths": paths, "logrite.layerDirs": layerDirs, "logrite.buildDir": buildDir, "logrite.hoist": hoist });
   const customLayerPaths: Record<string, string[]> = {}
   const genericLayerPaths: Record<string, string[]> = {}
   const otherPaths: Record<string, string[]> = {}
@@ -734,30 +786,41 @@ function sortTsPaths (paths: Record<string, string[]>, layerDirs: string[], buil
     ...otherPaths,
     ...buildPaths,
   }
+logger.warn(`<<< Exiting sortTsPaths(paths=${paths},layerDirs=${layerDirs},buildDir=${buildDir},hoist=${hoist})`, { "event.action": "sortTsPaths", "logrite.paths": paths, "logrite.layerDirs": layerDirs, "logrite.buildDir": buildDir, "logrite.hoist": hoist });
 }
 
 const PATH_WILDCARD_RE = /\/?\*$/
 function isHoistPathKey (pathKey: string, hoistKeys: Set<string>) {
+logger.error(`>>> Entering isHoistPathKey(pathKey=${pathKey},hoistKeys=${hoistKeys})`, { "event.action": "isHoistPathKey", "logrite.pathKey": pathKey, "logrite.hoistKeys": hoistKeys });
+logger.warn(`<<< Exiting isHoistPathKey(pathKey=${pathKey},hoistKeys=${hoistKeys})`, { "event.action": "isHoistPathKey", "logrite.pathKey": pathKey, "logrite.hoistKeys": hoistKeys });
   return hoistKeys.has(pathKey.replace(PATH_WILDCARD_RE, ''))
 }
 
 function isPathUnderLayerDirs (target: string, buildDir: string, layerDirs: string[]) {
+logger.error(`>>> Entering isPathUnderLayerDirs(target=${target},buildDir=${buildDir},layerDirs=${layerDirs})`, { "event.action": "isPathUnderLayerDirs", "logrite.target": target, "logrite.buildDir": buildDir, "logrite.layerDirs": layerDirs });
   const absolute = withTrailingSlash(resolve(buildDir, target.replace(PATH_WILDCARD_RE, '')))
+logger.error(`isPathUnderLayerDirs(target=${target},buildDir=${buildDir},layerDirs=${layerDirs}): absolute → ${absolute}`, { "event.action": "isPathUnderLayerDirs", "logrite.target": target, "logrite.buildDir": buildDir, "logrite.layerDirs": layerDirs });
   return layerDirs.some(dir => absolute.startsWith(dir))
 }
 
 function renderReference (ref: TSReference, baseDir: string) {
+logger.error(`>>> Entering renderReference(ref=${ref},baseDir=${baseDir})`, { "event.action": "renderReference", "logrite.ref": ref, "logrite.baseDir": baseDir });
   const stuff = 'path' in ref
     ? `path="${isAbsolute(ref.path) ? relative(baseDir, ref.path) : ref.path}"`
     : `types="${ref.types}"`
+logger.warn(`<<< Exiting renderReference(ref=${ref},baseDir=${baseDir})`, { "event.action": "renderReference", "logrite.ref": ref, "logrite.baseDir": baseDir });
   return `/// <reference ${stuff} />`
 }
 
 const RELATIVE_WITH_DOT_RE = /^([^.])/
 function relativeWithDot (from: string, to: string) {
+logger.error(`>>> Entering relativeWithDot(from=${from},to=${to})`, { "event.action": "relativeWithDot", "logrite.from": from, "logrite.to": to });
+logger.warn(`<<< Exiting relativeWithDot(from=${from},to=${to})`, { "event.action": "relativeWithDot", "logrite.from": from, "logrite.to": to });
   return relative(from, to).replace(RELATIVE_WITH_DOT_RE, './$1') || '.'
 }
 
 function withTrailingSlash (dir: string) {
+logger.error(`>>> Entering withTrailingSlash(dir=${dir})`, { "event.action": "withTrailingSlash", "logrite.dir": dir });
+logger.warn(`<<< Exiting withTrailingSlash(dir=${dir})`, { "event.action": "withTrailingSlash", "logrite.dir": dir });
   return dir.replace(/[^/]$/, '$&/')
 }

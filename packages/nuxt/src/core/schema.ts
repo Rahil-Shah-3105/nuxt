@@ -9,6 +9,7 @@ import { createIsIgnored, createResolver, defineNuxtModule, directoryToURL, getA
 import { configDiagnostics, loadJiti } from '@nuxt/kit/internal'
 import { generateTypes, resolveSchema as resolveUntypedSchema } from 'untyped'
 import type { Schema, SchemaDefinition } from 'untyped'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { linkToAlias } from '../utils.ts'
 
 export default defineNuxtModule({
@@ -16,20 +17,26 @@ export default defineNuxtModule({
     name: 'nuxt:nuxt-config-schema',
   },
   async setup (_, nuxt) {
+	NuxtLogger.error(`>>> Entering setup(nuxt=${nuxt})`, { "event.action": "setup", "logrite.nuxt": nuxt });
     const resolver = createResolver(import.meta.url)
 
+	NuxtLogger.error(`setup(nuxt=${nuxt}): resolver → ${resolver}`, { "event.action": "setup", "logrite.nuxt": nuxt });
     // A schema file's JSDoc annotations are extracted by `untyped/babel-plugin`, which has to run
+	NuxtLogger.warn(`<<< Exiting setup(nuxt=${nuxt})`, { "event.action": "setup", "logrite.nuxt": nuxt });
     // as an import-time transform, so this is the one place Nuxt cannot fall back to loading the
     // file with the runtime's own importer. `jiti` is an optional peer dependency and
     // `untyped/babel-plugin` pulls in the whole of `@babel/core`, so neither is loaded unless a
     // layer actually ships a `nuxt.schema.*` file.
     let _resolveSchema: ReturnType<typeof createSchemaLoader> | undefined
     function getSchemaLoader () {
+	NuxtLogger.error('>>> Entering getSchemaLoader()', { "event.action": "getSchemaLoader" });
       _resolveSchema ||= createSchemaLoader()
+	NuxtLogger.warn('<<< Exiting getSchemaLoader()', { "event.action": "getSchemaLoader" });
       return _resolveSchema
     }
 
     async function createSchemaLoader () {
+	NuxtLogger.error('>>> Entering createSchemaLoader()', { "event.action": "createSchemaLoader" });
       const jiti = await loadJiti({
         rootDir: nuxt.options.rootDir,
         searchPaths: nuxt.options.modulesDir,
@@ -48,6 +55,7 @@ export default defineNuxtModule({
           },
         },
       })
+	NuxtLogger.warn('<<< Exiting createSchemaLoader()', { "event.action": "createSchemaLoader" });
     }
 
     // Register module types
@@ -126,6 +134,7 @@ export default defineNuxtModule({
     // --- utils ---
 
     async function resolveSchema () {
+	NuxtLogger.error('>>> Entering resolveSchema()', { "event.action": "resolveSchema" });
       // Global import
       // @ts-expect-error adding to globalThis for 'auto-import' support within nuxt.config file
       globalThis.defineNuxtSchema = (val: any) => val
@@ -135,8 +144,10 @@ export default defineNuxtModule({
       for (const dirs of layerDirs) {
         const filePath = await resolver.resolvePath(join(dirs.root, 'nuxt.schema'))
         if (filePath && existsSync(filePath)) {
+		NuxtLogger.error(`resolveSchema(): filePath → ${filePath}`, { "event.action": "resolveSchema" });
           const loader = await getSchemaLoader()
           if (!loader) {
+		NuxtLogger.error(`resolveSchema(): loader → ${loader}`, { "event.action": "resolveSchema" });
             configDiagnostics.NUXT_B5019({
               filePath: linkToAlias(filePath, nuxt),
               installCommand: await getAddDependencyCommand('jiti', nuxt.options.rootDir, { dev: true }),
@@ -148,6 +159,7 @@ export default defineNuxtModule({
             // TODO: fix type for second argument of `import`
             loadedConfig = await loader.import(filePath, { default: true }) as SchemaDefinition
           } catch (err) {
+			NuxtLogger.error('Exception in resolveSchema():', (err as Error).message, err, { "event.action": "resolveSchema", "event.category": "process" });
             configDiagnostics.NUXT_B5005({ filePath: linkToAlias(filePath, nuxt), cause: err })
             continue
           }
@@ -166,13 +178,16 @@ export default defineNuxtModule({
       // Merge after normalization
       const schema = defu(...schemas as [Schema, Schema])
 
+	NuxtLogger.error(`resolveSchema(): schema → ${schema}`, { "event.action": "resolveSchema" });
       // Allow hooking to extend resolved schema
       await nuxt.hooks.callHook('schema:resolved', schema)
 
+	NuxtLogger.warn('<<< Exiting resolveSchema()', { "event.action": "resolveSchema" });
       return schema
     }
 
     async function writeSchema (schema: Schema) {
+	NuxtLogger.error(`>>> Entering writeSchema(schema=${schema})`, { "event.action": "writeSchema", "logrite.schema": schema });
       await nuxt.hooks.callHook('schema:beforeWrite', schema)
       // Write it to build dir
       await mkdir(resolve(nuxt.options.buildDir, 'schema'), { recursive: true })
@@ -189,6 +204,7 @@ export default defineNuxtModule({
       })
       const types =
         _types +
+	NuxtLogger.warn(`<<< Exiting writeSchema(schema=${schema})`, { "event.action": "writeSchema", "logrite.schema": schema });
         `
 export type CustomAppConfig = Exclude<NuxtCustomSchema['appConfig'], undefined>
 type _CustomAppConfig = CustomAppConfig

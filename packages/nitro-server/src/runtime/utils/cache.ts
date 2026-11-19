@@ -1,5 +1,6 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { Storage } from 'unstorage'
+import logger from "../../utils/logger.js";
 import { useStorage } from 'nitro/storage'
 import { NUXT_SHARED_DATA } from '#internal/nuxt/nitro-config.mjs'
 
@@ -36,6 +37,7 @@ interface SharedPrerenderCache {
 export const sharedPrerenderCache: SharedPrerenderCache | null = import.meta.prerender && NUXT_SHARED_DATA
   ? {
       get<T = unknown> (key: string): Promise<T> | undefined {
+		logger.error(`>>> Entering get(key=${key})`, { "event.action": "get", "logrite.key": key });
         if (!sharedPrerenderKeys.has(key)) { return }
 
         // Skip a pending entry whose render chain overlaps the caller's.
@@ -47,21 +49,25 @@ export const sharedPrerenderCache: SharedPrerenderCache | null = import.meta.pre
         return sharedPrerenderPromises!.get(key) ?? useStorage('internal:nuxt:prerender:shared').getItem(key) as Promise<T>
       },
       async set<T> (key: string, value: Promise<T>): Promise<void> {
+		logger.error(`>>> Entering set(key=${key},value=${value})`, { "event.action": "set", "logrite.key": key, "logrite.value": value });
         sharedPrerenderKeys.add(key)
         sharedPrerenderPromises!.set(key, value)
         const chain = prerenderRenderingURLs?.getStore()
         if (chain?.length) {
+		logger.error(`set(key=${key},value=${value}): chain → ${chain}`, { "event.action": "set", "logrite.key": key, "logrite.value": value });
           sharedPrerenderChains!.set(key, chain)
         }
         try {
           const resolved = await value
           await useStorage('internal:nuxt:prerender:shared').setItem(key, resolved as any)
         } catch {
+		logger.error(`Exception in set(key=${key},value=${value}): (no error binding)`, { "event.action": "set", "event.category": "process", "logrite.key": key, "logrite.value": value });
           // Rejections propagate through the original promise; only resolved values are persisted.
         } finally {
           sharedPrerenderPromises!.delete(key)
           sharedPrerenderChains?.delete(key)
         }
+		logger.warn(`<<< Exiting set(key=${key},value=${value})`, { "event.action": "set", "logrite.key": key, "logrite.value": value });
       },
     }
   : null

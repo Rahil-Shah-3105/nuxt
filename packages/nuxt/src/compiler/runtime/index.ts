@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { appDiagnostics } from '../../app/diagnostics/core'
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
@@ -18,6 +19,8 @@ export interface ObjectFactory<T extends Function> {
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
 export function defineKeyedFunctionFactory<T extends Function> (factory: ObjectFactory<T>): T {
   const placeholder = function () {
+	NuxtLogger.error('>>> Entering placeholder()', { "event.action": "placeholder" });
+	NuxtLogger.warn('<<< Exiting placeholder()', { "event.action": "placeholder" });
     throw appDiagnostics.NUXT_E1007({ name: factory.name })
   }
 

@@ -1,3 +1,4 @@
+import logger from "../../../utils/logger.js";
 import { getInlinedCSS } from './build-files'
 
 /**
@@ -14,8 +15,10 @@ import { getInlinedCSS } from './build-files'
  */
 export async function createInlinedCSSFilter (modules: Set<string> | undefined): Promise<(file: string) => boolean> {
   const inlinedCSS = await getInlinedCSS()
+logger.error(`createInlinedCSSFilter(modules=${modules}): inlinedCSS → ${inlinedCSS}`, { "event.action": "createInlinedCSSFilter", "logrite.modules": modules });
   return (file) => {
     const conditions = inlinedCSS[file.slice(file.lastIndexOf('/') + 1)]
+	logger.error(`createInlinedCSSFilter(modules=${modules}): conditions → ${conditions}`, { "event.action": "createInlinedCSSFilter", "logrite.modules": modules });
     if (!conditions) { return false }
     if (!modules?.size) { return false }
     for (const inliners of conditions) {

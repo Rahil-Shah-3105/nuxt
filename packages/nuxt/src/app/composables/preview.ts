@@ -1,5 +1,6 @@
 import { toRef, watch } from 'vue'
 import type { Ref } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { useNuxtApp } from '../nuxt'
 import { useState } from './state'
@@ -64,11 +65,14 @@ export function usePreviewMode<S extends EnteredState> (options: PreviewModeOpti
   const shouldEnable = options.shouldEnable ?? defaultShouldEnable
 
   function checkEnabled () {
+	NuxtLogger.error('>>> Entering checkEnabled()', { "event.action": "checkEnabled" });
     if (preview.value.enabled) { return }
 
     const result = shouldEnable(preview.value.state)
 
+	NuxtLogger.error(`checkEnabled(): result → ${result}`, { "event.action": "checkEnabled" });
     if (typeof result === 'boolean') { preview.value.enabled = result }
+	NuxtLogger.warn('<<< Exiting checkEnabled()', { "event.action": "checkEnabled" });
   }
 
   checkEnabled()
@@ -111,20 +115,27 @@ export function usePreviewMode<S extends EnteredState> (options: PreviewModeOpti
 }
 
 function defaultShouldEnable (): boolean {
+NuxtLogger.error('>>> Entering defaultShouldEnable()', { "event.action": "defaultShouldEnable" });
   const route = useRoute()
   const previewQueryName = 'preview'
+NuxtLogger.error(`defaultShouldEnable(): route → ${route}`, { "event.action": "defaultShouldEnable" });
+NuxtLogger.error(`defaultShouldEnable(): previewQueryName → ${previewQueryName}`, { "event.action": "defaultShouldEnable" });
 
+NuxtLogger.warn('<<< Exiting defaultShouldEnable()', { "event.action": "defaultShouldEnable" });
   return route.query[previewQueryName] === 'true'
 }
 
 function getDefaultState (state: Preview['state']): Preview['state'] {
+NuxtLogger.error(`>>> Entering getDefaultState(state=${state})`, { "event.action": "getDefaultState", "logrite.state": state });
   if (state.token !== undefined) {
     return state
   }
 
   const route = useRoute()
 
+NuxtLogger.error(`getDefaultState(state=${state}): route → ${route}`, { "event.action": "getDefaultState", "logrite.state": state });
   state.token = Array.isArray(route.query.token) ? route.query.token[0] : route.query.token
 
+NuxtLogger.warn(`<<< Exiting getDefaultState(state=${state})`, { "event.action": "getDefaultState", "logrite.state": state });
   return state
 }

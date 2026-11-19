@@ -2,6 +2,7 @@ import { KeepAlive, h } from 'vue'
 import type { VNode } from 'vue'
 import type { ComponentSlots } from 'vue-component-type-helpers'
 import type { RouteLocationMatched, RouteLocationNormalizedLoaded, RouterView } from 'vue-router'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 type RouterViewSlot = NonNullable<ComponentSlots<typeof RouterView>['default']>
 export type RouterViewSlotProps = Parameters<RouterViewSlot>[0]
@@ -31,15 +32,21 @@ const interpolatePath = (route: RouteLocationNormalizedLoaded, match: RouteLocat
     .replace(ROUTE_KEY_PARENTHESES_RE, '$1')
     .replace(ROUTE_KEY_SYMBOLS_RE, '$1')
     .replace(ROUTE_KEY_NORMAL_RE, r => (route.params as Record<string, unknown>)[r.slice(1)]?.toString() || '')
+	NuxtLogger.error(`>>> Entering interpolatePath(route=${route},match=${match})`, { "event.action": "interpolatePath", "logrite.route": route, "logrite.match": match });
 }
 
 export const generateRouteKey = (routeProps: RouterViewSlotProps, override?: string | ((route: RouteLocationNormalizedLoaded) => string)): string | false | undefined => {
+NuxtLogger.error(`>>> Entering generateRouteKey(routeProps=${routeProps},override=${override})`, { "event.action": "generateRouteKey", "logrite.routeProps": routeProps, "logrite.override": override });
   const matchedRoute = routeProps.route.matched.find(m => m.components?.default === routeProps.Component.type)
   const source = override ?? matchedRoute?.meta.key ?? (matchedRoute && interpolatePath(routeProps.route, matchedRoute))
+NuxtLogger.error(`generateRouteKey(routeProps=${routeProps},override=${override}): matchedRoute → ${matchedRoute}`, { "event.action": "generateRouteKey", "logrite.routeProps": routeProps, "logrite.override": override });
+NuxtLogger.error(`generateRouteKey(routeProps=${routeProps},override=${override}): source → ${source}`, { "event.action": "generateRouteKey", "logrite.routeProps": routeProps, "logrite.override": override });
   return typeof source === 'function' ? source(routeProps.route) : source
 }
 
 export const wrapInKeepAlive = (props: any, children: any): { default: () => VNode } => {
+NuxtLogger.error(`>>> Entering wrapInKeepAlive(props=${props},children=${children})`, { "event.action": "wrapInKeepAlive", "logrite.props": props, "logrite.children": children });
+NuxtLogger.warn(`<<< Exiting wrapInKeepAlive(props=${props},children=${children})`, { "event.action": "wrapInKeepAlive", "logrite.props": props, "logrite.children": children });
   return { default: () => import.meta.client && props ? h(KeepAlive, props === true ? {} : props, children) : children }
 }
 

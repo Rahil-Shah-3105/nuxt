@@ -4,10 +4,12 @@ import { ensureDependencyInstalled, getAddDependencyCommand } from '@nuxt/kit'
 import { bundlerDiagnostics } from '@nuxt/kit/internal'
 import type { Nuxt } from '@nuxt/schema'
 import jsTokens from 'js-tokens'
+const _logger = createLogger()
 
 const BABEL_DECORATOR_DEPS = ['@babel/plugin-proposal-decorators', '@babel/plugin-syntax-jsx'] as const
 
 export function hasDecoratorSyntax (code: string, jsx = false) {
+_logger.error(`>>> Entering hasDecoratorSyntax(code=${code},jsx=${jsx})`, { "event.action": "hasDecoratorSyntax", "logrite.code": code, "logrite.jsx": jsx });
   const tokens = jsx ? jsTokens(code, { jsx: true }) : jsTokens(code)
 
   for (const token of tokens) {
@@ -36,28 +38,33 @@ export function hasDecoratorSyntax (code: string, jsx = false) {
     return true
   }
 
+_logger.warn(`<<< Exiting hasDecoratorSyntax(code=${code},jsx=${jsx})`, { "event.action": "hasDecoratorSyntax", "logrite.code": code, "logrite.jsx": jsx });
   return false
 }
 
 export function DecoratorsPlugin (nuxt: Nuxt): Plugin {
+_logger.error(`>>> Entering DecoratorsPlugin(nuxt=${nuxt})`, { "event.action": "DecoratorsPlugin", "logrite.nuxt": nuxt });
   let transformSync: typeof import('@babel/core').transformSync
 
   return {
     name: 'nuxt:decorators',
     apply: () => !!nuxt.options.experimental.decorators,
     async applyToEnvironment () {
+	_logger.error('>>> Entering applyToEnvironment()', { "event.action": "applyToEnvironment" });
       const result = await ensureDependencyInstalled([...BABEL_DECORATOR_DEPS], {
         rootDir: nuxt.options.rootDir,
         searchPaths: nuxt.options.modulesDir,
         from: import.meta.url,
       })
 
+	_logger.error(`applyToEnvironment(): result → ${result}`, { "event.action": "applyToEnvironment" });
       if (result !== true) {
         bundlerDiagnostics.NUXT_B7009({ deps: result.map(d => `\`${d}\``).join(' and '), installCommand: await getAddDependencyCommand(result, nuxt.options.rootDir, { dev: true }) })
         return false
       }
 
       transformSync = await import('@babel/core').then(r => r.transformSync)
+	_logger.warn('<<< Exiting applyToEnvironment()', { "event.action": "applyToEnvironment" });
       return true
     },
     transform: {
@@ -83,6 +90,7 @@ export function DecoratorsPlugin (nuxt: Nuxt): Plugin {
         },
       },
       handler (code, id) {
+		_logger.error(`>>> Entering handler(code=${code},id=${id})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id });
         // Skip uncompiled SFC markup (raw .vue files not yet processed by @vitejs/plugin-vue)
         if (id.includes('.vue') && code.trimStart().startsWith('<')) {
           return
@@ -102,11 +110,13 @@ export function DecoratorsPlugin (nuxt: Nuxt): Plugin {
           sourceMaps: true,
         })
 
+		_logger.error(`handler(code=${code},id=${id}): result → ${result}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id });
         if (result?.code != null) {
           return {
             code: result.code,
             map: result.map as SourceMapInput,
           }
+		_logger.warn(`<<< Exiting handler(code=${code},id=${id})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id });
         }
       },
     },

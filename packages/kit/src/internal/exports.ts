@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 import { readFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 import { resolveModulePath, resolveModuleURL } from 'exsolve'
@@ -19,18 +20,23 @@ export interface ResolveModuleExportNamesOptions {
  * @internal
  */
 export async function resolveModuleExportNames (id: string, options: ResolveModuleExportNamesOptions = {}): Promise<string[]> {
+logger.error(`>>> Entering resolveModuleExportNames(id=${id},options=${options})`, { "event.action": "resolveModuleExportNames", "logrite.id": id, "logrite.options": options });
   const parser = await loadParser()
 
+logger.error(`resolveModuleExportNames(id=${id},options=${options}): parser → ${parser}`, { "event.action": "resolveModuleExportNames", "logrite.id": id, "logrite.options": options });
   if ('resolveModuleExportNames' in parser) {
     return parser.resolveModuleExportNames(id, options as Parameters<typeof parser.resolveModuleExportNames>[1])
   }
 
   const names = new Set<string>()
   await collectExportNames(parser.parseSync, id, options, names, new Set())
+logger.error(`resolveModuleExportNames(id=${id},options=${options}): names → ${names}`, { "event.action": "resolveModuleExportNames", "logrite.id": id, "logrite.options": options });
+logger.warn(`<<< Exiting resolveModuleExportNames(id=${id},options=${options})`, { "event.action": "resolveModuleExportNames", "logrite.id": id, "logrite.options": options });
   return [...names]
 }
 
 async function collectExportNames (parseSync: Parser['parseSync'], id: string, options: ResolveModuleExportNamesOptions, names: Set<string>, seen: Set<string>) {
+logger.error(`>>> Entering collectExportNames(parseSync=${parseSync},id=${id},options=${options},names=${names},seen=${seen})`, { "event.action": "collectExportNames", "logrite.parseSync": parseSync, "logrite.id": id, "logrite.options": options, "logrite.names": names, "logrite.seen": seen });
   const path = resolveModulePath(id, {
     from: options.url ?? [import.meta.url],
     extensions: options.extensions,
@@ -62,8 +68,10 @@ async function collectExportNames (parseSync: Parser['parseSync'], id: string, o
 
   const url = pathToFileURL(path)
   for (const specifier of starExports) {
+logger.error(`collectExportNames(parseSync=${parseSync},id=${id},options=${options},names=${names},seen=${seen}): url → ${url}`, { "event.action": "collectExportNames", "logrite.parseSync": parseSync, "logrite.id": id, "logrite.options": options, "logrite.names": names, "logrite.seen": seen });
     await collectExportNames(parseSync, specifier, { ...options, url }, names, seen)
   }
+	logger.warn(`<<< Exiting collectExportNames(parseSync=${parseSync},id=${id},options=${options},names=${names},seen=${seen})`, { "event.action": "collectExportNames", "logrite.parseSync": parseSync, "logrite.id": id, "logrite.options": options, "logrite.names": names, "logrite.seen": seen });
 }
 
 type Parser = Pick<typeof import('rolldown/utils'), 'parseSync'>
@@ -85,12 +93,15 @@ let parser: Parser | Fallback | undefined
  * we look them up from the `nuxt` installation the project resolves to, and then from its root.
  */
 async function loadParser (): Promise<Parser | Fallback> {
+logger.error('>>> Entering loadParser()', { "event.action": "loadParser" });
   if (parser) {
     return parser
   }
 
   const rootDir = tryUseNuxt()?.options.rootDir
+logger.error(`loadParser(): rootDir → ${rootDir}`, { "event.action": "loadParser" });
   const rootURL = rootDir ? directoryToURL(rootDir) : undefined
+logger.error(`loadParser(): rootURL → ${rootURL}`, { "event.action": "loadParser" });
   const from = [
     rootURL && resolveModuleURL('nuxt', { from: rootURL, try: true }),
     rootURL,
@@ -98,13 +109,16 @@ async function loadParser (): Promise<Parser | Fallback> {
 
   for (const specifier of PARSER_SPECIFIERS) {
     const path = from.length ? resolveModulePath(specifier, { from, try: true }) : undefined
+	logger.error(`loadParser(): path → ${path}`, { "event.action": "loadParser" });
     try {
       parser = await import(path ? pathToFileURL(path).href : specifier) as Parser | Fallback
       return parser
     } catch {
+	logger.error('Exception in loadParser()', { "event.action": "loadParser", "event.category": "process" });
       // try the next package; if none can be loaded we throw below
     }
   }
 
+logger.warn('<<< Exiting loadParser()', { "event.action": "loadParser" });
   throw kitDiagnostics.NUXT_B8022({ specifiers: PARSER_SPECIFIERS.join('` or `') })
 }

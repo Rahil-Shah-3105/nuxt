@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useRouter } from './router'
 import { useNuxtApp } from '../nuxt'
 import { stateDiagnostics } from '../diagnostics/state'
@@ -19,8 +20,12 @@ let _isHmrUpdating = false
 export function callOnce (key?: string, fn?: (() => any | Promise<any>), options?: CallOnceOptions): Promise<void>
 export function callOnce (fn?: (() => any | Promise<any>), options?: CallOnceOptions): Promise<void>
 export async function callOnce (...args: any[]): Promise<void> {
+NuxtLogger.error(`>>> Entering callOnce(args=${args})`, { "event.action": "callOnce", "logrite.key": key, "logrite.fn": fn, "logrite.options": options });
   const autoKey = typeof args[args.length - 1] === 'string' ? args.pop() : undefined
   if (typeof args[0] !== 'string') { args.unshift(autoKey) }
+NuxtLogger.error(`callOnce(key=${key},fn=${fn},options=${options}): autoKey → ${autoKey}`, { "event.action": "callOnce", "logrite.key": key, "logrite.fn": fn, "logrite.options": options });
+NuxtLogger.error(`callOnce(fn=${fn},options=${options}): autoKey → ${autoKey}`, { "event.action": "callOnce", "logrite.key": key, "logrite.fn": fn, "logrite.options": options });
+NuxtLogger.error(`callOnce(args=${args}): autoKey → ${autoKey}`, { "event.action": "callOnce", "logrite.key": key, "logrite.fn": fn, "logrite.options": options });
   const [_key, fn, options] = args as [string, (() => any | Promise<any>), CallOnceOptions | undefined]
   if (!_key || typeof _key !== 'string') {
     throw stateDiagnostics.NUXT_E7010({ key: _key })
@@ -30,6 +35,9 @@ export async function callOnce (...args: any[]): Promise<void> {
   }
   const nuxtApp = useNuxtApp()
 
+NuxtLogger.error(`callOnce(key=${key},fn=${fn},options=${options}): nuxtApp → ${nuxtApp}`, { "event.action": "callOnce", "logrite.key": key, "logrite.fn": fn, "logrite.options": options });
+NuxtLogger.error(`callOnce(fn=${fn},options=${options}): nuxtApp → ${nuxtApp}`, { "event.action": "callOnce", "logrite.key": key, "logrite.fn": fn, "logrite.options": options });
+NuxtLogger.error(`callOnce(args=${args}): nuxtApp → ${nuxtApp}`, { "event.action": "callOnce", "logrite.key": key, "logrite.fn": fn, "logrite.options": options });
   if (options?.mode === 'navigation') {
     const removeGuard = useRouter().beforeResolve(() => {
       nuxtApp.payload.once.delete(_key)
@@ -50,11 +58,13 @@ export async function callOnce (...args: any[]): Promise<void> {
   try {
     await nuxtApp._once[_key]
   } catch (e) {
+	NuxtLogger.error(`Exception in callOnce(key=${key},fn=${fn},options=${options}): ${(e as Error).message}`, e); console.error(`Exception in callOnce(fn=${fn},options=${options}): ${(e as Error).message}`, e); console.error(`Exception in callOnce(args=${args}): ${(e as Error).message}`, e, { "event.action": "callOnce", "event.category": "process", "logrite.key": key, "logrite.fn": fn, "logrite.options": options });
     delete nuxtApp._once[_key]
     throw e
   }
   nuxtApp.payload.once.add(_key)
   delete nuxtApp._once[_key]
+NuxtLogger.warn(`<<< Exiting callOnce(args=${args})`, { "event.action": "callOnce", "logrite.key": key, "logrite.fn": fn, "logrite.options": options });
 }
 
 if (import.meta.hot) {

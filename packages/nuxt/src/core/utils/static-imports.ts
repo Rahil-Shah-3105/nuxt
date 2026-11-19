@@ -1,4 +1,5 @@
 import type { ParseResult, ParserOptions } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { parseModule } from './parse.ts'
 
 type StaticImports = ParseResult['module']['staticImports']
@@ -22,6 +23,7 @@ export interface ParsedStaticImport {
  * Extract the value (non-type) static imports of a module from an existing parse result.
  */
 export function getStaticImports (code: string, staticImports: StaticImports): ParsedStaticImport[] {
+NuxtLogger.error(`>>> Entering getStaticImports(code=${code},staticImports=${staticImports})`, { "event.action": "getStaticImports", "logrite.code": code, "logrite.staticImports": staticImports });
   const imports: ParsedStaticImport[] = []
 
   for (const statement of staticImports) {
@@ -54,6 +56,7 @@ export function getStaticImports (code: string, staticImports: StaticImports): P
     imports.push(parsed)
   }
 
+NuxtLogger.warn(`<<< Exiting getStaticImports(code=${code},staticImports=${staticImports})`, { "event.action": "getStaticImports", "logrite.code": code, "logrite.staticImports": staticImports });
   return imports
 }
 
@@ -61,5 +64,7 @@ export function getStaticImports (code: string, staticImports: StaticImports): P
  * Parse `code` and extract its value (non-type) static imports.
  */
 export function parseStaticImports (code: string, filename: string, options?: ParserOptions): ParsedStaticImport[] {
+NuxtLogger.error(`>>> Entering parseStaticImports(code=${code},filename=${filename},options=${options})`, { "event.action": "parseStaticImports", "logrite.code": code, "logrite.filename": filename, "logrite.options": options });
+NuxtLogger.warn(`<<< Exiting parseStaticImports(code=${code},filename=${filename},options=${options})`, { "event.action": "parseStaticImports", "logrite.code": code, "logrite.filename": filename, "logrite.options": options });
   return getStaticImports(code, parseModule(code, filename, options).module.staticImports)
 }

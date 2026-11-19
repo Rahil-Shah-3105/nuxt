@@ -1,10 +1,12 @@
 import type { ESTree } from 'rolldown/utils'
 import type { ParsedStaticImport } from './static-imports.ts'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { resolveAlias } from '@nuxt/kit'
 
 import { stripExtension } from '../../utils.ts'
 
 export function processImports (imports: ParsedStaticImport[], alias: Record<string, string>) {
+NuxtLogger.error(`>>> Entering processImports(imports=${imports},alias=${alias})`, { "event.action": "processImports", "logrite.imports": imports, "logrite.alias": alias });
   /**
    * import alias -> original name; source with aliases resolved and without extension
    */
@@ -26,6 +28,7 @@ export function processImports (imports: ParsedStaticImport[], alias: Record<str
   for (const i of imports) {
     const resolvedSpecifier = stripExtension(resolveAlias(i.specifier, alias))
 
+	NuxtLogger.error(`processImports(imports=${imports},alias=${alias}): resolvedSpecifier → ${resolvedSpecifier}`, { "event.action": "processImports", "logrite.imports": imports, "logrite.alias": alias });
     // handle named imports
     const namedImports = i.namedImports ?? {}
 
@@ -58,6 +61,7 @@ export function processImports (imports: ParsedStaticImport[], alias: Record<str
       // handle namespace import
       const namespace = i.namespacedImport
       const entry = namespaces.get(resolvedSpecifier)!
+	NuxtLogger.error(`processImports(imports=${imports},alias=${alias}): entry → ${entry}`, { "event.action": "processImports", "logrite.imports": imports, "logrite.alias": alias });
       entry.namespaces.add(namespace)
     }
   }
@@ -66,6 +70,7 @@ export function processImports (imports: ParsedStaticImport[], alias: Record<str
     directImports,
     namespaces,
   }
+NuxtLogger.warn(`<<< Exiting processImports(imports=${imports},alias=${alias})`, { "event.action": "processImports", "logrite.imports": imports, "logrite.alias": alias });
 }
 
 export interface FunctionCallMetadata {
@@ -104,6 +109,7 @@ export interface FunctionCallMetadata {
  * @returns An object containing the metadata about the function call, or null if it doesn't match.
  */
 export function parseStaticFunctionCall (node: ESTree.CallExpression | ESTree.ChainExpression, filter: RegExp): FunctionCallMetadata | null {
+NuxtLogger.error(`>>> Entering parseStaticFunctionCall(node=${node},filter=${filter})`, { "event.action": "parseStaticFunctionCall", "logrite.node": node, "logrite.filter": filter });
   // unwrap call expression
   const callExpression = node.type === 'CallExpression'
     ? node
@@ -111,6 +117,7 @@ export function parseStaticFunctionCall (node: ESTree.CallExpression | ESTree.Ch
       ? node.expression
       : null
   if (!callExpression) { return null }
+NuxtLogger.error(`parseStaticFunctionCall(node=${node},filter=${filter}): callExpression → ${callExpression}`, { "event.action": "parseStaticFunctionCall", "logrite.node": node, "logrite.filter": filter });
 
   // Simple function calls
 
@@ -149,9 +156,11 @@ export function parseStaticFunctionCall (node: ESTree.CallExpression | ESTree.Ch
       node: identifierNode,
       callExpression,
     }
+	NuxtLogger.warn(`<<< Exiting parseStaticFunctionCall(node=${node},filter=${filter})`, { "event.action": "parseStaticFunctionCall", "logrite.node": node, "logrite.filter": filter });
   }
 
   function getParsedMemberExpression (memberExpression: ESTree.MemberExpression): Omit<FunctionCallMetadata, 'callExpression'> | null {
+	NuxtLogger.error(`>>> Entering getParsedMemberExpression(memberExpression=${memberExpression})`, { "event.action": "getParsedMemberExpression", "logrite.memberExpression": memberExpression });
     // <object name>
     let memberObjectName: string | undefined
     // foo.bar()
@@ -197,6 +206,7 @@ export function parseStaticFunctionCall (node: ESTree.CallExpression | ESTree.Ch
       }
     }
 
+	NuxtLogger.warn(`<<< Exiting getParsedMemberExpression(memberExpression=${memberExpression})`, { "event.action": "getParsedMemberExpression", "logrite.memberExpression": memberExpression });
     return null
   }
 
@@ -267,6 +277,7 @@ export interface ExportMetadata {
  * @param filter optional regex to filter based on exported names
  */
 export function parseStaticExportIdentifiers (node: ESTree.ExportNamedDeclaration | ESTree.ExportDefaultDeclaration | ESTree.TSExportAssignment, filter?: RegExp): ExportMetadata[] {
+NuxtLogger.error(`>>> Entering parseStaticExportIdentifiers(node=${node},filter=${filter})`, { "event.action": "parseStaticExportIdentifiers", "logrite.node": node, "logrite.filter": filter });
   // NAMED EXPORT -------------------------
   if (node.type === 'ExportNamedDeclaration' && node.exportKind !== 'type') {
     // export const, let, var
@@ -365,5 +376,6 @@ export function parseStaticExportIdentifiers (node: ESTree.ExportNamedDeclaratio
     }
   }
 
+NuxtLogger.warn(`<<< Exiting parseStaticExportIdentifiers(node=${node},filter=${filter})`, { "event.action": "parseStaticExportIdentifiers", "logrite.node": node, "logrite.filter": filter });
   return []
 }

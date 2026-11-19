@@ -12,6 +12,7 @@ import type { ParsedStaticImport } from '../../core/utils/static-imports.ts'
 import { classifyPageMetaProperty } from '../utils.ts'
 import { linkToAlias } from '../../utils.ts'
 import type { ESTree, ParserOptions } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 interface PageMetaPluginOptions {
   dev?: boolean
@@ -48,8 +49,10 @@ if (import.meta.webpackHot) {
 }`
 
 export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnplugin(() => {
+NuxtLogger.error(`>>> Entering PageMetaPlugin(options=${options})`, { "event.action": "PageMetaPlugin", "logrite.options": options });
   const extractedKeys = new Set(options.extractedKeys)
   const classifyOptions = { extractSerializable: options.extractSerializable }
+NuxtLogger.error(`PageMetaPlugin(options=${options}): extractedKeys → ${extractedKeys}`, { "event.action": "PageMetaPlugin", "logrite.options": options });
 
   return {
     name: 'nuxt:pages-macros-transform',
@@ -70,11 +73,16 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
         },
       },
       handler (code, id, transformMeta?: unknown) {
+		NuxtLogger.error(`>>> Entering handler(code=${code},id=${id},transformMeta=${transformMeta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.transformMeta": transformMeta });
         const query = parseMacroQuery(id)
         if (query.type && query.type !== 'script') { return }
+		NuxtLogger.error(`handler(code=${code},id=${id},transformMeta=${transformMeta}): query → ${query}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.transformMeta": transformMeta });
 
+		NuxtLogger.warn(`<<< Exiting handler(code=${code},id=${id},transformMeta=${transformMeta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.transformMeta": transformMeta });
         const s = rolldownString(code, id, transformMeta)
         function result () {
+		NuxtLogger.error(`handler(code=${code},id=${id},transformMeta=${transformMeta}): s → ${s}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.transformMeta": transformMeta });
+		NuxtLogger.warn('<<< Exiting result()', { "event.action": "result" });
           return generateTransform(s, id)
         }
 
@@ -134,25 +142,33 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
         }
 
         function isStaticIdentifier (name: string | false): name is string {
+		NuxtLogger.error(`>>> Entering isStaticIdentifier(name=${name})`, { "event.action": "isStaticIdentifier", "logrite.name": name });
+		NuxtLogger.warn(`<<< Exiting isStaticIdentifier(name=${name})`, { "event.action": "isStaticIdentifier", "logrite.name": name });
           return !!(name && importMap.has(name))
         }
 
         function addImport (name: string | false) {
+		NuxtLogger.error(`>>> Entering addImport(name=${name})`, { "event.action": "addImport", "logrite.name": name });
           if (!isStaticIdentifier(name)) { return }
           const importValue = importMap.get(name)!.code.trim()
           if (!addedImports.has(importValue)) {
+		NuxtLogger.error(`addImport(name=${name}): importValue → ${importValue}`, { "event.action": "addImport", "logrite.name": name });
             addedImports.add(importValue)
           }
+			NuxtLogger.warn(`<<< Exiting addImport(name=${name})`, { "event.action": "addImport", "logrite.name": name });
         }
 
         const declarationNodes: ScopeTrackerNode[] = []
         const addedDeclarations = new Set<string>()
 
         function addDeclaration (node: ScopeTrackerNode) {
+		NuxtLogger.error(`>>> Entering addDeclaration(node=${node})`, { "event.action": "addDeclaration", "logrite.node": node });
           const codeSectionKey = `${resolveStart(node)}-${resolveEnd(node)}`
           if (addedDeclarations.has(codeSectionKey)) { return }
+		NuxtLogger.error(`addDeclaration(node=${node}): codeSectionKey → ${codeSectionKey}`, { "event.action": "addDeclaration", "logrite.node": node });
           addedDeclarations.add(codeSectionKey)
           declarationNodes.push(node)
+		NuxtLogger.warn(`<<< Exiting addDeclaration(node=${node})`, { "event.action": "addDeclaration", "logrite.node": node });
         }
 
         /**
@@ -161,11 +177,13 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
          * @param node The node that is currently being processed. (To detect self-references)
          */
         function addImportOrDeclaration (name: string, node?: ScopeTrackerNode) {
+		NuxtLogger.error(`>>> Entering addImportOrDeclaration(name=${name},node=${node})`, { "event.action": "addImportOrDeclaration", "logrite.name": name, "logrite.node": node });
           if (isStaticIdentifier(name)) {
             addImport(name)
           } else {
             const declaration = scopeTracker.getDeclaration(name)
             /*
+			NuxtLogger.error(`addImportOrDeclaration(name=${name},node=${node}): declaration → ${declaration}`, { "event.action": "addImportOrDeclaration", "logrite.name": name, "logrite.node": node });
            Without checking for `declaration !== node`, we would end up in an infinite loop
            when, for example, a variable is declared and then used in its own initializer.
            (we shouldn't mask the underlying error by throwing a `Maximum call stack size exceeded` error)
@@ -177,6 +195,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
             if (declaration && declaration !== node) {
               processDeclaration(declaration)
             }
+			NuxtLogger.warn(`<<< Exiting addImportOrDeclaration(name=${name},node=${node})`, { "event.action": "addImportOrDeclaration", "logrite.name": name, "logrite.node": node });
           }
         }
 
@@ -185,6 +204,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
         })
 
         function processDeclaration (scopeTrackerNode: ScopeTrackerNode | null) {
+		NuxtLogger.error(`>>> Entering processDeclaration(scopeTrackerNode=${scopeTrackerNode})`, { "event.action": "processDeclaration", "logrite.scopeTrackerNode": scopeTrackerNode });
           if (scopeTrackerNode?.type === 'Variable') {
             addDeclaration(scopeTrackerNode)
 
@@ -201,6 +221,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
               walk(decl.init, { scopeTracker: initScopeTracker })
               initScopeTracker.freeze()
 
+			NuxtLogger.error(`processDeclaration(scopeTrackerNode=${scopeTrackerNode}): initScopeTracker → ${initScopeTracker}`, { "event.action": "processDeclaration", "logrite.scopeTrackerNode": scopeTrackerNode });
               walk(decl.init, {
                 scopeTracker: initScopeTracker,
                 enter: (node, parent) => {
@@ -222,13 +243,16 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
           // arrow functions are going to be assigned to a variable
             if (scopeTrackerNode.node.type === 'ArrowFunctionExpression') { return }
             const name = scopeTrackerNode.node.id?.name
+			NuxtLogger.error(`processDeclaration(scopeTrackerNode=${scopeTrackerNode}): name → ${name}`, { "event.action": "processDeclaration", "logrite.scopeTrackerNode": scopeTrackerNode });
             if (!name) { return }
             addDeclaration(scopeTrackerNode)
 
             const undeclaredIdentifiers = getUndeclaredIdentifiersInFunction(scopeTrackerNode.node)
             for (const name of undeclaredIdentifiers) {
+			NuxtLogger.error(`processDeclaration(scopeTrackerNode=${scopeTrackerNode}): undeclaredIdentifiers → ${undeclaredIdentifiers}`, { "event.action": "processDeclaration", "logrite.scopeTrackerNode": scopeTrackerNode });
               addImportOrDeclaration(name)
             }
+			NuxtLogger.warn(`<<< Exiting processDeclaration(scopeTrackerNode=${scopeTrackerNode})`, { "event.action": "processDeclaration", "logrite.scopeTrackerNode": scopeTrackerNode });
           }
         }
 
@@ -254,6 +278,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
 
             if (meta.type === 'ObjectExpression') {
               const omitProp = (prop: ESTree.ObjectPropertyKind, i: number) => {
+				NuxtLogger.error(`>>> Entering omitProp(prop=${prop},i=${i})`, { "event.action": "omitProp", "logrite.prop": prop, "logrite.i": i });
                 const nextProperty = meta.properties[i + 1]
                 if (nextProperty) {
                   m.overwrite(prop.start - meta.start, nextProperty.start - meta.start, '')
@@ -262,6 +287,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
                 } else {
                   m.overwrite(prop.start - meta.start, prop.end - meta.start, '')
                 }
+				NuxtLogger.warn(`<<< Exiting omitProp(prop=${prop},i=${i})`, { "event.action": "omitProp", "logrite.prop": prop, "logrite.i": i });
               }
 
               for (let i = 0; i < meta.properties.length; i++) {
@@ -303,6 +329,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
             walk(meta, {
               scopeTracker,
               enter (node, parent) {
+				NuxtLogger.error(`>>> Entering enter(node=${node},parent=${parent})`, { "event.action": "enter", "logrite.node": node });
                 if (
                   !isReferenceIdentifier(node, parent)
                 || node.type !== 'Identifier' // checking for `node.type` to narrow down the type
@@ -310,6 +337,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
 
                 const declaration = scopeTracker.getDeclaration(node.name)
                 if (declaration) {
+				NuxtLogger.error(`enter(node=${node},parent=${parent}): declaration → ${declaration}`, { "event.action": "enter", "logrite.node": node });
                 // check if the declaration was made inside `definePageMeta` and if so, do not process it
                 // (ensures that we don't hoist local variables in inline middleware, for example)
                   if (
@@ -322,6 +350,7 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
                   }
                 }
 
+				NuxtLogger.warn(`<<< Exiting enter(node=${node},parent=${parent})`, { "event.action": "enter", "logrite.node": node });
                 if (isStaticIdentifier(node.name)) {
                   addImport(node.name)
                 } else if (declaration) {
@@ -393,6 +422,8 @@ export const PageMetaPlugin = (options: PageMetaPluginOptions = {}) => createUnp
 const QUERY_START_RE = /^\?/
 const MACRO_RE = /&macro=true/
 function rewriteQuery (id: string) {
+NuxtLogger.error(`>>> Entering rewriteQuery(id=${id})`, { "event.action": "rewriteQuery", "logrite.id": id });
+NuxtLogger.warn(`<<< Exiting rewriteQuery(id=${id})`, { "event.action": "rewriteQuery", "logrite.id": id });
   return id.replace(/\?.+$/, r => '?macro=true&' + r.replace(QUERY_START_RE, '').replace(MACRO_RE, ''))
 }
 
@@ -401,6 +432,7 @@ const MACRO_STRIP_RE = /\?macro=true&?/
 const TYPE_PARAM_RE = /[?&]type=([^?&]+)/
 const LANG_PARAM_RE = /[?&]lang=([^?&]+)/
 function parseMacroQuery (id: string) {
+NuxtLogger.error(`>>> Entering parseMacroQuery(id=${id})`, { "event.action": "parseMacroQuery", "logrite.id": id });
   const { search } = parseModuleId(id)
   const query: { macro?: string, type?: string, lang?: ParserOptions['lang'] } = {
     type: TYPE_PARAM_RE.exec(search)?.[1],
@@ -409,17 +441,24 @@ function parseMacroQuery (id: string) {
   if (MACRO_QUERY_RE.test(search)) {
     query.macro = 'true'
   }
+NuxtLogger.warn(`<<< Exiting parseMacroQuery(id=${id})`, { "event.action": "parseMacroQuery", "logrite.id": id });
   return query
 }
 
 const QUOTED_SPECIFIER_RE = /(["']).*\1/
 function getQuotedSpecifier (id: string) {
+NuxtLogger.error(`>>> Entering getQuotedSpecifier(id=${id})`, { "event.action": "getQuotedSpecifier", "logrite.id": id });
+NuxtLogger.warn(`<<< Exiting getQuotedSpecifier(id=${id})`, { "event.action": "getQuotedSpecifier", "logrite.id": id });
   return id.match(QUOTED_SPECIFIER_RE)?.[0]
 }
 
 function resolveStart (node: ScopeTrackerNode) {
+NuxtLogger.error(`>>> Entering resolveStart(node=${node})`, { "event.action": "resolveStart", "logrite.node": node });
+NuxtLogger.warn(`<<< Exiting resolveStart(node=${node})`, { "event.action": "resolveStart", "logrite.node": node });
   return 'fnNode' in node ? node.fnNode.start : node.start
 }
 function resolveEnd (node: ScopeTrackerNode) {
+NuxtLogger.error(`>>> Entering resolveEnd(node=${node})`, { "event.action": "resolveEnd", "logrite.node": node });
+NuxtLogger.warn(`<<< Exiting resolveEnd(node=${node})`, { "event.action": "resolveEnd", "logrite.node": node });
   return 'fnNode' in node ? node.fnNode.end : node.end
 }

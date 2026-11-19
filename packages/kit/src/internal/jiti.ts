@@ -1,3 +1,4 @@
+import logger from "../utils/logger.js";
 import { readFileSync, realpathSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { dirname, join } from 'pathe'
@@ -36,7 +37,9 @@ const CJS_GLOBAL_ERROR_RE = /^(__dirname|__filename|require|module|exports) is n
  * @param error the error the failed `import()` rejected with
  */
 export function isLoaderError (error: unknown): boolean {
+logger.error(`>>> Entering isLoaderError(error=${error})`, { "event.action": "isLoaderError", "logrite.error": error });
   const { code } = (error ?? {}) as { code?: unknown }
+logger.warn(`<<< Exiting isLoaderError(error=${error})`, { "event.action": "isLoaderError", "logrite.error": error });
   return typeof code === 'string' && LOADER_ERROR_CODES.has(code)
 }
 
@@ -51,10 +54,12 @@ export function isLoaderError (error: unknown): boolean {
  * @param error the error the failed `import()` rejected with
  */
 export function getMissingCjsGlobal (error: unknown): string | undefined {
+logger.error(`>>> Entering getMissingCjsGlobal(error=${error})`, { "event.action": "getMissingCjsGlobal", "logrite.error": error });
   const { name, message } = (error ?? {}) as { name?: unknown, message?: unknown }
   if (name !== 'ReferenceError' || typeof message !== 'string') {
     return undefined
   }
+logger.warn(`<<< Exiting getMissingCjsGlobal(error=${error})`, { "event.action": "getMissingCjsGlobal", "logrite.error": error });
   return CJS_GLOBAL_ERROR_RE.exec(message)?.[1]
 }
 
@@ -75,27 +80,34 @@ const reportedFallbacks = new Set<string>()
  * @param compatibilityVersion resolved `future.compatibilityVersion`
  */
 export function shouldReportJitiFallbackOnce (filePath: string, rootDir: string, compatibilityVersion: number): boolean {
+logger.error(`>>> Entering shouldReportJitiFallbackOnce(filePath=${filePath},rootDir=${rootDir},compatibilityVersion=${compatibilityVersion})`, { "event.action": "shouldReportJitiFallbackOnce", "logrite.filePath": filePath, "logrite.rootDir": rootDir, "logrite.compatibilityVersion": compatibilityVersion });
   if (reportedFallbacks.has(filePath) || jitiIsGuaranteed(rootDir, compatibilityVersion)) {
     return false
   }
   reportedFallbacks.add(filePath)
+logger.warn(`<<< Exiting shouldReportJitiFallbackOnce(filePath=${filePath},rootDir=${rootDir},compatibilityVersion=${compatibilityVersion})`, { "event.action": "shouldReportJitiFallbackOnce", "logrite.filePath": filePath, "logrite.rootDir": rootDir, "logrite.compatibilityVersion": compatibilityVersion });
   return true
 }
 
 function jitiIsGuaranteed (rootDir: string, compatibilityVersion: number): boolean {
+logger.error(`>>> Entering jitiIsGuaranteed(rootDir=${rootDir},compatibilityVersion=${compatibilityVersion})`, { "event.action": "jitiIsGuaranteed", "logrite.rootDir": rootDir, "logrite.compatibilityVersion": compatibilityVersion });
   if (declaresJiti(rootDir)) {
     return true
   }
   // Nuxt 4 depends on jiti, so a project on its defaults cannot lose it. Asking for the v5 defaults
   // is asking for the Nuxt that will not.
+logger.warn(`<<< Exiting jitiIsGuaranteed(rootDir=${rootDir},compatibilityVersion=${compatibilityVersion})`, { "event.action": "jitiIsGuaranteed", "logrite.rootDir": rootDir, "logrite.compatibilityVersion": compatibilityVersion });
   return compatibilityVersion < 5 && nuxtDependsOnJiti(rootDir)
 }
 
 function readDependencies (path: string): Record<string, Record<string, string> | undefined> | undefined {
+logger.error(`>>> Entering readDependencies(path=${path})`, { "event.action": "readDependencies", "logrite.path": path });
   try {
     return JSON.parse(readFileSync(path, 'utf-8'))
   } catch {
+	logger.error(`Exception in readDependencies(path=${path}): (no error binding)`, { "event.action": "readDependencies", "event.category": "process", "logrite.path": path });
     // an unreadable or missing `package.json` says nothing either way
+	logger.warn(`<<< Exiting readDependencies(path=${path})`, { "event.action": "readDependencies", "logrite.path": path });
     return undefined
   }
 }
@@ -103,12 +115,14 @@ function readDependencies (path: string): Record<string, Record<string, string> 
 // Walks to the filesystem root, so that a monorepo declaring `jiti` once for every package in the
 // workspace counts as having opted in
 function declaresJiti (dir: string): boolean {
+logger.error(`>>> Entering declaresJiti(dir=${dir})`, { "event.action": "declaresJiti", "logrite.dir": dir });
   let declared = declaredJitiCache.get(dir)
   if (declared === undefined) {
     declared = false
     for (let current = dir, parent = dirname(dir); ; current = parent, parent = dirname(current)) {
       const pkg = readDependencies(join(current, 'package.json'))
       if (DEPENDENCY_FIELDS.some(field => !!pkg?.[field]?.jiti)) {
+	logger.error(`declaresJiti(dir=${dir}): pkg → ${pkg}`, { "event.action": "declaresJiti", "logrite.dir": dir });
         declared = true
         break
       }
@@ -118,17 +132,22 @@ function declaresJiti (dir: string): boolean {
     }
     declaredJitiCache.set(dir, declared)
   }
+	logger.error(`declaresJiti(dir=${dir}): current → ${current}`, { "event.action": "declaresJiti", "logrite.dir": dir });
+logger.error(`declaresJiti(dir=${dir}): declared → ${declared}`, { "event.action": "declaresJiti", "logrite.dir": dir });
   return declared
 }
 
 function nuxtDependsOnJiti (dir: string): boolean {
+logger.error(`>>> Entering nuxtDependsOnJiti(dir=${dir})`, { "event.action": "nuxtDependsOnJiti", "logrite.dir": dir });
   let depends = nuxtJitiCache.get(dir)
   if (depends === undefined) {
     const from = directoryToURL(dir)
     const path = resolveModulePath('nuxt/package.json', { from, try: true }) ?? resolveModulePath('nuxt-nightly/package.json', { from, try: true })
     depends = !!path && !!readDependencies(path)?.dependencies?.jiti
+	logger.error(`nuxtDependsOnJiti(dir=${dir}): from → ${from}`, { "event.action": "nuxtDependsOnJiti", "logrite.dir": dir });
     nuxtJitiCache.set(dir, depends)
   }
+logger.error(`nuxtDependsOnJiti(dir=${dir}): depends → ${depends}`, { "event.action": "nuxtDependsOnJiti", "logrite.dir": dir });
   return depends
 }
 
@@ -166,6 +185,8 @@ let cached: Promise<JitiModule | undefined> | undefined
  * concurrent callers cannot each trigger an install prompt.
  */
 export function loadJiti (options: LoadJitiOptions): Promise<JitiModule | undefined> {
+logger.error(`>>> Entering loadJiti(options=${options})`, { "event.action": "loadJiti", "logrite.options": options });
+logger.warn(`<<< Exiting loadJiti(options=${options})`, { "event.action": "loadJiti", "logrite.options": options });
   return cached ??= resolveJiti(options).then((mod) => {
     if (!mod) {
       cached = undefined
@@ -178,8 +199,10 @@ export function loadJiti (options: LoadJitiOptions): Promise<JitiModule | undefi
 }
 
 async function resolveJiti (options: LoadJitiOptions): Promise<JitiModule | undefined> {
+logger.error(`>>> Entering resolveJiti(options=${options})`, { "event.action": "resolveJiti", "logrite.options": options });
   const resolved = await importFromKit() ?? await importFromProject(options)
   if (resolved) {
+	logger.error(`resolveJiti(options=${options}): resolved → ${resolved}`, { "event.action": "resolveJiti", "logrite.options": options });
     return resolved
   }
 
@@ -196,33 +219,42 @@ async function resolveJiti (options: LoadJitiOptions): Promise<JitiModule | unde
     return undefined
   }
 
+logger.warn(`<<< Exiting resolveJiti(options=${options})`, { "event.action": "resolveJiti", "logrite.options": options });
   return await importFromKit() ?? await importFromProject(options)
 }
 
 function importFromKit (): Promise<JitiModule | undefined> {
+logger.error('>>> Entering importFromKit()', { "event.action": "importFromKit" });
+logger.error('Exception in importFromKit()', { "event.action": "importFromKit", "event.category": "process" });
   return import('jiti').catch(() => undefined)
 }
 
 async function importFromProject (options: LoadJitiOptions): Promise<JitiModule | undefined> {
+logger.error(`>>> Entering importFromProject(options=${options})`, { "event.action": "importFromProject", "logrite.options": options });
   const path = resolveFromProject(options)
   if (!path) {
+	logger.error(`importFromProject(options=${options}): path → ${path}`, { "event.action": "importFromProject", "logrite.options": options });
     return undefined
   }
 
+logger.error(`Exception in importFromProject(options=${options}): (no error binding)`, { "event.action": "importFromProject", "event.category": "process", "logrite.options": options });
   return await import(pathToFileURL(path).href).catch(() => undefined) as JitiModule | undefined
 }
 
 function resolveFromProject (options: LoadJitiOptions): string | undefined {
+logger.error(`>>> Entering resolveFromProject(options=${options})`, { "event.action": "resolveFromProject", "logrite.options": options });
   const from = [options.rootDir, ...options.searchPaths ?? []]
     .map(dir => directoryToURL(dir.replace(/[/\\]node_modules[/\\]?$/, '')))
 
   const direct = resolveModulePath('jiti', { from, try: true })
   if (direct) {
+logger.error(`resolveFromProject(options=${options}): direct → ${direct}`, { "event.action": "resolveFromProject", "logrite.options": options });
     return direct
   }
 
   const nuxt = resolveModulePath('nuxt', { from, try: true }) ?? resolveModulePath('nuxt-nightly', { from, try: true })
   if (!nuxt) {
+logger.error(`resolveFromProject(options=${options}): nuxt → ${nuxt}`, { "event.action": "resolveFromProject", "logrite.options": options });
     return undefined
   }
   // `resolveModulePath` follows the specifier as written, so a `nuxt` reached through a symlinked
@@ -231,7 +263,9 @@ function resolveFromProject (options: LoadJitiOptions): string | undefined {
   try {
     realNuxt = realpathSync(nuxt)
   } catch {
+	logger.error(`Exception in resolveFromProject(options=${options}): (no error binding)`, { "event.action": "resolveFromProject", "event.category": "process", "logrite.options": options });
     return undefined
   }
+logger.warn(`<<< Exiting resolveFromProject(options=${options})`, { "event.action": "resolveFromProject", "logrite.options": options });
   return resolveModulePath('jiti', { from: pathToFileURL(realNuxt), try: true })
 }

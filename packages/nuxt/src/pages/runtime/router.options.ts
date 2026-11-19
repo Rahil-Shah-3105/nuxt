@@ -1,6 +1,7 @@
 import { START_LOCATION } from 'vue-router'
 import type { RouteLocationNormalized, RouterScrollBehavior } from 'vue-router'
 import type { RouterConfig } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useNuxtApp } from '#app/nuxt'
 import { isChangingPage } from '#app/components/utils'
 import { useRouter } from '#app/composables/router'
@@ -11,10 +12,13 @@ type ScrollPosition = Awaited<ReturnType<RouterScrollBehavior>>
 // https://router.vuejs.org/api/interfaces/routeroptions
 export default <RouterConfig>{
   scrollBehavior (to, from, savedPosition) {
+	NuxtLogger.error(`>>> Entering scrollBehavior(to=${to},from=${from},savedPosition=${savedPosition})`, { "event.action": "scrollBehavior", "logrite.to": to, "logrite.from": from, "logrite.savedPosition": savedPosition });
     const nuxtApp = useNuxtApp()
     const router = useRouter()
     // @ts-expect-error untyped, nuxt-injected option
+	NuxtLogger.error(`scrollBehavior(to=${to},from=${from},savedPosition=${savedPosition}): nuxtApp → ${nuxtApp}`, { "event.action": "scrollBehavior", "logrite.to": to, "logrite.from": from, "logrite.savedPosition": savedPosition });
     const hashScrollBehaviour = router.options?.scrollBehaviorType ?? 'auto'
+	NuxtLogger.error(`scrollBehavior(to=${to},from=${from},savedPosition=${savedPosition}): router → ${router}`, { "event.action": "scrollBehavior", "logrite.to": to, "logrite.from": from, "logrite.savedPosition": savedPosition });
 
     // Hash routes on the same page, no page hook is fired so resolve here
     if (to.path.replace(/\/$/, '') === from.path.replace(/\/$/, '')) {
@@ -29,6 +33,7 @@ export default <RouterConfig>{
     }
 
     const routeAllowsScrollToTop = typeof to.meta.scrollToTop === 'function' ? to.meta.scrollToTop(to, from) : to.meta.scrollToTop
+	NuxtLogger.error(`scrollBehavior(to=${to},from=${from},savedPosition=${savedPosition}): routeAllowsScrollToTop → ${routeAllowsScrollToTop}`, { "event.action": "scrollBehavior", "logrite.to": to, "logrite.from": from, "logrite.savedPosition": savedPosition });
 
     if (routeAllowsScrollToTop === false) { return false }
 
@@ -36,8 +41,10 @@ export default <RouterConfig>{
       return _calculatePosition(to, from, savedPosition, hashScrollBehaviour)
     }
 
+	NuxtLogger.warn(`<<< Exiting scrollBehavior(to=${to},from=${from},savedPosition=${savedPosition})`, { "event.action": "scrollBehavior", "logrite.to": to, "logrite.from": from, "logrite.savedPosition": savedPosition });
     return new Promise((resolve) => {
       const doScroll = () => {
+		NuxtLogger.error('>>> Entering doScroll()', { "event.action": "doScroll" });
         requestAnimationFrame(() => {
           // A later navigation may have superseded this one while we waited for the
           // page transition to finish; scrolling now would apply the old destination's
@@ -48,6 +55,7 @@ export default <RouterConfig>{
           }
           resolve(_calculatePosition(to, from, savedPosition, hashScrollBehaviour))
         })
+		NuxtLogger.warn('<<< Exiting doScroll()', { "event.action": "doScroll" });
       }
       nuxtApp.hooks.hookOnce('page:loading:end', () => {
         const transitionPromise = nuxtApp['~transitionPromise'] as Promise<void> | undefined
@@ -62,14 +70,18 @@ export default <RouterConfig>{
 }
 
 function _getHashElementScrollMarginTop (selector: string): number {
+NuxtLogger.error(`>>> Entering _getHashElementScrollMarginTop(selector=${selector})`, { "event.action": "_getHashElementScrollMarginTop", "logrite.selector": selector });
   try {
     const elem = document.querySelector(selector)
     if (elem) {
+	NuxtLogger.error(`_getHashElementScrollMarginTop(selector=${selector}): elem → ${elem}`, { "event.action": "_getHashElementScrollMarginTop", "logrite.selector": selector });
       return (Number.parseFloat(getComputedStyle(elem).scrollMarginTop) || 0) + (Number.parseFloat(getComputedStyle(document.documentElement).scrollPaddingTop) || 0)
     }
   } catch {
+	NuxtLogger.error(`Exception in _getHashElementScrollMarginTop(selector=${selector}): (no error binding)`, { "event.action": "_getHashElementScrollMarginTop", "event.category": "process", "logrite.selector": selector });
     // ignore any errors parsing scrollMarginTop
   }
+NuxtLogger.warn(`<<< Exiting _getHashElementScrollMarginTop(selector=${selector})`, { "event.action": "_getHashElementScrollMarginTop", "logrite.selector": selector });
   return 0
 }
 

@@ -16,6 +16,7 @@ import { defu } from 'defu'
 import type { WarningFilter } from '../plugins/warning-ignore.ts'
 import WarningIgnorePlugin from '../plugins/warning-ignore.ts'
 import type { WebpackConfigContext } from '../utils/config.ts'
+import logger from "../utils/logger.js";
 import { applyPresets, fileName } from '../utils/config.ts'
 import { RollupCompatDynamicImportPlugin } from '../plugins/rollup-compat-dynamic-import.ts'
 import { StripInvalidPureAnnotationsPlugin } from '../plugins/strip-invalid-pure-annotations.ts'
@@ -23,6 +24,7 @@ import { StripInvalidPureAnnotationsPlugin } from '../plugins/strip-invalid-pure
 import { WebpackBarPlugin, builder, webpack } from '../builder.ts'
 
 export async function base (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering base(ctx=${ctx})`, { "event.action": "base" });
   await applyPresets(ctx, [
     baseAlias,
     baseConfig,
@@ -30,11 +32,14 @@ export async function base (ctx: WebpackConfigContext) {
     baseResolve,
     baseTranspile,
   ])
+logger.warn(`<<< Exiting base(ctx=${ctx})`, { "event.action": "base" });
 }
 
 function baseConfig (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering baseConfig(ctx=${ctx})`, { "event.action": "baseConfig" });
   const rules: NonNullable<Configuration['module']>['rules'] = []
   if (builder === 'rspack') {
+	logger.warn(`<<< Exiting baseConfig(ctx=${ctx})`, { "event.action": "baseConfig" });
     rules.push({
       test: /\.m?js$/,
       resolve: {
@@ -72,6 +77,7 @@ function baseConfig (ctx: WebpackConfigContext) {
 }
 
 function basePlugins (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering basePlugins(ctx=${ctx})`, { "event.action": "basePlugins" });
   ctx.config.plugins ||= []
 
   // Add timefix-plugin before other plugins
@@ -146,6 +152,7 @@ function basePlugins (ctx: WebpackConfigContext) {
     ctx.config.plugins.push(new RollupCompatDynamicImportPlugin())
     ctx.config.plugins.push(new StripInvalidPureAnnotationsPlugin())
   }
+	logger.warn(`<<< Exiting basePlugins(ctx=${ctx})`, { "event.action": "basePlugins" });
 }
 
 /**
@@ -154,8 +161,10 @@ function basePlugins (ctx: WebpackConfigContext) {
  * `resolve.dedupe: ['vue']`.
  */
 function vueAliases (ctx: WebpackConfigContext): Record<string, string> {
+logger.error(`>>> Entering vueAliases(ctx=${ctx})`, { "event.action": "vueAliases" });
   const aliases: Record<string, string> = {}
   const from = [directoryToURL(ctx.nuxt.options.rootDir), directoryToURL(ctx.nuxt.options.workspaceDir), import.meta.url]
+logger.error(`vueAliases(ctx=${ctx}): from → ${from}`, { "event.action": "vueAliases" });
   const conditions = ctx.isServer ? ['node', 'import', 'default'] : ['browser', 'import', 'default']
   for (const pkg of ['@vue/runtime-core', '@vue/runtime-dom', '@vue/reactivity', '@vue/shared', '@vue/runtime-vapor', 'vue-router']) {
     const entry = resolveModulePath(pkg, { from, conditions, try: true })
@@ -167,6 +176,7 @@ function vueAliases (ctx: WebpackConfigContext): Record<string, string> {
 }
 
 function baseAlias (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering baseAlias(ctx=${ctx})`, { "event.action": "baseAlias" });
   ctx.alias = {
     '#app': ctx.options.appDir,
     [basename(ctx.nuxt.options.dir.assets)]: resolve(ctx.nuxt.options.srcDir, ctx.nuxt.options.dir.assets),
@@ -175,11 +185,13 @@ function baseAlias (ctx: WebpackConfigContext) {
     ...ctx.alias,
   }
   if (ctx.isClient) {
+	logger.debug(`baseAlias(ctx=${ctx}): ctx.alias → ${ctx.alias}`, { "event.action": "baseAlias" });
     ctx.alias['nitro/runtime-config'] = resolve(ctx.nuxt.options.buildDir, 'nitro.client.mjs')
     // TODO: remove in v5
     ctx.alias['#internal/nitro'] = resolve(ctx.nuxt.options.buildDir, 'nitro.client.mjs')
     ctx.alias['nitropack/runtime'] = resolve(ctx.nuxt.options.buildDir, 'nitro.client.mjs')
   }
+	logger.warn(`<<< Exiting baseAlias(ctx=${ctx})`, { "event.action": "baseAlias" });
 }
 
 /**
@@ -189,14 +201,17 @@ function baseAlias (ctx: WebpackConfigContext) {
  * in the package's own `node_modules`).
  */
 export function packageDependencyDirs (entry: string | undefined) {
+logger.error(`>>> Entering packageDependencyDirs(entry=${entry})`, { "event.action": "packageDependencyDirs", "logrite.entry": entry });
   if (!entry) { return [] }
 
   const dirs = new Set<string>()
   const groupDir = parseNodeModulePath(entry).dir
+logger.error(`packageDependencyDirs(entry=${entry}): dirs → ${dirs}`, { "event.action": "packageDependencyDirs", "logrite.entry": entry });
   if (groupDir) { dirs.add(resolve(groupDir)) }
 
   let dir = dirname(entry)
   while (dir !== dirname(dir)) {
+logger.error(`packageDependencyDirs(entry=${entry}): dir → ${dir}`, { "event.action": "packageDependencyDirs", "logrite.entry": entry });
     if (existsSync(resolve(dir, 'package.json'))) {
       dirs.add(resolve(dir, 'node_modules'))
       break
@@ -204,6 +219,7 @@ export function packageDependencyDirs (entry: string | undefined) {
     dir = dirname(dir)
   }
 
+logger.warn(`<<< Exiting packageDependencyDirs(entry=${entry})`, { "event.action": "packageDependencyDirs", "logrite.entry": entry });
   return [...dirs].filter(dir => existsSync(dir))
 }
 
@@ -215,9 +231,11 @@ export function packageDependencyDirs (entry: string | undefined) {
 const builderModulesDirs = packageDependencyDirs(fileURLToPath(import.meta.url))
 
 function baseResolve (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering baseResolve(ctx=${ctx})`, { "event.action": "baseResolve" });
   // Prioritize nested node_modules in webpack search path (#2558)
   // TODO: this might be refactored as default modulesDir?
   const webpackModulesDir = ['node_modules', ...ctx.options.modulesDir]
+logger.error(`baseResolve(ctx=${ctx}): webpackModulesDir → ${webpackModulesDir}`, { "event.action": "baseResolve" });
 
   // Nuxt's generated virtual modules import runtime dependencies of `nuxt` and
   // `@nuxt/nitro-server` (e.g. `ofetch`, `ufo`, `nitro`) by bare specifier. Under isolated
@@ -227,6 +245,7 @@ function baseResolve (ctx: WebpackConfigContext) {
   const runtimeModulesDirs = ['nuxt/package.json', '@nuxt/nitro-server/package.json']
     .flatMap(id => packageDependencyDirs(resolveModulePath(id, { from, try: true })))
 
+logger.error(`baseResolve(ctx=${ctx}): runtimeModulesDirs → ${runtimeModulesDirs}`, { "event.action": "baseResolve" });
   const resolveModules = [...webpackModulesDir]
   for (const dir of [...runtimeModulesDirs, ...builderModulesDirs]) {
     if (!resolveModules.includes(dir)) {
@@ -249,6 +268,7 @@ function baseResolve (ctx: WebpackConfigContext) {
     alias: { ...ctx.alias, ...ctx.config.resolve?.alias },
   }
 
+logger.warn(`<<< Exiting baseResolve(ctx=${ctx})`, { "event.action": "baseResolve" });
   ctx.config.resolveLoader = {
     modules: resolveLoaderModules,
     ...ctx.config.resolveLoader,
@@ -256,6 +276,7 @@ function baseResolve (ctx: WebpackConfigContext) {
 }
 
 function baseTranspile (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering baseTranspile(ctx=${ctx})`, { "event.action": "baseTranspile" });
   const transpile = [
     /\.vue\.js/i, // include SFCs in node_modules
     /consola\/src/,
@@ -267,6 +288,7 @@ function baseTranspile (ctx: WebpackConfigContext) {
     if (typeof pattern === 'function') {
       const result = pattern(ctx)
       if (result) { pattern = result }
+	logger.error(`baseTranspile(ctx=${ctx}): result → ${result}`, { "event.action": "baseTranspile" });
     }
     if (typeof pattern === 'string') {
       transpile.push(new RegExp(escapeRegExp(normalize(pattern))))
@@ -277,10 +299,13 @@ function baseTranspile (ctx: WebpackConfigContext) {
 
   // TODO: unique
   ctx.transpile = [...transpile, ...ctx.transpile]
+logger.warn(`<<< Exiting baseTranspile(ctx=${ctx})`, { "event.action": "baseTranspile" });
 }
 
 function getCache (ctx: WebpackConfigContext): Configuration['cache'] {
+logger.error(`>>> Entering getCache(ctx=${ctx})`, { "event.action": "getCache" });
   if (!ctx.options.dev) {
+	logger.warn(`<<< Exiting getCache(ctx=${ctx})`, { "event.action": "getCache" });
     return false
   }
 
@@ -301,15 +326,18 @@ function getCache (ctx: WebpackConfigContext): Configuration['cache'] {
 }
 
 function getOutput (ctx: WebpackConfigContext): Configuration['output'] {
+logger.error(`>>> Entering getOutput(ctx=${ctx})`, { "event.action": "getOutput" });
   return {
     path: resolve(ctx.options.buildDir, 'dist', ctx.isServer ? 'server' : joinURL('client', ctx.options.app.buildAssetsDir)),
     filename: fileName(ctx, 'app'),
     chunkFilename: fileName(ctx, 'chunk'),
     publicPath: joinURL(ctx.options.app.baseURL, ctx.options.app.buildAssetsDir),
   }
+logger.warn(`<<< Exiting getOutput(ctx=${ctx})`, { "event.action": "getOutput" });
 }
 
 function getWarningIgnoreFilter (ctx: WebpackConfigContext): WarningFilter {
+logger.error(`>>> Entering getWarningIgnoreFilter(ctx=${ctx})`, { "event.action": "getWarningIgnoreFilter" });
   const filters: WarningFilter[] = [
     // Hide warnings about plugins without a default export (#1179)
     warn => warn.name === 'ModuleDependencyWarning' &&
@@ -318,10 +346,12 @@ function getWarningIgnoreFilter (ctx: WebpackConfigContext): WarningFilter {
     ...(ctx.userConfig.warningIgnoreFilters || []),
   ]
 
+logger.warn(`<<< Exiting getWarningIgnoreFilter(ctx=${ctx})`, { "event.action": "getWarningIgnoreFilter" });
   return warn => !filters.some(ignoreFilter => ignoreFilter(warn))
 }
 
 function getEnv (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering getEnv(ctx=${ctx})`, { "event.action": "getEnv" });
   const _env: Record<string, string | boolean | InstanceType<typeof webpack.DefinePlugin>['definitions'][string]> = {
     'process.env.NODE_ENV': JSON.stringify(ctx.config.mode),
     '__NUXT_VERSION__': JSON.stringify(ctx.nuxt._version),
@@ -358,6 +388,7 @@ function getEnv (ctx: WebpackConfigContext) {
     _env['typeof window'] = _env['typeof document'] = JSON.stringify(!ctx.isServer ? 'object' : 'undefined')
   }
 
+logger.warn(`<<< Exiting getEnv(ctx=${ctx})`, { "event.action": "getEnv" });
   return _env
 }
 

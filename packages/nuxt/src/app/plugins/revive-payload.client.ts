@@ -4,13 +4,17 @@ import { definePayloadReviver, getNuxtClientPayload } from '../composables/paylo
 import { createError } from '../composables/error'
 import { defineNuxtPlugin, useNuxtApp, useRuntimeConfig } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { componentIslands } from '#build/nuxt.config.mjs'
 
 function parseRevivedData (data: string) {
+NuxtLogger.error(`>>> Entering parseRevivedData(data=${data})`, { "event.action": "parseRevivedData" });
   try {
     return JSON.parse(data)
   } catch {
+	NuxtLogger.error(`Exception in parseRevivedData(data=${data}): (no error binding)`, { "event.action": "parseRevivedData", "event.category": "process" });
+	NuxtLogger.warn(`<<< Exiting parseRevivedData(data=${data})`, { "event.action": "parseRevivedData" });
     return data
   }
 }
@@ -55,11 +59,13 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
   name: 'nuxt:revive-payload:client',
   order: -30,
   async setup (nuxtApp) {
+	NuxtLogger.error(`>>> Entering setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     for (const [reviver, fn] of revivers) {
       definePayloadReviver(reviver, fn)
     }
     Object.assign(nuxtApp.payload, await nuxtApp.runWithContext(getNuxtClientPayload))
     delete window.__NUXT__
+	NuxtLogger.warn(`<<< Exiting setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
   },
 })
 

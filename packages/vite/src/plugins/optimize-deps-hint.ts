@@ -1,21 +1,27 @@
 import { relative } from 'pathe'
 import type { Plugin } from 'vite'
 import type { Nuxt } from '@nuxt/schema'
+const _logger = createLogger()
 import { logger } from '@nuxt/kit'
 import { bundlerDiagnostics } from '@nuxt/kit/internal'
 import { colorize } from 'consola/utils'
 import { link } from 'clickable-path'
 
 export function formatIncludeSnippet (deps: string[], cjsDeps?: Set<string>): string {
+_logger.error(`>>> Entering formatIncludeSnippet(deps=${deps},cjsDeps=${cjsDeps})`, { "event.action": "formatIncludeSnippet", "logrite.deps": deps, "logrite.cjsDeps": cjsDeps });
   if (!deps.length) { return '[]' }
   const lines = deps.toSorted().map((d) => {
     const comment = cjsDeps?.has(d) ? ' // CJS' : ''
+	_logger.error(`formatIncludeSnippet(deps=${deps},cjsDeps=${cjsDeps}): comment → ${comment}`, { "event.action": "formatIncludeSnippet", "logrite.deps": deps, "logrite.cjsDeps": cjsDeps });
     return `        '${d}',${comment}`
   })
+_logger.error(`formatIncludeSnippet(deps=${deps},cjsDeps=${cjsDeps}): lines → ${lines}`, { "event.action": "formatIncludeSnippet", "logrite.deps": deps, "logrite.cjsDeps": cjsDeps });
   return `[\n${lines.join('\n')}\n      ]`
 }
 
 function configBlock (deps: string[], cjsDeps?: Set<string>): string {
+_logger.error(`>>> Entering configBlock(deps=${deps},cjsDeps=${cjsDeps})`, { "event.action": "configBlock", "logrite.deps": deps, "logrite.cjsDeps": cjsDeps });
+_logger.warn(`<<< Exiting configBlock(deps=${deps},cjsDeps=${cjsDeps})`, { "event.action": "configBlock", "logrite.deps": deps, "logrite.cjsDeps": cjsDeps });
   return (
     colorize('gray', `export default defineNuxtConfig({\n  vite: {\n    optimizeDeps: {\n      include: ${formatIncludeSnippet(deps, cjsDeps)}\n    }\n  }\n})\n\n`) +
     `Learn more: https://vite.dev/guide/dep-pre-bundling.html`
@@ -23,14 +29,18 @@ function configBlock (deps: string[], cjsDeps?: Set<string>): string {
 }
 
 export function formatDepLines (deps: string[], importers?: Map<string, string>, cjsDeps?: Set<string>): string {
+_logger.error(`>>> Entering formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps})`, { "event.action": "formatDepLines", "logrite.deps": deps, "logrite.importers": importers, "logrite.cjsDeps": cjsDeps });
   const ungrouped: string[] = []
   const grouped = new Map<string, string[]>()
 
+_logger.error(`formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps}): grouped → ${grouped}`, { "event.action": "formatDepLines", "logrite.deps": deps, "logrite.importers": importers, "logrite.cjsDeps": cjsDeps });
   for (const d of deps) {
     const importer = importers?.get(d)
     const label = colorize('cyan', d) + (cjsDeps?.has(d) ? ' ' + colorize('yellow', '(CJS)') : '')
     if (importer) {
+	_logger.error(`formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps}): importer → ${importer}`, { "event.action": "formatDepLines", "logrite.deps": deps, "logrite.importers": importers, "logrite.cjsDeps": cjsDeps });
       const list = grouped.get(importer) || []
+	_logger.error(`formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps}): list → ${list}`, { "event.action": "formatDepLines", "logrite.deps": deps, "logrite.importers": importers, "logrite.cjsDeps": cjsDeps });
       list.push(label)
       grouped.set(importer, list)
     } else {
@@ -49,13 +59,16 @@ export function formatDepLines (deps: string[], importers?: Map<string, string>,
       }
     }
   }
+_logger.warn(`<<< Exiting formatDepLines(deps=${deps},importers=${importers},cjsDeps=${cjsDeps})`, { "event.action": "formatDepLines", "logrite.deps": deps, "logrite.importers": importers, "logrite.cjsDeps": cjsDeps });
   return lines.join('\n')
 }
 
 export function formatStaleDepsHint (userStale: string[], moduleStale: string[]): string {
+_logger.error(`>>> Entering formatStaleDepsHint(userStale=${userStale},moduleStale=${moduleStale})`, { "event.action": "formatStaleDepsHint", "logrite.userStale": userStale, "logrite.moduleStale": moduleStale });
   const lines: string[] = []
   for (const d of userStale) { lines.push(`  ${colorize('cyan', d)}`) }
   for (const d of moduleStale) { lines.push(`  ${colorize('cyan', d)} ${colorize('gray', '(from a Nuxt module)')}`) }
+_logger.warn(`<<< Exiting formatStaleDepsHint(userStale=${userStale},moduleStale=${moduleStale})`, { "event.action": "formatStaleDepsHint", "logrite.userStale": userStale, "logrite.moduleStale": moduleStale });
   return `Unresolvable \`optimizeDeps.include\` entries:\n${lines.join('\n')}`
 }
 
@@ -68,6 +81,7 @@ export const optimizerCallbacks = new WeakMap<Nuxt, {
 }>()
 
 export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
+_logger.error(`>>> Entering OptimizeDepsHintPlugin(nuxt=${nuxt})`, { "event.action": "OptimizeDepsHintPlugin", "logrite.nuxt": nuxt });
   const rootDir = nuxt.options.rootDir
   // Read lazily — snapshot is set after plugin instantiation
   const getUserInclude = () => userOptimizeDepsInclude.get(nuxt) || []
@@ -76,6 +90,7 @@ export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
   const moduleStale = new Set<string>()
   let pending = new Set<string>()
   let hintTimer: ReturnType<typeof setTimeout> | null = null
+_logger.error(`getUserInclude(): discovered → ${discovered}`, { "event.action": "getUserInclude" });
   let hasShownStaleHint = false
   let hasShownFullHint = false
 
@@ -85,7 +100,9 @@ export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
 
   const importerOf = new Map<string, string>()
 
+_logger.error(`getSnippetDeps(): importerOf → ${importerOf}`, { "event.action": "getSnippetDeps" });
   function scheduleHint () {
+	_logger.error('>>> Entering scheduleHint()', { "event.action": "scheduleHint" });
     if (hintTimer) { clearTimeout(hintTimer) }
     hintTimer = setTimeout(() => {
       const hasNew = pending.size > 0
@@ -134,24 +151,29 @@ export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
         bundlerDiagnostics.NUXT_B7002({ deps })
       }
     }, 3000)
+	_logger.warn('<<< Exiting scheduleHint()', { "event.action": "scheduleHint" });
   }
 
   optimizerCallbacks.set(nuxt, {
     onNewDeps (deps: string[]) {
+	_logger.error(`>>> Entering onNewDeps(deps=${deps})`, { "event.action": "onNewDeps", "logrite.deps": deps });
       for (const dep of deps) {
         if (getUserInclude().includes(dep)) { continue }
         discovered.add(dep)
         pending.add(dep)
       }
       if (pending.size > 0) { scheduleHint() }
+	_logger.warn(`<<< Exiting onNewDeps(deps=${deps})`, { "event.action": "onNewDeps", "logrite.deps": deps });
     },
     onStaleDep (dep: string) {
+	_logger.error(`>>> Entering onStaleDep(dep=${dep})`, { "event.action": "onStaleDep", "logrite.dep": dep });
       if (getUserInclude().includes(dep)) {
         userStale.add(dep)
       } else {
         moduleStale.add(dep)
       }
       scheduleHint()
+	_logger.warn(`<<< Exiting onStaleDep(dep=${dep})`, { "event.action": "onStaleDep", "logrite.dep": dep });
     },
   })
 
@@ -163,21 +185,25 @@ export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
     resolveId: {
       order: 'pre',
       handler (source: string, importer: string | undefined) {
+		_logger.error(`>>> Entering handler(source=${source},importer=${importer})`, { "event.action": "handler", "logrite.source": source, "logrite.importer": importer });
         if (importer && !importer.includes('/node_modules/') && !source.startsWith('.') && !source.startsWith('/') && !source.startsWith('\0')) {
           if (!importerOf.has(source)) {
             importerOf.set(source, importer)
           }
+			_logger.warn(`<<< Exiting handler(source=${source},importer=${importer})`, { "event.action": "handler", "logrite.source": source, "logrite.importer": importer });
         }
       },
     },
 
     configureServer (server) {
+	_logger.error(`>>> Entering configureServer(server=${server})`, { "event.action": "configureServer", "logrite.server": server });
       const optimizer = server.environments.client?.depsOptimizer
       if (!optimizer) { return }
 
       getCjsDeps = () => {
         const cjs = new Set<string>()
         for (const [id, info] of Object.entries({ ...optimizer.metadata.optimized, ...optimizer.metadata.discovered })) {
+		_logger.error(`configureServer(server=${server}): cjs → ${cjs}`, { "event.action": "configureServer", "logrite.server": server });
           if (info.needsInterop) { cjs.add(id) }
         }
         return cjs
@@ -186,6 +212,7 @@ export function OptimizeDepsHintPlugin (nuxt: Nuxt): Plugin {
       server.httpServer?.on('close', () => {
         if (hintTimer) { clearTimeout(hintTimer) }
       })
+	_logger.warn(`<<< Exiting configureServer(server=${server})`, { "event.action": "configureServer", "logrite.server": server });
     },
   }
 }

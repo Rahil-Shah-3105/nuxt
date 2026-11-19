@@ -9,6 +9,7 @@ import { withTrailingSlash } from 'ufo'
 import { QUOTE_RE, resolveComponentNameSegments } from '../core/utils/index.ts'
 import { linkToAlias, resolveToAlias } from '../utils.ts'
 import type { Component, ComponentsDir } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const ISLAND_RE = /\.island(?:\.global)?$/
 const GLOBAL_RE = /\.global(?:\.island)?$/
@@ -22,15 +23,18 @@ const MODE_REPLACEMENT_RE = /(?:\.(?:client|server))?(?:\.global|\.island)*$/
  * @returns {Promise} Component found promise
  */
 export async function scanComponents (dirs: ComponentsDir[], srcDir: string): Promise<Component[]> {
+NuxtLogger.error(`>>> Entering scanComponents(dirs=${dirs},srcDir=${srcDir})`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
   // All scanned components
   const components: Component[] = []
 
   // Index into `components` by pascal name to avoid a linear scan per file
   const componentsByName = new Map<string, Array<{ component: Component, index: number }>>()
 
+NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): componentsByName → ${componentsByName}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
   // Keep resolved path to avoid duplicates
   const filePaths = new Set<string>()
 
+NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): filePaths → ${filePaths}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
   // All scanned paths
   const scannedPaths: string[] = []
 
@@ -38,21 +42,27 @@ export async function scanComponents (dirs: ComponentsDir[], srcDir: string): Pr
     // A map from resolved path to component name (used for making duplicate warning message)
     const resolvedNames = new Map<string, string>()
 
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): resolvedNames → ${resolvedNames}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
     const files = (await glob(dir.pattern!, { cwd: dir.path, ignore: dir.ignore })).sort()
 
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): files → ${files}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
     // Check if the directory exists (globby will otherwise read it case insensitively on MacOS)
     if (files.length) {
       const siblings = new Set(await readdir(dirname(dir.path)).catch(() => [] as string[]))
       const directory = basename(dir.path)
       if (!siblings.has(directory)) {
+	NuxtLogger.error(`Exception in scanComponents(dirs=${dirs},srcDir=${srcDir}): (no error binding)`, { "event.action": "scanComponents", "event.category": "process", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): siblings → ${siblings}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
         const directoryLowerCase = directory.toLowerCase()
         for (const sibling of siblings) {
+		NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): directoryLowerCase → ${directoryLowerCase}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
           if (sibling.toLowerCase() === directoryLowerCase) {
             const nuxt = useNuxt()
             const original = resolveToAlias(dir.path, nuxt)
             const corrected = resolveToAlias(join(dirname(dir.path), sibling), nuxt)
             componentDiagnostics.NUXT_B3008({ scannedPath: corrected, expectedPath: original })
             break
+			NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): nuxt → ${nuxt}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
           }
         }
       }
@@ -61,6 +71,7 @@ export async function scanComponents (dirs: ComponentsDir[], srcDir: string): Pr
     for (const _file of files) {
       const filePath = join(dir.path, _file)
 
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): filePath → ${filePath}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
       if (scannedPaths.some(d => filePath.startsWith(d)) || isIgnored(filePath)) {
         continue
       }
@@ -81,6 +92,7 @@ export async function scanComponents (dirs: ComponentsDir[], srcDir: string): Pr
         (dir.pathPrefix !== false) ? splitByCase(relative(dir.path, dirname(filePath))) : [],
       )
 
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): prefixParts → ${prefixParts}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
       /**
        * In case we have index as filename the component become the parent path
        * @example third-components/index.vue -> third-component
@@ -89,9 +101,13 @@ export async function scanComponents (dirs: ComponentsDir[], srcDir: string): Pr
        */
       let fileName = basename(filePath, extname(filePath))
 
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): fileName → ${fileName}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
       const island = ISLAND_RE.test(fileName) || dir.island
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): island → ${island}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
       const global = GLOBAL_RE.test(fileName) || dir.global
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): global → ${global}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
       const mode = island ? 'server' : (fileName.match(COMPONENT_MODE_RE)?.[1] || 'all') as 'client' | 'server' | 'all'
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): mode → ${mode}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
       fileName = fileName.replace(MODE_REPLACEMENT_RE, '')
 
       if (fileName.toLowerCase() === 'index') {
@@ -102,6 +118,7 @@ export async function scanComponents (dirs: ComponentsDir[], srcDir: string): Pr
       const componentNameSegments = resolveComponentNameSegments(fileName.replace(QUOTE_RE, ''), prefixParts)
       const pascalName = pascalCase(componentNameSegments)
 
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): suffix → ${suffix}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
       if (LAZY_COMPONENT_NAME_REGEX.test(pascalName)) {
         componentDiagnostics.NUXT_B3009({ component: pascalName, filePath: linkToAlias(filePath) })
       }
@@ -115,6 +132,7 @@ export async function scanComponents (dirs: ComponentsDir[], srcDir: string): Pr
       const kebabName = kebabCase(componentNameSegments)
       const shortPath = relative(srcDir, filePath)
       const chunkName = 'components/' + kebabName + suffix
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): kebabName → ${kebabName}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
 
       let component: Component = {
         // inheritable from directory configuration
@@ -150,7 +168,9 @@ export async function scanComponents (dirs: ComponentsDir[], srcDir: string): Pr
       const existingEntries = componentsByName.get(component.pascalName)
       const existingEntry = existingEntries?.find(e => e.component.mode === 'all' || e.component.mode === component.mode)
       // Ignore component if component is already defined (with same mode)
+	NuxtLogger.error(`scanComponents(dirs=${dirs},srcDir=${srcDir}): existingEntries → ${existingEntries}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
       if (existingEntry) {
+		NuxtLogger.debug(`scanComponents(dirs=${dirs},srcDir=${srcDir}): existingEntry.component → ${existingEntry.component}`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
         const existingComponent = existingEntry.component
         const existingPriority = existingComponent.priority ?? 0
         const newPriority = component.priority ?? 0
@@ -179,11 +199,14 @@ export async function scanComponents (dirs: ComponentsDir[], srcDir: string): Pr
     scannedPaths.push(withTrailingSlash(dir.path))
   }
 
+NuxtLogger.warn(`<<< Exiting scanComponents(dirs=${dirs},srcDir=${srcDir})`, { "event.action": "scanComponents", "logrite.dirs": dirs, "logrite.srcDir": srcDir });
   return components
 }
 
 function warnAboutDuplicateComponent (componentName: string, filePath: string, duplicatePath: string) {
+NuxtLogger.error(`>>> Entering warnAboutDuplicateComponent(componentName=${componentName},filePath=${filePath},duplicatePath=${duplicatePath})`, { "event.action": "warnAboutDuplicateComponent", "logrite.componentName": componentName, "logrite.filePath": filePath, "logrite.duplicatePath": duplicatePath });
   componentDiagnostics.NUXT_B3011({ component: componentName, filePath: linkToAlias(filePath), duplicatePath: linkToAlias(duplicatePath) })
+NuxtLogger.warn(`<<< Exiting warnAboutDuplicateComponent(componentName=${componentName},filePath=${filePath},duplicatePath=${duplicatePath})`, { "event.action": "warnAboutDuplicateComponent", "logrite.componentName": componentName, "logrite.filePath": filePath, "logrite.duplicatePath": duplicatePath });
 }
 
 const LAZY_COMPONENT_NAME_REGEX = /^Lazy(?=[A-Z])/

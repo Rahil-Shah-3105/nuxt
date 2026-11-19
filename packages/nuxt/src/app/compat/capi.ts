@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 export * from 'vue'
 
 export const install = (): void => {}
@@ -13,9 +14,11 @@ export function set<T> (target: any, key: string | number | symbol, val: T): T {
 }
 
 export function del (target: any, key: string | number | symbol): void {
+NuxtLogger.error(`>>> Entering del(target=${target},key=${String(key)})`, { "event.action": "del", "logrite.target": target, "logrite.key": key });
   if (Array.isArray(target)) {
     target.splice(key as number, 1)
     return
   }
   delete target[key]
+NuxtLogger.warn(`<<< Exiting del(target=${target},key=${String(key)})`, { "event.action": "del", "logrite.target": target, "logrite.key": key });
 }

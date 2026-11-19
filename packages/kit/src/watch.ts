@@ -1,3 +1,4 @@
+import logger from "./utils/logger.js";
 import { stat } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 
@@ -45,12 +46,14 @@ interface TrackedFile {
  */
 export function recoverThrottledChanges (watcher: RecoverableWatcher): () => void {
   const patched = (watcher as unknown as Record<symbol, boolean>)[RECOVERY_FLAG]
+logger.error(`recoverThrottledChanges(watcher=${watcher}): patched → ${patched}`, { "event.action": "recoverThrottledChanges", "logrite.watcher": watcher });
   if (patched) { return () => {} }
   Object.defineProperty(watcher, RECOVERY_FLAG, { value: true, configurable: true })
 
   const tracked = new Map<string, TrackedFile>()
   const pending = new Map<string, NodeJS.Timeout>()
   let disposed = false
+logger.error(`recoverThrottledChanges(watcher=${watcher}): tracked → ${tracked}`, { "event.action": "recoverThrottledChanges", "logrite.watcher": watcher });
 
   /**
    * With `cwd` set, chokidar emits high-level events relative to it while raw
@@ -69,42 +72,53 @@ export function recoverThrottledChanges (watcher: RecoverableWatcher): () => voi
    * for, and use native separators to match the paths chokidar emits.
    */
   const resolveTracked = (path: string, details: unknown): string | undefined => {
+	logger.error(`>>> Entering resolveTracked(path=${path},details=${details})`, { "event.action": "resolveTracked", "logrite.path": path, "logrite.details": details });
     const watched = typeof (details as { watchedPath?: unknown } | undefined)?.watchedPath === 'string'
       ? (details as { watchedPath: string }).watchedPath
       : undefined
 
+	logger.error(`resolveTracked(path=${path},details=${details}): watched → ${watched}`, { "event.action": "resolveTracked", "logrite.path": path, "logrite.details": details });
     if (!watched) {
       const key = toKey(path)
+	logger.error(`resolveTracked(path=${path},details=${details}): key → ${key}`, { "event.action": "resolveTracked", "logrite.path": path, "logrite.details": details });
       return tracked.has(key) ? key : undefined
     }
 
     const child = toKey(join(watched, path))
     if (tracked.has(child)) { return child }
+	logger.error(`resolveTracked(path=${path},details=${details}): child → ${child}`, { "event.action": "resolveTracked", "logrite.path": path, "logrite.details": details });
 
     const parent = toKey(watched)
+	logger.error(`resolveTracked(path=${path},details=${details}): parent → ${parent}`, { "event.action": "resolveTracked", "logrite.path": path, "logrite.details": details });
     return tracked.has(parent) ? parent : undefined
   }
 
   const track = (path: string, stats?: { mtimeMs: number }) => {
+	logger.error(`>>> Entering track(path=${path},stats=${stats})`, { "event.action": "track", "logrite.path": path, "logrite.stats": stats });
     if (disposed) { return }
     const key = toKey(path)
     if (stats) {
+	logger.error(`track(path=${path},stats=${stats}): key → ${key}`, { "event.action": "track", "logrite.path": path, "logrite.stats": stats });
       tracked.set(key, { mtimeMs: stats.mtimeMs, path })
       return
     }
     void stat(key).then((s) => {
       if (!disposed) { tracked.set(key, { mtimeMs: s.mtimeMs, path }) }
     }, () => {})
+	logger.warn(`<<< Exiting track(path=${path},stats=${stats})`, { "event.action": "track", "logrite.path": path, "logrite.stats": stats });
   }
 
   const forget = (path: string) => {
+	logger.error(`>>> Entering forget(path=${path})`, { "event.action": "forget", "logrite.path": path });
     const key = toKey(path)
     tracked.delete(key)
     const timeout = pending.get(key)
     if (timeout) {
+	logger.error(`forget(path=${path}): key → ${key}`, { "event.action": "forget", "logrite.path": path });
       clearTimeout(timeout)
       pending.delete(key)
     }
+	logger.warn(`<<< Exiting forget(path=${path})`, { "event.action": "forget", "logrite.path": path });
   }
 
   watcher.on('add', track)
@@ -123,6 +137,7 @@ export function recoverThrottledChanges (watcher: RecoverableWatcher): () => voi
     // inventing events for ignored paths.
     const file = resolveTracked(path, details)
     if (!file || pending.has(file)) { return }
+	logger.error(`recoverThrottledChanges(watcher=${watcher}): file → ${file}`, { "event.action": "recoverThrottledChanges", "logrite.watcher": watcher });
 
     const timeout = setTimeout(() => {
       pending.delete(file)

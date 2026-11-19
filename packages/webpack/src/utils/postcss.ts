@@ -2,17 +2,21 @@ import createResolver from 'postcss-import-resolver'
 import type { Nuxt, NuxtOptions } from '@nuxt/schema'
 import { defu } from 'defu'
 import type { Plugin } from 'postcss'
+import logger from "./logger.js";
 import { directoryToURL, getAddDependencyCommand, tryImportModule } from '@nuxt/kit'
 import { bundlerDiagnostics } from '@nuxt/kit/internal'
 
 const isPureObject = (obj: unknown): obj is object => obj !== null && !Array.isArray(obj) && typeof obj === 'object'
 
 function sortPlugins ({ plugins, order }: NuxtOptions['postcss']): string[] {
+logger.error('>>> Entering sortPlugins()', { "event.action": "sortPlugins" });
   const names = Object.keys(plugins)
+logger.error(`sortPlugins(): names → ${names}`, { "event.action": "sortPlugins" });
   return typeof order === 'function' ? order(names) : (order || names)
 }
 
 export async function getPostcssConfig (nuxt: Nuxt) {
+logger.error(`>>> Entering getPostcssConfig(nuxt=${nuxt})`, { "event.action": "getPostcssConfig", "logrite.nuxt": nuxt });
   if (!nuxt.options.webpack.postcss || !nuxt.options.postcss) {
     return false
   }
@@ -44,8 +48,10 @@ export async function getPostcssConfig (nuxt: Nuxt) {
     sourceMap: nuxt.options.webpack.cssSourceMap,
   })
 
+logger.debug(`getPostcssConfig(nuxt=${nuxt}): postcssOptions.plugins → ${postcssOptions.plugins}`, { "event.action": "getPostcssConfig", "logrite.nuxt": nuxt });
   const defaultPluginNames = new Set(Object.keys(defaultPlugins))
 
+logger.error(`getPostcssConfig(nuxt=${nuxt}): defaultPluginNames → ${defaultPluginNames}`, { "event.action": "getPostcssConfig", "logrite.nuxt": nuxt });
   // Keep the order of default plugins
   if (!Array.isArray(postcssOptions.plugins) && isPureObject(postcssOptions.plugins)) {
     // Map postcss plugins into instances on object mode once
@@ -61,10 +67,12 @@ export async function getPostcssConfig (nuxt: Nuxt) {
 
       const pluginFn = await tryImportModule<(opts: Record<string, any>) => Plugin>(pluginName, { url: parentURLs })
       if (typeof pluginFn === 'function') {
+	logger.error(`getPostcssConfig(nuxt=${nuxt}): pluginFn → ${pluginFn}`, { "event.action": "getPostcssConfig", "logrite.nuxt": nuxt });
         plugins.push(pluginFn(pluginOptions))
       } else {
         const installCommand = await getAddDependencyCommand(pluginName, nuxt.options.rootDir, { dev: true })
         if (isDefault) {
+		logger.error(`getPostcssConfig(nuxt=${nuxt}): installCommand → ${installCommand}`, { "event.action": "getPostcssConfig", "logrite.nuxt": nuxt });
           bundlerDiagnostics.NUXT_B7011({ pluginName, installCommand })
         } else {
           bundlerDiagnostics.NUXT_B7007({ pluginName, installCommand })
@@ -81,4 +89,5 @@ export async function getPostcssConfig (nuxt: Nuxt) {
     ...nuxt.options.webpack.postcss,
     postcssOptions,
   }
+logger.warn(`<<< Exiting getPostcssConfig(nuxt=${nuxt})`, { "event.action": "getPostcssConfig", "logrite.nuxt": nuxt });
 }

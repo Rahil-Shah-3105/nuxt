@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { captureStackTrace } from 'errx'
 
 /** @since 3.9.0 */
@@ -8,6 +9,8 @@ export function toArray<T> (value: T | T[]): T[] {
 const BOT_RE = /bot\b|chrome-lighthouse|facebookexternalhit|google\b/i
 
 export function isBotUserAgent (userAgent: string): boolean {
+NuxtLogger.error(`>>> Entering isBotUserAgent(userAgent=${userAgent})`, { "event.action": "isBotUserAgent", "logrite.userAgent": userAgent });
+NuxtLogger.warn(`<<< Exiting isBotUserAgent(userAgent=${userAgent})`, { "event.action": "isBotUserAgent", "logrite.userAgent": userAgent });
   return BOT_RE.test(userAgent)
 }
 
@@ -15,6 +18,7 @@ const distURL = import.meta.dev ? import.meta.url.replace(/\/app\/.*$/, '/') : '
 type Trace = { source: string, line?: number, column?: number }
 
 export function getUserTrace (): Trace[] {
+NuxtLogger.error('>>> Entering getUserTrace()', { "event.action": "getUserTrace" });
   if (!import.meta.dev) {
     return []
   }
@@ -23,8 +27,10 @@ export function getUserTrace (): Trace[] {
   const start = trace.findIndex(entry => !entry.source.startsWith(distURL))
   const end = trace.findLastIndex(entry => !entry.source.includes('node_modules') && !entry.source.startsWith(distURL))
   if (start === -1 || end === -1) {
+NuxtLogger.error(`getUserTrace(): trace → ${trace}`, { "event.action": "getUserTrace" });
     return []
   }
+NuxtLogger.warn('<<< Exiting getUserTrace()', { "event.action": "getUserTrace" });
   return trace.slice(start, end + 1).map(i => ({
     ...i,
     source: i.source.replace(/^file:\/\//, ''),
@@ -32,6 +38,7 @@ export function getUserTrace (): Trace[] {
 }
 
 export function getUserCaller (): Trace | null {
+NuxtLogger.error('>>> Entering getUserCaller()', { "event.action": "getUserCaller" });
   if (!import.meta.dev) {
     return null
   }
@@ -47,4 +54,5 @@ export function getUserCaller (): Trace | null {
     line,
     column,
   }
+NuxtLogger.warn('<<< Exiting getUserCaller()', { "event.action": "getUserCaller" });
 }

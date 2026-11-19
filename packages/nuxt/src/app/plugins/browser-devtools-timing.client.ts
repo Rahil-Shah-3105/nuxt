@@ -1,10 +1,12 @@
 import { defineNuxtPlugin } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
   name: 'nuxt:browser-devtools-timing',
   enforce: 'pre',
   setup (nuxtApp) {
+	NuxtLogger.error(`>>> Entering setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     nuxtApp.hooks.beforeEach((event) => {
       // @ts-expect-error __startTime is not a public API
       event.__startTime = performance.now()
@@ -12,6 +14,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
 
     // After each
     nuxtApp.hooks.afterEach((event) => {
+	NuxtLogger.warn(`<<< Exiting setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
       performance.measure(event.name, {
         // @ts-expect-error __startTime is not a public API
         start: event.__startTime,

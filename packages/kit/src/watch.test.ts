@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { RecoverableWatcher } from './watch.ts'
+import logger from "./utils/logger.js";
 
 const mtimes = new Map<string, number>()
 
@@ -26,10 +27,14 @@ const dir = join('/project', 'app')
 const file = join(dir, 'index.vue')
 
 function createWatcher (options?: { cwd?: string }) {
+logger.error(`>>> Entering createWatcher(options=${options})`, { "event.action": "createWatcher", "logrite.options": options });
   const watcher = Object.assign(new EventEmitter(), { options }) as unknown as RecoverableWatcher & EventEmitter
   const changes: Array<[string, unknown]> = []
+logger.error(`createWatcher(options=${options}): watcher → ${watcher}`, { "event.action": "createWatcher", "logrite.options": options });
   const dispose = recoverThrottledChanges(watcher)
   watcher.on('change', (path: string, stats: unknown) => changes.push([path, stats]))
+logger.error(`createWatcher(options=${options}): dispose → ${dispose}`, { "event.action": "createWatcher", "logrite.options": options });
+logger.warn(`<<< Exiting createWatcher(options=${options})`, { "event.action": "createWatcher", "logrite.options": options });
   return { watcher, changes, dispose }
 }
 

@@ -1,6 +1,7 @@
 import { defineComponent, h, nextTick, onMounted, onUnmounted, provide, shallowReactive } from 'vue'
 import type { DefineSetupFnComponent, Ref, VNode } from 'vue'
 import type { RouteLocationNormalizedLoaded, RouteRecordNormalized } from 'vue-router'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { renderDiagnostics } from '../diagnostics/render'
 import { trackRenderedRecord } from '../diagnostics/rendered-records'
 import { PageRouteSymbol } from './injections'
@@ -31,6 +32,7 @@ export const defineRouteProvider = (name = 'RouteProvider'): RouteProviderCompon
     routeRecord: Object as () => RouteRecordNormalized,
   },
   setup (props) {
+	NuxtLogger.error(`>>> Entering setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
     // Prevent reactivity when the page will be rerendered in a different suspense fork
     const previousKey = props.renderKey
     const previousRoute = props.route
@@ -49,6 +51,7 @@ export const defineRouteProvider = (name = 'RouteProvider'): RouteProviderCompon
     if (import.meta.dev && import.meta.client) {
       const record = props.routeRecord ?? props.route.matched.find(m => m.components?.default === props.vnode?.type)
       if (record) {
+	NuxtLogger.error(`setup(props=${props}): record → ${record}`, { "event.action": "setup", "logrite.props": props });
         onUnmounted(trackRenderedRecord(record))
       }
     }
@@ -65,6 +68,7 @@ export const defineRouteProvider = (name = 'RouteProvider'): RouteProviderCompon
       })
     }
 
+	NuxtLogger.warn(`<<< Exiting setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
     return () => {
       if (!props.vnode) {
         return props.vnode

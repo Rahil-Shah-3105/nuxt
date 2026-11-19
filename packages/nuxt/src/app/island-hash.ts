@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { hash } from 'ohash'
 
 /**
@@ -10,6 +11,7 @@ import { hash } from 'ohash'
  * @internal
  */
 export function filterIslandProps (props: Record<string, any> | null | undefined): Record<string, any> {
+NuxtLogger.error(`>>> Entering filterIslandProps(props=${props})`, { "event.action": "filterIslandProps", "logrite.props": props });
   if (!props) { return {} }
   const out: Record<string, any> = {}
   for (const key in props) {
@@ -17,6 +19,7 @@ export function filterIslandProps (props: Record<string, any> | null | undefined
       out[key] = props[key]
     }
   }
+NuxtLogger.warn(`<<< Exiting filterIslandProps(props=${props})`, { "event.action": "filterIslandProps", "logrite.props": props });
   return out
 }
 
@@ -28,6 +31,8 @@ export function filterIslandProps (props: Record<string, any> | null | undefined
  * @since 4.5.0
  */
 export function serializeIslandProps (props: Record<string, any> | null | undefined): string {
+NuxtLogger.error(`>>> Entering serializeIslandProps(props=${props})`, { "event.action": "serializeIslandProps", "logrite.props": props });
+NuxtLogger.warn(`<<< Exiting serializeIslandProps(props=${props})`, { "event.action": "serializeIslandProps", "logrite.props": props });
   return JSON.stringify(filterIslandProps(props))
 }
 
@@ -54,11 +59,14 @@ export function getIslandHash (input: {
 }
 
 function parseSerializedProps (serializedProps: string): unknown {
+NuxtLogger.error(`>>> Entering parseSerializedProps(serializedProps=${serializedProps})`, { "event.action": "parseSerializedProps", "logrite.serializedProps": serializedProps });
   // The server hashes attacker-controllable query input before validating, so a malformed
   // string must not throw here; fall back to the raw value (matching the hash on both ends).
   try {
     return JSON.parse(serializedProps)
   } catch {
+	NuxtLogger.error(`Exception in parseSerializedProps(serializedProps=${serializedProps}): (no error binding)`, { "event.action": "parseSerializedProps", "event.category": "process", "logrite.serializedProps": serializedProps });
+	NuxtLogger.warn(`<<< Exiting parseSerializedProps(serializedProps=${serializedProps})`, { "event.action": "parseSerializedProps", "logrite.serializedProps": serializedProps });
     return serializedProps
   }
 }

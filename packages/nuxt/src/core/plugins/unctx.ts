@@ -1,4 +1,5 @@
 import type { Transformer, TransformerOptions } from 'unctx/transform'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { createTransformer, getTransformFilter } from 'unctx/transform'
 import { createUnplugin } from 'unplugin'
 
@@ -13,6 +14,7 @@ interface UnctxTransformPluginOptions {
 }
 
 export const UnctxTransformPlugin = (options: UnctxTransformPluginOptions) => createUnplugin(() => {
+NuxtLogger.error(`>>> Entering UnctxTransformPlugin(options=${options})`, { "event.action": "UnctxTransformPlugin", "logrite.options": options });
   let transformer: Promise<Transformer> | undefined
   const filter = getTransformFilter(options.transformerOptions)
 
@@ -20,6 +22,8 @@ export const UnctxTransformPlugin = (options: UnctxTransformPluginOptions) => cr
     name: 'unctx:transform',
     enforce: 'post',
     transformInclude (id) {
+	NuxtLogger.error(`>>> Entering transformInclude(id=${id})`, { "event.action": "transformInclude", "logrite.id": id });
+	NuxtLogger.warn(`<<< Exiting transformInclude(id=${id})`, { "event.action": "transformInclude", "logrite.id": id });
       return isVue(id, { type: ['template', 'script'] }) || isJS(id)
     },
     transform: {
@@ -31,11 +35,13 @@ export const UnctxTransformPlugin = (options: UnctxTransformPluginOptions) => cr
         },
       },
       async handler (code) {
+		NuxtLogger.error(`>>> Entering handler(code=${code})`, { "event.action": "handler", "logrite.code": code });
         const { shouldTransform, transform } = await (transformer ??= createTransformer(options.transformerOptions))
         // TODO: needed for webpack - update transform in unctx/unplugin?
         if (!shouldTransform(code)) { return }
         const result = transform(code)
         if (result) {
+		NuxtLogger.error(`handler(code=${code}): result → ${result}`, { "event.action": "handler", "logrite.code": code });
           result.magicString.prepend(TRANSFORM_MARKER)
           return {
             code: result.magicString.toString(),
@@ -43,6 +49,7 @@ export const UnctxTransformPlugin = (options: UnctxTransformPluginOptions) => cr
               ? result.magicString.generateMap({ hires: true })
               : undefined,
           }
+		NuxtLogger.warn(`<<< Exiting handler(code=${code})`, { "event.action": "handler", "logrite.code": code });
         }
       },
     },

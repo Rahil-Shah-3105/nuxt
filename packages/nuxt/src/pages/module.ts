@@ -26,11 +26,14 @@ import { getBuiltinComponentMeta } from '../components/builtin-metadata.ts'
 import { RouteInjectionPlugin } from './plugins/route-injection.ts'
 import type { Nuxt, NuxtPage } from 'nuxt/schema'
 import type { InlinePreset } from 'unimport'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const OPTIONAL_PARAM_RE = /^\/?:.*(?:\?|\(\.\*\)\*)$/
 const RELATIVE_WITH_DOT_RE = /^([^.])/
 
 function relativeWithDot (from: string, to: string) {
+NuxtLogger.error(`>>> Entering relativeWithDot(from=${from},to=${to})`, { "event.action": "relativeWithDot", "logrite.from": from, "logrite.to": to });
+NuxtLogger.warn(`<<< Exiting relativeWithDot(from=${from},to=${to})`, { "event.action": "relativeWithDot", "logrite.from": from, "logrite.to": to });
   return relative(from, to).replace(RELATIVE_WITH_DOT_RE, './$1') || '.'
 }
 
@@ -45,6 +48,7 @@ export const routeRulesPresets: InlinePreset[] = [
 ]
 
 async function resolveRouterOptions (nuxt: Nuxt, builtInRouterOptions: string) {
+NuxtLogger.error(`>>> Entering resolveRouterOptions(nuxt=${nuxt},builtInRouterOptions=${builtInRouterOptions})`, { "event.action": "resolveRouterOptions", "logrite.nuxt": nuxt, "logrite.builtInRouterOptions": builtInRouterOptions });
   const context = {
     files: [] as Array<{ path: string, optional?: boolean }>,
   }
@@ -52,12 +56,14 @@ async function resolveRouterOptions (nuxt: Nuxt, builtInRouterOptions: string) {
   for (const layer of nuxt.options._layers) {
     const path = await findPath(resolve(layer.config.srcDir, layer.config.dir?.app || 'app', 'router.options'))
     if (path) { context.files.unshift({ path }) }
+	NuxtLogger.error(`resolveRouterOptions(nuxt=${nuxt},builtInRouterOptions=${builtInRouterOptions}): path → ${path}`, { "event.action": "resolveRouterOptions", "logrite.nuxt": nuxt, "logrite.builtInRouterOptions": builtInRouterOptions });
   }
 
   // Add default options at beginning
   context.files.unshift({ path: builtInRouterOptions, optional: true })
 
   await nuxt.callHook('pages:routerOptions', context)
+NuxtLogger.warn(`<<< Exiting resolveRouterOptions(nuxt=${nuxt},builtInRouterOptions=${builtInRouterOptions})`, { "event.action": "resolveRouterOptions", "logrite.nuxt": nuxt, "logrite.builtInRouterOptions": builtInRouterOptions });
   return context.files
 }
 
@@ -71,9 +77,12 @@ export default defineNuxtModule({
     pattern: `**/*{${nuxt.options.extensions.join(',')}}` as string | string[],
   }),
   async setup (_options, nuxt) {
+	NuxtLogger.error(`>>> Entering setup(_options=${_options},nuxt=${nuxt})`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
     const runtimeDir = resolve(distDir, 'pages/runtime')
 
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): runtimeDir → ${runtimeDir}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
     const options = typeof _options === 'boolean' ? { enabled: _options ?? nuxt.options.pages, pattern: `**/*{${nuxt.options.extensions.join(',')}}` } : { ..._options }
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): options → ${options}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
     options.pattern = Array.isArray(options.pattern) ? [...new Set(options.pattern)] : options.pattern
 
     let inlineRulesCache: Record<string, NitroRouteConfig> = {}
@@ -93,8 +102,10 @@ export default defineNuxtModule({
     const useExperimentalTypedPages = nuxt.options.experimental.typedPages
     const builtInRouterOptions = await findPath(resolve(runtimeDir, 'router.options')) || resolve(runtimeDir, 'router.options')
 
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): builtInRouterOptions → ${builtInRouterOptions}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
     const pagesDirs = getLayerDirectories(nuxt).map(dirs => dirs.appPages)
 
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): pagesDirs → ${pagesDirs}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
     // Persistent route tree for incremental dev-mode updates
     const pagesCtx: PagesContext | undefined = nuxt.options.dev
       ? createPagesContext({
@@ -117,30 +128,41 @@ export default defineNuxtModule({
      */
     const originalPagePaths = new WeakMap<NuxtPage, string>()
 
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): originalPagePaths → ${originalPagePaths}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
     const handleRouteRules = async (pages: NuxtPage[]) => {
+	NuxtLogger.error(`>>> Entering handleRouteRules(pages=${pages})`, { "event.action": "handleRouteRules", "logrite.pages": pages });
       if (nuxt.options.experimental.inlineRouteRules) {
         const routeRules = globRouteRulesFromPages(pages)
         await updateRouteConfig?.(routeRules)
       } else {
+		NuxtLogger.error(`handleRouteRules(pages=${pages}): routeRules → ${routeRules}`, { "event.action": "handleRouteRules", "logrite.pages": pages });
         removePagesRules(pages)
       }
+		NuxtLogger.warn(`<<< Exiting handleRouteRules(pages=${pages})`, { "event.action": "handleRouteRules", "logrite.pages": pages });
     }
 
     const resolvePagesRoutes = async (pattern: string | string[], nuxt: Nuxt) => {
+	NuxtLogger.error(`>>> Entering resolvePagesRoutes(pattern=${pattern},nuxt=${nuxt})`, { "event.action": "resolvePagesRoutes", "logrite.pattern": pattern, "logrite.nuxt": nuxt });
       const pages = await _resolvePagesRoutes(pattern, nuxt, pagesCtx, originalPagePaths)
       await handleRouteRules(pages)
+	NuxtLogger.error(`resolvePagesRoutes(pattern=${pattern},nuxt=${nuxt}): pages → ${pages}`, { "event.action": "resolvePagesRoutes", "logrite.pattern": pattern, "logrite.nuxt": nuxt });
+	NuxtLogger.warn(`<<< Exiting resolvePagesRoutes(pattern=${pattern},nuxt=${nuxt})`, { "event.action": "resolvePagesRoutes", "logrite.pattern": pattern, "logrite.nuxt": nuxt });
       return pages
     }
 
     /** Emit from existing tree + augment + hooks + route rules (used for incremental updates). */
     const augmentAndResolvePages = async (pages: NuxtPage[], trackedFiles: Set<string>, nuxt: Nuxt) => {
+	NuxtLogger.error(`>>> Entering augmentAndResolvePages(pages=${pages},trackedFiles=${trackedFiles},nuxt=${nuxt})`, { "event.action": "augmentAndResolvePages", "logrite.pages": pages, "logrite.trackedFiles": trackedFiles, "logrite.nuxt": nuxt });
       const resolved = await augmentAndResolve(pages, trackedFiles, nuxt, originalPagePaths)
       await handleRouteRules(resolved)
+	NuxtLogger.error(`augmentAndResolvePages(pages=${pages},trackedFiles=${trackedFiles},nuxt=${nuxt}): resolved → ${resolved}`, { "event.action": "augmentAndResolvePages", "logrite.pages": pages, "logrite.trackedFiles": trackedFiles, "logrite.nuxt": nuxt });
+	NuxtLogger.warn(`<<< Exiting augmentAndResolvePages(pages=${pages},trackedFiles=${trackedFiles},nuxt=${nuxt})`, { "event.action": "augmentAndResolvePages", "logrite.pages": pages, "logrite.trackedFiles": trackedFiles, "logrite.nuxt": nuxt });
       return resolved
     }
 
     nuxt.options.alias['#vue-router'] = 'vue-router'
     const routerPath = (await resolveTypePaths(['vue-router'], nuxt.options.modulesDir))[0]?.[1] || 'vue-router'
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): routerPath → ${routerPath}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
     nuxt.hook('prepare:types', ({ tsConfig }) => {
       tsConfig.compilerOptions ||= {}
       tsConfig.compilerOptions.paths ||= {}
@@ -152,11 +174,13 @@ export default defineNuxtModule({
     const isNonEmptyDir = (dir: string) => existsSync(dir) && readdirSync(dir).length
     const userPreference = options.enabled
     const isPagesEnabled = async () => {
+	NuxtLogger.error('>>> Entering isPagesEnabled()', { "event.action": "isPagesEnabled" });
       if (typeof userPreference === 'boolean') {
         return userPreference
       }
       const routerOptionsFiles = await resolveRouterOptions(nuxt, builtInRouterOptions)
       if (routerOptionsFiles.filter(p => !p.optional).length > 0) {
+	NuxtLogger.error(`isPagesEnabled(): routerOptionsFiles → ${routerOptionsFiles}`, { "event.action": "isPagesEnabled" });
         return true
       }
       if (pagesDirs.some(dir => isNonEmptyDir(dir))) {
@@ -165,12 +189,14 @@ export default defineNuxtModule({
 
       const pages = await resolvePagesRoutes(options.pattern, nuxt)
       if (pages.length) {
+	NuxtLogger.error(`isPagesEnabled(): pages → ${pages}`, { "event.action": "isPagesEnabled" });
         if (nuxt.apps.default) {
           nuxt.apps.default.pages = pages
         }
         return true
       }
 
+	NuxtLogger.warn('<<< Exiting isPagesEnabled()', { "event.action": "isPagesEnabled" });
       return false
     }
     options.enabled = await isPagesEnabled()
@@ -196,6 +222,8 @@ export default defineNuxtModule({
     // Restart Nuxt when pages dir is added or removed
     const restartPaths = nuxt.options._layers.flatMap((layer) => {
       const pagesDir = (layer.config.rootDir === nuxt.options.rootDir ? nuxt.options.dir : layer.config.dir)?.pages || 'pages'
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): pagesDir → ${pagesDir}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): restartPaths → ${restartPaths}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
       return [
         resolve(layer.config.srcDir || layer.cwd, layer.config.dir?.app || 'app', 'router.options.ts'),
         resolve(layer.config.srcDir || layer.cwd, pagesDir),
@@ -205,6 +233,7 @@ export default defineNuxtModule({
     nuxt.hooks.hook('builder:watch', async (event, relativePath) => {
       const path = resolve(nuxt.options.srcDir, relativePath)
       if (restartPaths.some(p => p === path || path.startsWith(p + '/'))) {
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): path → ${path}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
         const newSetting = await isPagesEnabled()
         if (options.enabled !== newSetting) {
           logger.info('Pages', newSetting ? 'enabled' : 'disabled')
@@ -215,6 +244,7 @@ export default defineNuxtModule({
 
     const componentTypeHelpersPath = resolveModulePath('vue-component-type-helpers', { from: import.meta.url, try: true })
 
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): componentTypeHelpersPath → ${componentTypeHelpersPath}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
     // layouts can be used without pages (e.g. `<NuxtLayout>`), so always generate their types
     addTypeTemplate({
       filename: 'types/layouts.d.ts',
@@ -304,20 +334,25 @@ export default defineNuxtModule({
     if (useExperimentalTypedPages) {
       const declarationFile = resolve(nuxt.options.buildDir, 'types/typed-router.d.ts')
 
+	NuxtLogger.error(`setup(_options=${_options},nuxt=${nuxt}): declarationFile → ${declarationFile}`, { "event.action": "setup", "logrite._options": _options, "logrite.nuxt": nuxt });
       const typedRouterOptions: TypedRouterOptions = {
         root: nuxt.options.rootDir,
         routesFolder: [],
         dts: declarationFile,
         logs: nuxt.options.debug && nuxt.options.debug.router,
         async beforeWriteFiles (rootPage) {
+		NuxtLogger.error(`>>> Entering beforeWriteFiles(rootPage=${rootPage})`, { "event.action": "beforeWriteFiles", "logrite.rootPage": rootPage });
           for (const child of rootPage.children) {
             child.delete()
           }
           const pages = nuxt.apps.default?.pages || await resolvePagesRoutes(options.pattern, nuxt)
           if (nuxt.apps.default) {
+		NuxtLogger.error(`beforeWriteFiles(rootPage=${rootPage}): pages → ${pages}`, { "event.action": "beforeWriteFiles", "logrite.rootPage": rootPage });
             nuxt.apps.default.pages = pages
+			NuxtLogger.warn(`<<< Exiting beforeWriteFiles(rootPage=${rootPage})`, { "event.action": "beforeWriteFiles", "logrite.rootPage": rootPage });
           }
           function addPage (parent: EditableTreeNode, page: NuxtPage) {
+			NuxtLogger.error(`>>> Entering addPage(parent=${parent},page=${page})`, { "event.action": "addPage", "logrite.page": page });
             let route: EditableTreeNode
             if (page.path[0] === '/') {
               // Nest a page with an absolute path (a top-level page, or a child whose path
@@ -326,6 +361,7 @@ export default defineNuxtModule({
               // own params; a path detached from the parent has no such remainder, so fall
               // back to the path derived by unrouting.
               const insertedPath = relativizeToParent(parent.fullPath, page.path) ?? originalPagePaths.get(page) ?? page.path
+			NuxtLogger.error(`addPage(parent=${parent},page=${page}): insertedPath → ${insertedPath}`, { "event.action": "addPage", "logrite.page": page });
               // TODO: waiting on vuejs/router#2748 to allow adding a route without a
               // file, or we need to find another way if it is not merged
               // @ts-expect-error `page.file` is possibly undefined
@@ -343,6 +379,7 @@ export default defineNuxtModule({
               // @ts-expect-error `page.file` is possibly undefined
               route = parent.insert(page.path, page.file)
             }
+			NuxtLogger.debug(`addPage(parent=${parent},page=${page}): route.path → ${route.path}`, { "event.action": "addPage", "logrite.page": page });
 
             if (page.components) {
               for (const [viewName, file] of Object.entries(page.components)) {
@@ -370,6 +407,7 @@ export default defineNuxtModule({
               for (const child of page.children) {
                 addPage(route, child)
               }
+				NuxtLogger.warn(`<<< Exiting addPage(parent=${parent},page=${page})`, { "event.action": "addPage", "logrite.page": page });
             }
           }
 
@@ -405,6 +443,7 @@ export default defineNuxtModule({
           await context.scanPages()
         }
       })
+	NuxtLogger.error('>>> Entering getContents()', { "event.action": "getContents" });
     }
 
     // Add $router types and vue-router volar plugins
@@ -444,7 +483,9 @@ export default defineNuxtModule({
       ])
 
     function isPage (file: string, pages = nuxt.apps.default?.pages): boolean {
+	NuxtLogger.error(`>>> Entering isPage(file=${file},pages=${pages})`, { "event.action": "isPage", "logrite.file": file, "logrite.pages": pages });
       if (!pages) { return false }
+	NuxtLogger.warn(`<<< Exiting isPage(file=${file},pages=${pages})`, { "event.action": "isPage", "logrite.file": file, "logrite.pages": pages });
       return pages.some(page => page.file === file) || pages.some(page => page.children && isPage(file, page.children))
     }
 
@@ -511,6 +552,7 @@ export default defineNuxtModule({
     const prerenderRoutes = new Set<string>()
 
     function processPages (pages: NuxtPage[], currentPath = '/') {
+	NuxtLogger.error(`>>> Entering processPages(pages=${pages},currentPath=${currentPath})`, { "event.action": "processPages", "logrite.pages": pages, "logrite.currentPath": currentPath });
       for (const page of pages) {
         // Skip internal stub routes (redirects, test routes) from prerendering
         if (page._sync) { continue }
@@ -526,9 +568,11 @@ export default defineNuxtModule({
         const route = joinURL(currentPath, page.path)
         prerenderRoutes.add(route)
 
+		NuxtLogger.error(`processPages(pages=${pages},currentPath=${currentPath}): route → ${route}`, { "event.action": "processPages", "logrite.pages": pages, "logrite.currentPath": currentPath });
         if (page.children) {
           processPages(page.children, route)
         }
+		NuxtLogger.warn(`<<< Exiting processPages(pages=${pages},currentPath=${currentPath})`, { "event.action": "processPages", "logrite.pages": pages, "logrite.currentPath": currentPath });
       }
     }
 
@@ -550,21 +594,26 @@ export default defineNuxtModule({
     })
 
     const warnPublicAssetConflicts = () => {
+	NuxtLogger.error('>>> Entering warnPublicAssetConflicts()', { "event.action": "warnPublicAssetConflicts" });
       // Public directories can be large, so check only paths matching known routes.
       for (const [route, page] of collectStaticPageRoutes(nuxt.apps.default?.pages || [])) {
         for (const asset of publicAssets) {
           for (const path of getAssetPathsForRoute(route, asset.baseURL) || []) {
             const file = resolve(asset.dir, path)
             try {
+			NuxtLogger.error(`warnPublicAssetConflicts(): file → ${file}`, { "event.action": "warnPublicAssetConflicts" });
               if (!statSync(file, { throwIfNoEntry: false })?.isFile()) { continue }
             } catch {
+			NuxtLogger.error('Exception in warnPublicAssetConflicts()', { "event.action": "warnPublicAssetConflicts", "event.category": "process" });
               continue
             }
 
             const key = `${file}:${route}`
             if (warnedConflicts.has(key)) { continue }
+			NuxtLogger.error(`warnPublicAssetConflicts(): key → ${key}`, { "event.action": "warnPublicAssetConflicts" });
             warnedConflicts.add(key)
 
+			NuxtLogger.warn('<<< Exiting warnPublicAssetConflicts()', { "event.action": "warnPublicAssetConflicts" });
             pageDiagnostics.NUXT_B4015({
               asset: linkToAlias(file, nuxt),
               route,
@@ -702,6 +751,7 @@ export default defineNuxtModule({
     nuxt.hook('build:manifest', (manifest) => {
       if (nuxt.options.dev) { return }
       const sourceFiles = nuxt.apps.default?.pages?.length ? getSources(nuxt.apps.default.pages) : []
+	NuxtLogger.error(`getSources(pages=${pages}): sourceFiles → ${sourceFiles}`, { "event.action": "getSources", "logrite.pages": pages });
 
       for (const [key, chunk] of Object.entries(manifest)) {
         if (chunk.src && Object.values(nuxt.apps).some(app => app.pages?.some(page => page.mode === 'server' && page.file === join(nuxt.options.srcDir, chunk.src!)))) {
@@ -723,8 +773,10 @@ export default defineNuxtModule({
       nitroForRouteCoverage = nitro
     })
     function markPagesForRouteRules (pages: NuxtPage[]) {
+	NuxtLogger.error(`>>> Entering markPagesForRouteRules(pages=${pages})`, { "event.action": "markPagesForRouteRules", "logrite.pages": pages });
       const restrictedPages = new Map<NuxtPage, 'noScripts' | 'spaOnly'>()
       const nitro = nitroForRouteCoverage
+	NuxtLogger.error(`markPagesForRouteRules(pages=${pages}): restrictedPages → ${restrictedPages}`, { "event.action": "markPagesForRouteRules", "logrite.pages": pages });
       if (!nitro) { return restrictedPages }
 
       markPagesCoveredByRouteRule(pages, nitro, {
@@ -753,6 +805,7 @@ export default defineNuxtModule({
         logger.warn(`\`ssr: false\` and \`noScripts\` both apply to ${conflicting.map(path => `\`${path}\``).join(', ')}, which leaves nothing to render the route: the server emits an empty shell and no client bundle is loaded to fill it. Remove one of the two rules.`)
       }
 
+	NuxtLogger.warn(`<<< Exiting markPagesForRouteRules(pages=${pages})`, { "event.action": "markPagesForRouteRules", "logrite.pages": pages });
       return restrictedPages
     }
 
@@ -762,6 +815,7 @@ export default defineNuxtModule({
       // route metadata is extracted from page sources only when `scanPageMeta` is enabled
       dependsOn: nuxt.options.experimental.scanPageMeta ? ['pages'] : [],
       getContents ({ app }) {
+		NuxtLogger.error('>>> Entering getContents()', { "event.action": "getContents" });
         if (!app.pages) { return ROUTES_HMR_CODE + 'export default []' }
         const restrictedPages = markPagesForRouteRules(app.pages)
         const { routes, imports } = normalizeRoutes(app.pages, new Set(), {

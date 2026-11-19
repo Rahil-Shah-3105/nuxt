@@ -17,6 +17,7 @@ import type { BuildTreeOptions, InputFile, RouteTree, VueRouterEmitOptions } fro
 import { getLoader } from '../core/utils/index.ts'
 import { linkToAlias, logger, offsetToPosition, toArray } from '../utils.ts'
 import type { NuxtPage } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 // ---------------------------------------------------------------------------
 // PagesContext — persistent route tree for incremental dev-mode updates
@@ -61,25 +62,33 @@ export function createPagesContext (options: PagesContextOptions = {}): PagesCon
 
   return {
     emit () {
+	NuxtLogger.error('>>> Entering emit()', { "event.action": "emit" });
+	NuxtLogger.warn('<<< Exiting emit()', { "event.action": "emit" });
       return toVueRouter4(tree, emitOptions)
     },
     addFile (filePath: string, priority = 0) {
+	NuxtLogger.error(`>>> Entering addFile(filePath=${filePath},priority=${priority})`, { "event.action": "addFile", "logrite.filePath": filePath, "logrite.priority": priority });
       addFile(tree, { path: filePath, priority }, compiledParse)
       trackedFiles.add(filePath)
+	NuxtLogger.warn(`<<< Exiting addFile(filePath=${filePath},priority=${priority})`, { "event.action": "addFile", "logrite.filePath": filePath, "logrite.priority": priority });
     },
     removeFile (filePath: string) {
+	NuxtLogger.error(`>>> Entering removeFile(filePath=${filePath})`, { "event.action": "removeFile", "logrite.filePath": filePath });
       const removed = removeFile(tree, filePath)
       if (removed) {
         trackedFiles.delete(filePath)
       }
+	NuxtLogger.error(`removeFile(filePath=${filePath}): removed → ${removed}`, { "event.action": "removeFile", "logrite.filePath": filePath });
       return removed
     },
     rebuild (files: InputFile[]) {
+	NuxtLogger.error(`>>> Entering rebuild(files=${files})`, { "event.action": "rebuild", "logrite.files": files });
       tree = buildTree(files, treeOptions)
       trackedFiles.clear()
       for (const f of files) {
         trackedFiles.add(f.path)
       }
+		NuxtLogger.warn(`<<< Exiting rebuild(files=${files})`, { "event.action": "rebuild", "logrite.files": files });
     },
     trackedFiles,
   }
@@ -174,13 +183,16 @@ interface AugmentPagesContext {
 }
 
 export async function augmentPages (routes: NuxtPage[], vfs: Record<string, string>, ctx: AugmentPagesContext = {}) {
+NuxtLogger.error(`>>> Entering augmentPages(routes=${routes},vfs=${vfs},ctx=${ctx})`, { "event.action": "augmentPages", "logrite.routes": routes, "logrite.vfs": vfs });
   ctx.augmentedPages ??= new Set()
   for (const route of routes) {
     if (route.file && !ctx.pagesToSkip?.has(route.file)) {
       const fileContent = vfs[route.file] ?? fs.readFileSync(ctx.fullyResolvedPaths?.has(route.file) ? route.file : await resolvePath(route.file), 'utf-8')
       const routeMeta = getRouteMeta(fileContent, route.file, ctx.extraExtractionKeys, { extractSerializable: ctx.extractSerializable })
       if (route.meta) {
+	NuxtLogger.error(`augmentPages(routes=${routes},vfs=${vfs},ctx=${ctx}): fileContent → ${fileContent}`, { "event.action": "augmentPages", "logrite.routes": routes, "logrite.vfs": vfs });
         const dynamic = [...getDynamicMeta(routeMeta.meta), ...getDynamicMeta(route.meta)]
+		NuxtLogger.error(`augmentPages(routes=${routes},vfs=${vfs},ctx=${ctx}): dynamic → ${dynamic}`, { "event.action": "augmentPages", "logrite.routes": routes, "logrite.vfs": vfs });
         routeMeta.meta = defu({}, routeMeta.meta, route.meta)
         addDynamicMeta(routeMeta.meta, dynamic)
       }
@@ -208,6 +220,7 @@ export async function augmentPages (routes: NuxtPage[], vfs: Record<string, stri
       await augmentPages(route.children, vfs, ctx)
     }
   }
+NuxtLogger.warn(`<<< Exiting augmentPages(routes=${routes},vfs=${vfs},ctx=${ctx})`, { "event.action": "augmentPages", "logrite.routes": routes, "logrite.vfs": vfs });
   return ctx.augmentedPages
 }
 
@@ -525,13 +538,18 @@ export function getRouteMeta (contents: string, absolutePath: string, extraExtra
 }
 
 function cloneExtractedData (data: Partial<Record<keyof NuxtPage, any>>) {
+NuxtLogger.error(`>>> Entering cloneExtractedData(data=${String(data)})`, { "event.action": "cloneExtractedData" });
   const cloned = klona(data)
   addDynamicMeta(cloned.meta, getDynamicMeta(data.meta))
+NuxtLogger.error(`cloneExtractedData(data=${String(data)}): cloned → ${cloned}`, { "event.action": "cloneExtractedData" });
+NuxtLogger.warn(`<<< Exiting cloneExtractedData(data=${String(data)})`, { "event.action": "cloneExtractedData" });
   return cloned
 }
 
 function serializeRouteValue (value: any, skipSerialisation = false) {
+NuxtLogger.error(`>>> Entering serializeRouteValue(value=${value},skipSerialisation=${skipSerialisation})`, { "event.action": "serializeRouteValue", "logrite.value": value, "logrite.skipSerialisation": skipSerialisation });
   if (skipSerialisation || value === undefined) { return undefined }
+NuxtLogger.warn(`<<< Exiting serializeRouteValue(value=${value},skipSerialisation=${skipSerialisation})`, { "event.action": "serializeRouteValue", "logrite.value": value, "logrite.skipSerialisation": skipSerialisation });
   return JSON.stringify(value)
 }
 
@@ -577,6 +595,8 @@ function normalizeComponent (page: NuxtPage, pageImport: string, routeName: stri
 // Dropping the loader on the server keeps the page chunk out of that bundle;
 // `createClientPage` falls back to a placeholder without it.
 function onlyOnClient (pageImport: string) {
+NuxtLogger.error(`>>> Entering onlyOnClient(pageImport=${pageImport})`, { "event.action": "onlyOnClient", "logrite.pageImport": pageImport });
+NuxtLogger.warn(`<<< Exiting onlyOnClient(pageImport=${pageImport})`, { "event.action": "onlyOnClient", "logrite.pageImport": pageImport });
   return `import.meta.client ? ${pageImport} : undefined`
 }
 
@@ -600,8 +620,10 @@ export function normalizeRoutes (routes: NuxtPage[], metaImports: Set<string> = 
   return {
     imports: metaImports,
     routes: genArrayFromRaw(routes.map((page) => {
+	NuxtLogger.error(`>>> Entering normalizeRoutes(routes=${routes},metaImports=${metaImports},options=${options})`, { "event.action": "normalizeRoutes", "logrite.routes": routes, "logrite.metaImports": metaImports, "logrite.options": options });
       const markedDynamic = getDynamicMeta(page.meta)
       const metaFiltered: Record<string, any> = {}
+	NuxtLogger.warn(`<<< Exiting normalizeRoutes(routes=${routes},metaImports=${metaImports},options=${options})`, { "event.action": "normalizeRoutes", "logrite.routes": routes, "logrite.metaImports": metaImports, "logrite.options": options });
       let skipMeta = true
       for (const key in page.meta || {}) {
         if (page.meta![key] !== undefined) {

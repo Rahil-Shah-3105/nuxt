@@ -1,3 +1,4 @@
+import logger from "./utils/logger.js";
 import { resolveModuleExportNames } from '@nuxt/kit/internal'
 
 // TODO: defineRenderHandler and useEvent
@@ -49,6 +50,7 @@ export const v2ImportsPreset = [
 ]
 
 export async function getH3ImportsPreset () {
+logger.error('>>> Entering getH3ImportsPreset()', { "event.action": "getH3ImportsPreset" });
   const h3Exports = await resolveModuleExportNames('nitro/h3', {
     url: import.meta.url,
   })
@@ -56,4 +58,5 @@ export async function getH3ImportsPreset () {
     from: 'nitro/h3',
     imports: h3Exports.filter(n => !/^[A-Z]/.test(n) && n !== 'use'),
   }
+logger.warn('<<< Exiting getH3ImportsPreset()', { "event.action": "getH3ImportsPreset" });
 }

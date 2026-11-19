@@ -10,6 +10,7 @@ import { type PackageJson, readPackage } from 'pkg-types'
 import { genImport } from 'knitwork'
 import type { getComponentsT } from '../module.ts'
 import type { Nuxt } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 const COMPONENT_QUERY_RE = /[?&]nuxt_component=/
 
@@ -20,6 +21,7 @@ interface TransformPluginOptions {
 }
 
 export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
+NuxtLogger.error(`>>> Entering TransformPlugin(nuxt=${nuxt},options=${options})`, { "event.action": "TransformPlugin", "logrite.nuxt": nuxt, "logrite.options": options });
   const componentUnimport = createUnimport({
     imports: [
       {
@@ -33,9 +35,13 @@ export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
 
   const rootDirWithSlash = nuxt.options.rootDir.replace(/\/?$/, '/')
 
+NuxtLogger.error(`TransformPlugin(nuxt=${nuxt},options=${options}): rootDirWithSlash → ${rootDirWithSlash}`, { "event.action": "TransformPlugin", "logrite.nuxt": nuxt, "logrite.options": options });
   function getComponentsImports (): Import[] {
+	NuxtLogger.error('>>> Entering getComponentsImports()', { "event.action": "getComponentsImports" });
     const components = options.getComponents(options.mode)
     const clientOrServerModes = new Set(['client', 'server'])
+	NuxtLogger.error(`getComponentsImports(): clientOrServerModes → ${clientOrServerModes}`, { "event.action": "getComponentsImports" });
+	NuxtLogger.error(`getComponentsImports(): components → ${components}`, { "event.action": "getComponentsImports" });
     return components.flatMap((c): Import[] => {
       const withMode = (mode: string | undefined) => mode
         ? `${c.filePath}${c.filePath.includes('?') ? '&' : '?'}nuxt_component=${mode}&nuxt_component_name=${c.pascalName}&nuxt_component_export=${c.export || 'default'}`
@@ -63,7 +69,9 @@ export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
       name: 'nuxt:components:imports-wrapper',
       enforce: 'post',
       transformInclude (id) {
+		NuxtLogger.error(`>>> Entering transformInclude(id=${id})`, { "event.action": "transformInclude", "logrite.id": id });
         id = normalize(id)
+		NuxtLogger.warn(`<<< Exiting transformInclude(id=${id})`, { "event.action": "transformInclude", "logrite.id": id });
         return id.startsWith('virtual:') || id.startsWith('\0virtual:') || id.startsWith(nuxt.options.buildDir) || !isIgnored(id, undefined, nuxt)
       },
       transform: {
@@ -71,12 +79,14 @@ export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
           id: COMPONENT_QUERY_RE,
         },
         handler (_code, id) {
+		NuxtLogger.error(`>>> Entering handler(_code=${_code},id=${id})`, { "event.action": "handler", "logrite._code": _code, "logrite.id": id });
           // Virtual component wrapper
           const { search } = parseModuleId(id)
           const params = new URLSearchParams(search)
           const mode = params.get('nuxt_component')
           const bare = id.replace(/\?.*/, '')
           const componentExport = params.get('nuxt_component_export') || 'default'
+		NuxtLogger.error(`handler(_code=${_code},id=${id}): mode → ${mode}`, { "event.action": "handler", "logrite._code": _code, "logrite.id": id });
           const exportWording = componentExport === 'default' ? 'export default' : `export const ${componentExport} =`
           if (mode === 'async') {
             return {
@@ -148,6 +158,7 @@ export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
 
           const result = await componentUnimport.injectImports(code, id, { autoImport: false, transformVirtualImports: true })
           if (!result) { return }
+		NuxtLogger.error(`handler(code=${code},id=${id}): result → ${result}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id });
 
           return {
             code: result.code,
@@ -159,4 +170,5 @@ export function TransformPlugin (nuxt: Nuxt, options: TransformPluginOptions) {
       },
     },
   ])
+NuxtLogger.warn(`<<< Exiting TransformPlugin(nuxt=${nuxt},options=${options})`, { "event.action": "TransformPlugin", "logrite.nuxt": nuxt, "logrite.options": options });
 }

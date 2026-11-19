@@ -1,11 +1,13 @@
 import { defineNuxtPlugin } from '#app/nuxt'
 import type { ObjectPlugin, Plugin } from '#app/nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { freezeHead } from '../island-head'
 
 const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
   name: 'nuxt:head',
   enforce: 'pre',
   setup (nuxtApp) {
+	NuxtLogger.error(`>>> Entering setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     const head = nuxtApp.ssrContext!.head
 
     // Drop plugin-phase `useHead` writes for islands -- they belong to the
@@ -18,6 +20,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
 
     // nuxt.config appHead is set server-side within the renderer
     nuxtApp.vueApp.use(head)
+	NuxtLogger.warn(`<<< Exiting setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
   },
 })
 

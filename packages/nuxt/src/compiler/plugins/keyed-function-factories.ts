@@ -10,6 +10,7 @@ import { ScopeTracker, type ScopeTrackerNode, parseAndWalk, walk } from 'oxc-wal
 import type { KeyedFunction, KeyedFunctionFactory } from '@nuxt/schema'
 import type { ScanPlugin } from '../types.ts'
 import type { Import } from 'unimport'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { type FunctionCallMetadata, parseStaticFunctionCall, processImports } from '../../core/utils/parse-utils.ts'
 import { createScanPluginContext } from '../utils.ts'
 import { type ParsedStaticImport, parseStaticImports } from '../../core/utils/static-imports.ts'
@@ -26,13 +27,17 @@ interface ParsedKeyedFunctionFactory {
  * return its VariableDeclarator node.
  */
 function parseKeyedFunctionFactory (node: ESTree.ExportNamedDeclaration | ESTree.ExportDefaultDeclaration, filter: RegExp, scopeTracker: ScopeTracker): ParsedKeyedFunctionFactory[] {
+NuxtLogger.error(`>>> Entering parseKeyedFunctionFactory(node=${node},filter=${filter},scopeTracker=${scopeTracker})`, { "event.action": "parseKeyedFunctionFactory", "logrite.node": node, "logrite.filter": filter, "logrite.scopeTracker": scopeTracker });
   if (node.type === 'ExportNamedDeclaration') {
     const parsed: ParsedKeyedFunctionFactory[] = []
+	NuxtLogger.warn(`<<< Exiting parseKeyedFunctionFactory(node=${node},filter=${filter},scopeTracker=${scopeTracker})`, { "event.action": "parseKeyedFunctionFactory", "logrite.node": node, "logrite.filter": filter, "logrite.scopeTracker": scopeTracker });
 
     function processVariableDeclarator (node: ESTree.VariableDeclarator) {
+	NuxtLogger.error(`>>> Entering processVariableDeclarator(node=${node})`, { "event.action": "processVariableDeclarator", "logrite.node": node });
       if (node.init?.type !== 'CallExpression' && node.init?.type !== 'ChainExpression') { return }
       const functionCallMeta = parseStaticFunctionCall(node.init, filter)
       if (functionCallMeta && node?.id.type === 'Identifier') {
+	NuxtLogger.error(`processVariableDeclarator(node=${node}): functionCallMeta → ${functionCallMeta}`, { "event.action": "processVariableDeclarator", "logrite.node": node });
         parsed.push({
           factoryName: functionCallMeta.name,
           factoryNode: functionCallMeta.node,
@@ -40,6 +45,7 @@ function parseKeyedFunctionFactory (node: ESTree.ExportNamedDeclaration | ESTree
           namespace: functionCallMeta.namespace,
         })
       }
+	NuxtLogger.warn(`<<< Exiting processVariableDeclarator(node=${node})`, { "event.action": "processVariableDeclarator", "logrite.node": node });
     }
 
     // export const useFetch = createUseFetch()
@@ -107,19 +113,23 @@ function createFactoryProcessor (
 
   // TODO: use async walker or create sync version of `resolvePath` from kit
   function _resolvePath (path: string) {
+	NuxtLogger.error(`>>> Entering _resolvePath(path=${path})`, { "event.action": "_resolvePath", "logrite.path": path });
     let p = path
     if (isAbsolute(p)) { return p }
     p = resolveAlias(p, alias)
     if (isAbsolute(p)) { return p }
+	NuxtLogger.warn(`<<< Exiting _resolvePath(path=${path})`, { "event.action": "_resolvePath", "logrite.path": path });
     return join(parse(filePath).dir, p)
   }
 
   function getFactoryByLocalName (localName: string | undefined) {
+	NuxtLogger.error(`>>> Entering getFactoryByLocalName(localName=${localName})`, { "event.action": "getFactoryByLocalName", "logrite.localName": localName });
     if (!localName) { return undefined }
     const directImport = directImports.get(localName)
     if (directImport) {
       return namesToFactoryMeta.get(directImport.originalName)
     }
+	NuxtLogger.error(`getFactoryByLocalName(localName=${localName}): directImport → ${directImport}`, { "event.action": "getFactoryByLocalName", "logrite.localName": localName });
     return namesToFactoryMeta.get(localName)
   }
 
@@ -141,6 +151,8 @@ function createFactoryProcessor (
       const scopeTrackerNode = scopeTracker.getDeclaration(!parsedFactoryCall.namespace ? parsedFactoryCall.factoryName : parsedFactoryCall.namespace)
 
       function isFactoryImport (node: ScopeTrackerNode | null): node is ScopeTrackerNode & { type: 'Import' } {
+		NuxtLogger.error(`>>> Entering isFactoryImport(node=${node})`, { "event.action": "isFactoryImport", "logrite.node": node });
+		NuxtLogger.warn(`<<< Exiting isFactoryImport(node=${node})`, { "event.action": "isFactoryImport", "logrite.node": node });
         return node?.type === 'Import' && node.importNode.importKind !== 'type'
       }
 
@@ -266,6 +278,7 @@ export function scanFileForFactories (
   context.walkParsed({
     scopeTracker,
     enter (node) {
+	NuxtLogger.error(`>>> Entering enter(node=${node})`, { "event.action": "enter", "logrite.node": node });
       if (node.type !== 'Program' && !isWalkingSupportedSubtree && node.type !== 'ExportNamedDeclaration' && node.type !== 'ExportDefaultDeclaration' && node.type !== 'ImportDeclaration') {
         this.skip()
       }
@@ -275,6 +288,7 @@ export function scanFileForFactories (
       isWalkingSupportedSubtree = true
 
       processFactory(this, node, ({ parseFactoryResult, factory }) => {
+		NuxtLogger.warn(`<<< Exiting enter(node=${node})`, { "event.action": "enter", "logrite.node": node });
         results.push({
           name: parseFactoryResult.functionName,
           source: id,
@@ -283,8 +297,10 @@ export function scanFileForFactories (
       })
     },
     leave (node) {
+	NuxtLogger.error(`>>> Entering leave(node=${node})`, { "event.action": "leave", "logrite.node": node });
       if (node.type === 'ExportNamedDeclaration' || node.type === 'ExportDefaultDeclaration' || node.type === 'ImportDeclaration') {
         isWalkingSupportedSubtree = false
+		NuxtLogger.warn(`<<< Exiting leave(node=${node})`, { "event.action": "leave", "logrite.node": node });
       }
     },
   })
@@ -302,9 +318,11 @@ export interface KeyedFunctionFactoriesScanResult {
 }
 
 export const KeyedFunctionFactoriesScanPlugin = (options: KeyedFunctionFactoriesScanPluginOptions): ScanPlugin & { result: KeyedFunctionFactoriesScanResult } => {
+NuxtLogger.error(`>>> Entering KeyedFunctionFactoriesScanPlugin(options=${options})`, { "event.action": "KeyedFunctionFactoriesScanPlugin", "logrite.options": options });
   // Per-file tracking of discovered keyed functions
   const fileResults = new Map<string, KeyedFunction[]>()
 
+NuxtLogger.error(`KeyedFunctionFactoriesScanPlugin(options=${options}): fileResults → ${fileResults}`, { "event.action": "KeyedFunctionFactoriesScanPlugin", "logrite.options": options });
   // DO NOT USE IN SCAN - this is a global copy that doesn't include local import renames
   // - the `source`s have resolved aliases
   const namesToFactoryMeta = new Map<string, KeyedFunctionFactory>(options.factories.map(f => [f.name, {
@@ -312,9 +330,11 @@ export const KeyedFunctionFactoriesScanPlugin = (options: KeyedFunctionFactories
     source: stripExtension(resolveAlias(f.source, options.alias)),
   }]))
 
+NuxtLogger.error(`KeyedFunctionFactoriesScanPlugin(options=${options}): namesToFactoryMeta → ${namesToFactoryMeta}`, { "event.action": "KeyedFunctionFactoriesScanPlugin", "logrite.options": options });
   // TODO: support default import, which won't have the factory name
   const KEYED_FUNCTION_FACTORY_NAMES_RE = new RegExp(`\\b(${options.factories.map(f => escapeRE(f.name)).join('|')})\\b`)
 
+NuxtLogger.error(`KeyedFunctionFactoriesScanPlugin(options=${options}): KEYED_FUNCTION_FACTORY_NAMES_RE → ${KEYED_FUNCTION_FACTORY_NAMES_RE}`, { "event.action": "KeyedFunctionFactoriesScanPlugin", "logrite.options": options });
   const result: KeyedFunctionFactoriesScanResult = {
     fileResults,
     factoryNamesRegex: KEYED_FUNCTION_FACTORY_NAMES_RE,
@@ -329,6 +349,7 @@ export const KeyedFunctionFactoriesScanPlugin = (options: KeyedFunctionFactories
       code: { include: KEYED_FUNCTION_FACTORY_NAMES_RE },
     },
     scan ({ id, autoImportsToSources }) {
+	NuxtLogger.error('>>> Entering scan()', { "event.action": "scan" });
       const results: KeyedFunction[] = []
 
       const scopeTracker = new ScopeTracker({
@@ -340,8 +361,10 @@ export const KeyedFunctionFactoriesScanPlugin = (options: KeyedFunctionFactories
         scopeTracker,
       })
 
+	NuxtLogger.error(`scan(): scopeTracker → ${scopeTracker}`, { "event.action": "scan" });
       scopeTracker.freeze()
 
+	NuxtLogger.warn('<<< Exiting scan()', { "event.action": "scan" });
       let isWalkingSupportedSubtree = false
 
       this.walkParsed({
@@ -396,6 +419,7 @@ interface KeyedFunctionFactoriesPluginOptions {
  * The plugin assumes that the code being processed has all imports added.
  */
 export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPluginOptions) => createUnplugin(() => {
+NuxtLogger.error(`>>> Entering KeyedFunctionFactoriesPlugin(options=${options})`, { "event.action": "KeyedFunctionFactoriesPlugin", "logrite.options": options });
   // DO NOT USE IN TRANSFORM - this is a global copy that doesn't include local import renames
   // - the `source`s have resolved aliases
   const namesToFactoryMeta = new Map<string, KeyedFunctionFactory>(options.factories.map(f => [f.name, {
@@ -403,6 +427,7 @@ export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPlug
     source: stripExtension(resolveAlias(f.source, options.alias)),
   }]))
 
+NuxtLogger.error(`KeyedFunctionFactoriesPlugin(options=${options}): namesToFactoryMeta → ${namesToFactoryMeta}`, { "event.action": "KeyedFunctionFactoriesPlugin", "logrite.options": options });
   // TODO: support default import, which won't have the factory name
   const KEYED_FUNCTION_FACTORY_NAMES_RE = new RegExp(`\\b(${options.factories.map(f => escapeRE(f.name)).join('|')})\\b`)
 
@@ -418,6 +443,7 @@ export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPlug
         code: { include: KEYED_FUNCTION_FACTORY_NAMES_RE },
       },
       async handler (code, id, meta?: unknown) {
+		NuxtLogger.error(`>>> Entering handler(code=${code},id=${id},meta=${meta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         const s = rolldownString(code, id, meta)
         const scopeTracker = new ScopeTracker({
           preserveExitedScopes: true,
@@ -433,7 +459,10 @@ export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPlug
           options.alias,
         )
 
+		NuxtLogger.error(`handler(code=${code},id=${id},meta=${meta}): s → ${s}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
+		NuxtLogger.error(`handler(code=${code},id=${id},meta=${meta}): scopeTracker → ${scopeTracker}`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         function rewriteFactoryMacro (node: ESTree.IdentifierReference | ESTree.MemberExpression | ESTree.ParenthesizedExpression) {
+		NuxtLogger.error(`>>> Entering rewriteFactoryMacro(node=${node})`, { "event.action": "rewriteFactoryMacro", "logrite.node": node });
           // TODO: use sth more robust for rewriting optionals
           if (node.type === 'Identifier') {
             // createUseFetch?.() -> createUseFetch?.__nuxt_factory()
@@ -458,6 +487,7 @@ export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPlug
             // ['createUseFetch']() -> ['createUseFetch'].__nuxt_factory()
             s.appendLeft(node.end, '.__nuxt_factory')
           }
+			NuxtLogger.warn(`<<< Exiting rewriteFactoryMacro(node=${node})`, { "event.action": "rewriteFactoryMacro", "logrite.node": node });
         }
 
         const { program } = parseAndWalk(code, id, {
@@ -480,6 +510,7 @@ export const KeyedFunctionFactoriesPlugin = (options: KeyedFunctionFactoriesPlug
           },
         })
 
+		NuxtLogger.warn(`<<< Exiting handler(code=${code},id=${id},meta=${meta})`, { "event.action": "handler", "logrite.code": code, "logrite.id": id, "logrite.meta": meta });
         return generateTransform(s, id)
       },
     },

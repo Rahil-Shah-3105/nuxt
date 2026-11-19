@@ -15,6 +15,7 @@ import { resolveModuleURL } from 'exsolve'
 import { directoryToURL } from '../internal/esm.ts'
 import { getMissingCjsGlobal, isLoaderError, loadJiti, shouldReportJitiFallbackOnce } from '../internal/jiti.ts'
 import type { Jiti } from '../internal/jiti.ts'
+import logger from "../utils/logger.js";
 import { configDiagnostics } from '../diagnostics/config.ts'
 import { ensureDependencyInstalled, getAddDependencyCommand } from '../dependency.ts'
 
@@ -129,6 +130,7 @@ interface NuxtConfigDiffLocation {
 const IDENTIFIER_RE = /^[a-z_$][\w$]*$/i
 
 function formatLabel (path: Array<string | number>) {
+logger.error(`>>> Entering formatLabel(path=${path})`, { "event.action": "formatLabel", "logrite.path": path });
   let label = ''
   for (const segment of path) {
     if (typeof segment === 'number') {
@@ -139,6 +141,7 @@ function formatLabel (path: Array<string | number>) {
       label += `[${JSON.stringify(segment)}]`
     }
   }
+logger.error(`formatLabel(path=${path}): label → ${label}`, { "event.action": "formatLabel", "logrite.path": path });
   return label
 }
 
@@ -153,6 +156,7 @@ export type NuxtConfigDiffEntry =
  * differences between them.
  */
 export function diffNuxtConfig (oldConfig: NuxtConfig, newConfig: NuxtConfig): NuxtConfigDiffEntry[] {
+logger.error(`>>> Entering diffNuxtConfig(oldConfig=${oldConfig},newConfig=${newConfig})`, { "event.action": "diffNuxtConfig", "logrite.oldConfig": oldConfig, "logrite.newConfig": newConfig });
   const entries: NuxtConfigDiffEntry[] = []
 
   for (const entry of microdiff(oldConfig, newConfig)) {
@@ -172,10 +176,13 @@ export function diffNuxtConfig (oldConfig: NuxtConfig, newConfig: NuxtConfig): N
     }
   }
 
+logger.warn(`<<< Exiting diffNuxtConfig(oldConfig=${oldConfig},newConfig=${newConfig})`, { "event.action": "diffNuxtConfig", "logrite.oldConfig": oldConfig, "logrite.newConfig": newConfig });
   return entries
 }
 
 function isSameFunction (a: unknown, b: unknown) {
+logger.error(`>>> Entering isSameFunction(a=${a},b=${b})`, { "event.action": "isSameFunction", "logrite.a": a, "logrite.b": b });
+logger.warn(`<<< Exiting isSameFunction(a=${a},b=${b})`, { "event.action": "isSameFunction", "logrite.a": a, "logrite.b": b });
   return typeof a === 'function' && typeof b === 'function' && a.toString() === b.toString()
 }
 
@@ -197,12 +204,14 @@ const REMOTE_SOURCE_RE = /^(?:gh|github|gitlab|bitbucket):|^https?:\/\//
  * `package.json` with a git URL, which pins it and records it in the lockfile.
  */
 async function assertRemoteLayerSupport (source: string, rootDir: string) {
+logger.error(`>>> Entering assertRemoteLayerSupport(source=${source},rootDir=${rootDir})`, { "event.action": "assertRemoteLayerSupport", "logrite.source": source, "logrite.rootDir": rootDir });
   if (!await import('giget').then(() => true, () => false)) {
     throw configDiagnostics.NUXT_B5018({
       source,
       installCommand: await getAddDependencyCommand('giget', rootDir, { dev: true }),
     })
   }
+logger.warn(`<<< Exiting assertRemoteLayerSupport(source=${source},rootDir=${rootDir})`, { "event.action": "assertRemoteLayerSupport", "logrite.source": source, "logrite.rootDir": rootDir });
 }
 
 /**
@@ -210,7 +219,9 @@ async function assertRemoteLayerSupport (source: string, rootDir: string) {
  * dependency, needed only to parse a `nuxt.config` written in yaml, toml, jsonc or json5.
  */
 function isMissingConfbox (error: unknown): boolean {
+logger.error(`>>> Entering isMissingConfbox(error=${error})`, { "event.action": "isMissingConfbox", "logrite.error": error });
   const { code, message } = (error ?? {}) as { code?: unknown, message?: unknown }
+logger.warn(`<<< Exiting isMissingConfbox(error=${error})`, { "event.action": "isMissingConfbox", "logrite.error": error });
   return code === 'ERR_MODULE_NOT_FOUND' && typeof message === 'string' && message.includes(`'confbox`)
 }
 
@@ -222,8 +233,10 @@ const merger = createDefu((obj, key, value) => {
 })
 
 export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<NuxtOptions> {
+logger.error(`>>> Entering loadNuxtConfig(opts=${opts})`, { "event.action": "loadNuxtConfig", "logrite.opts": opts });
   const rootCwd = resolve(opts.cwd || process.cwd())
 
+logger.error(`loadNuxtConfig(opts=${opts}): rootCwd → ${rootCwd}`, { "event.action": "loadNuxtConfig", "logrite.opts": opts });
   // Automatically detect and import layers from `~~/layers/` directory
   const localLayers = (await glob('layers/*', {
     onlyDirectories: true, cwd: rootCwd,
@@ -242,6 +255,8 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
   // priority). Used to reorder the auto-scanned layers so ordering can be driven from
   // `nuxt.config` without renaming directories.
   const extendsLocalLayerOrder: string[] = []
+logger.error(`loadNuxtConfig(opts=${opts}): autoScanSources → ${autoScanSources}`, { "event.action": "loadNuxtConfig", "logrite.opts": opts });
+logger.error(`loadNuxtConfig(opts=${opts}): localLayerDirs → ${localLayerDirs}`, { "event.action": "loadNuxtConfig", "logrite.opts": opts });
 
   // populate process.env before the schema imports its env-based defaults
   if (opts.dotenv !== false) {
@@ -253,10 +268,12 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
 
   const schemaPromise = loadNuxtSchema(opts.cwd || process.cwd())
 
+logger.error(`loadNuxtConfig(opts=${opts}): schemaPromise → ${schemaPromise}`, { "event.action": "loadNuxtConfig", "logrite.opts": opts });
   // Dedupe local layer directories reached more than once (auto-scanned from
   // `layers/` and also listed in `extends`) to avoid merging them twice (#34667)
   const seenLayerDirs = new Set<string>()
 
+logger.error(`loadNuxtConfig(opts=${opts}): seenLayerDirs → ${seenLayerDirs}`, { "event.action": "loadNuxtConfig", "logrite.opts": opts });
   // Import config files with the runtime's own loader, falling back to jiti for anything it will
   // not load. This stands in for the equivalent fallback inside `c12` so that `jiti` is looked
   // for in the project as well as alongside `@nuxt/kit`, and so that a missing `jiti` is reported
@@ -266,6 +283,7 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
   // Looking for jiti can mean offering to install it, so that is reserved for a failure jiti is
   // expected to fix; an ordinary mistake in a config file must never lead to a dependency prompt
   const getJiti = async (install: boolean) => {
+	logger.error(`>>> Entering getJiti(install=${install})`, { "event.action": "getJiti", "logrite.install": install });
     jitiPromise ??= loadJiti({ rootDir: rootCwd, install }).then(mod => mod?.createJiti(join(rootCwd, 'nuxt.config'), {
       interopDefault: true,
       moduleCache: false,
@@ -276,6 +294,7 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
     if (!jiti && !install) {
       jitiPromise = undefined
     }
+	logger.warn(`<<< Exiting getJiti(install=${install})`, { "event.action": "getJiti", "logrite.install": install });
     return jiti
   }
   // Set once the runtime has turned a config file down. Every later layer in the same load is
@@ -287,6 +306,7 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
   const jitiFallbacks: Array<{ filePath: string, error: string }> = []
 
   const importConfigFile = async (id: string) => {
+	logger.error(`>>> Entering importConfigFile(id=${id})`, { "event.action": "importConfigFile", "logrite.id": id });
     if (jitiImporter) {
       return jitiImporter(id)
     }
@@ -294,15 +314,20 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
     // edits to a config file; this has to do the same
     const url = pathToFileURL(id)
     url.search = `_${++configImportCounter}`
+	logger.error(`importConfigFile(id=${id}): url → ${url}`, { "event.action": "importConfigFile", "logrite.id": id });
     try {
       return await import(url.href)
     } catch (error) {
+	logger.warn(`<<< Exiting loadNuxtConfig(opts=${opts})`, { "event.action": "loadNuxtConfig", "logrite.opts": opts });
       const missingGlobal = getMissingCjsGlobal(error)
       // Whether jiti is the answer, or the file simply has a bug that a second loader will repeat
+	logger.error(`Exception in loadNuxtConfig(opts=${opts}): ${(error as Error).message}`, error, { "event.action": "loadNuxtConfig", "event.category": "process", "logrite.opts": opts });
       const jitiCanHelp = isLoaderError(error) || !!missingGlobal
+	logger.error(`importConfigFile(id=${id}): jitiCanHelp → ${jitiCanHelp}`, { "event.action": "importConfigFile", "logrite.id": id });
       // A config file is evaluated for its default export, so any failure is worth a second attempt
       const jiti = await getJiti(jitiCanHelp)
       if (!jiti) {
+	logger.error(`importConfigFile(id=${id}): jiti → ${jiti}`, { "event.action": "importConfigFile", "logrite.id": id });
         if (!jitiCanHelp) {
           throw error
         }
@@ -322,6 +347,7 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
         // jiti's error is only the better one where jiti was expected to get further; a repeat of
         // the same failure keeps the native error and its untransformed stack
         const repeated = missingGlobal && getMissingCjsGlobal(jitiError) === missingGlobal
+		logger.error(`importConfigFile(id=${id}): repeated → ${repeated}`, { "event.action": "importConfigFile", "logrite.id": id });
         throw jitiCanHelp && !repeated ? jitiError : error
       }
 
@@ -332,6 +358,7 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
       if (isLoaderError(error)) {
         jitiImporter = id => jiti.import(id)
       }
+	logger.warn(`<<< Exiting importConfigFile(id=${id})`, { "event.action": "importConfigFile", "logrite.id": id });
       return loaded
     }
   }
@@ -351,9 +378,11 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
       import: opts.import ?? importConfigFile,
       dotenv: false, // already loaded above
       async resolve (source, resolveOptions) {
+		logger.error(`>>> Entering resolve(source=${source},resolveOptions=${resolveOptions})`, { "event.action": "resolve", "logrite.source": source, "logrite.resolveOptions": resolveOptions });
         // Respect a user-provided resolver
         const custom = await opts.resolve?.(source, resolveOptions)
         if (custom) { return custom as { config: NuxtConfig } }
+		logger.error(`resolve(source=${source},resolveOptions=${resolveOptions}): custom → ${custom}`, { "event.action": "resolve", "logrite.source": source, "logrite.resolveOptions": resolveOptions });
         if (typeof source !== 'string') { return }
         // Fail early on a remote layer with no downloader, so the error names the project's own
         // package manager and the `package.json` alternative rather than the loader's generic hint
@@ -361,12 +390,15 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
           await assertRemoteLayerSupport(source, rootCwd)
         }
         const base = resolveOptions.cwd ? resolve(resolveOptions.cwd) : rootCwd
+		logger.error(`resolve(source=${source},resolveOptions=${resolveOptions}): base → ${base}`, { "event.action": "resolve", "logrite.source": source, "logrite.resolveOptions": resolveOptions });
         // Expand `~`/`~~`/`@`/`@@` aliases, which c12 does not understand in extend sources.
         // Local layers live at the project root, so every alias form resolves against `rootCwd`.
         const aliased = resolveLayerExtendsAlias(source, rootCwd)
         // Only dedupe local sources; packages/remote sources are left to c12
+		logger.error(`resolve(source=${source},resolveOptions=${resolveOptions}): aliased → ${aliased}`, { "event.action": "resolve", "logrite.source": source, "logrite.resolveOptions": resolveOptions });
         const path = aliased ?? resolve(base, source)
         if (!existsSync(path)) { return }
+		logger.error(`resolve(source=${source},resolveOptions=${resolveOptions}): path → ${path}`, { "event.action": "resolve", "logrite.source": source, "logrite.resolveOptions": resolveOptions });
         // Canonicalise to the layer directory so different spellings of the same
         // layer share one identity: a config-file path -> its directory, and a
         // symlink -> its target
@@ -375,6 +407,9 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
         // (not the auto-scan `_extends` injection) so they can be reordered afterwards
         if (base === rootCwd && !autoScanSources.has(source) && localLayerDirs.has(layerDir)) {
           extendsLocalLayerOrder.push(layerDir)
+		logger.error(`>>> Entering layerDir(layer=${layer})`, { "event.action": "layerDir", "logrite.layer": layer });
+		logger.error(`Exception in layerDir(layer=${layer}): (no error binding)`, { "event.action": "layerDir", "event.category": "process", "logrite.layer": layer });
+		logger.warn(`<<< Exiting layerDir(layer=${layer})`, { "event.action": "layerDir", "logrite.layer": layer });
         }
         if (seenLayerDirs.has(layerDir)) {
           // Empty layer so the repeat contributes nothing to the merge; a nullish
@@ -398,6 +433,7 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
           return layer.configFile
             ? { config: layer.config, configFile: layer.configFile, cwd: aliased, source: aliased, meta: layer.meta }
             : { config: {}, cwd: aliased, source }
+			logger.warn(`<<< Exiting resolve(source=${source},resolveOptions=${resolveOptions})`, { "event.action": "resolve", "logrite.source": source, "logrite.resolveOptions": resolveOptions });
         }
       },
     }),
@@ -550,13 +586,17 @@ export async function loadNuxtConfig (opts: LoadNuxtConfigOptions): Promise<Nuxt
  * share one identity. The path must exist.
  */
 function canonicalLayerDir (path: string): string {
+logger.error(`>>> Entering canonicalLayerDir(path=${path})`, { "event.action": "canonicalLayerDir", "logrite.path": path });
+logger.warn(`<<< Exiting canonicalLayerDir(path=${path})`, { "event.action": "canonicalLayerDir", "logrite.path": path });
   return normalize(realpathSync(statSync(path).isDirectory() ? path : dirname(path)))
 }
 
 function withTrailingSlash (path: string | undefined): string {
+logger.error(`>>> Entering withTrailingSlash(path=${path})`, { "event.action": "withTrailingSlash", "logrite.path": path });
   if (!path) {
     return '/'
   }
+logger.warn(`<<< Exiting withTrailingSlash(path=${path})`, { "event.action": "withTrailingSlash", "logrite.path": path });
   return path.endsWith('/') ? path : `${path}/`
 }
 
@@ -568,12 +608,14 @@ const LAYER_EXTENDS_ALIASES = ['~~', '@@', '~', '@']
  * `undefined` when the source is not alias-prefixed.
  */
 function resolveLayerExtendsAlias (source: string, rootDir: string): string | undefined {
+logger.error(`>>> Entering resolveLayerExtendsAlias(source=${source},rootDir=${rootDir})`, { "event.action": "resolveLayerExtendsAlias", "logrite.source": source, "logrite.rootDir": rootDir });
   for (const alias of LAYER_EXTENDS_ALIASES) {
     if (source === alias) { return rootDir }
     if (source.startsWith(`${alias}/`)) {
       return join(rootDir, source.slice(alias.length + 1))
     }
   }
+logger.warn(`<<< Exiting resolveLayerExtendsAlias(source=${source},rootDir=${rootDir})`, { "event.action": "resolveLayerExtendsAlias", "logrite.source": source, "logrite.rootDir": rootDir });
   return undefined
 }
 
@@ -589,10 +631,13 @@ function reorderLocalLayersByExtends (
   localLayerDirs: Set<string>,
 ) {
   const layerDir = (layer: LoadedConfigLayer) => {
+	logger.error(`>>> Entering layerDir(layer=${layer})`, { "event.action": "layerDir", "logrite.layer": layer });
     const dir = (layer.config?.rootDir ?? layer.cwd ?? '').replace(/\/$/, '')
     try {
+	logger.error(`layerDir(layer=${layer}): dir → ${dir}`, { "event.action": "layerDir", "logrite.layer": layer });
       return normalize(realpathSync(dir))
     } catch {
+	logger.error(`Exception in layerDir(layer=${layer}): (no error binding)`, { "event.action": "layerDir", "event.category": "process", "logrite.layer": layer });
       return normalize(dir)
     }
   }
@@ -623,13 +668,17 @@ function reorderLocalLayersByExtends (
 }
 
 function loadNuxtSchema (cwd: string) {
+logger.error(`>>> Entering loadNuxtSchema(cwd=${cwd})`, { "event.action": "loadNuxtSchema", "logrite.cwd": cwd });
   const url = directoryToURL(cwd)
   const urls: Array<URL | string> = [url]
+logger.error(`loadNuxtSchema(cwd=${cwd}): url → ${url}`, { "event.action": "loadNuxtSchema", "logrite.cwd": cwd });
   const nuxtPath = resolveModuleURL('nuxt', { try: true, from: url }) ?? resolveModuleURL('nuxt-nightly', { try: true, from: url })
   if (nuxtPath) {
+logger.error(`loadNuxtSchema(cwd=${cwd}): nuxtPath → ${nuxtPath}`, { "event.action": "loadNuxtSchema", "logrite.cwd": cwd });
     urls.unshift(nuxtPath)
   }
   const schemaPath = resolveModuleURL('@nuxt/schema', { try: true, from: urls }) ?? '@nuxt/schema'
+logger.error(`loadNuxtSchema(cwd=${cwd}): schemaPath → ${schemaPath}`, { "event.action": "loadNuxtSchema", "logrite.cwd": cwd });
   return import(schemaPath).then(r => r.NuxtConfigSchema)
 }
 

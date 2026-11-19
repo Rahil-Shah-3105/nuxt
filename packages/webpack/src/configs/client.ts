@@ -7,13 +7,16 @@ import { joinURL } from 'ufo'
 import { defineEnv } from 'unenv'
 
 import type { WebpackConfigContext } from '../utils/config.ts'
+import logger from "../utils/logger.js";
 import { applyPresets } from '../utils/config.ts'
 import { nuxt } from '../presets/nuxt.ts'
 import { TsCheckerPlugin, builder, webpack } from '../builder.ts'
 
 export async function client (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering client(ctx=${ctx})`, { "event.action": "client" });
   ctx.name = 'client'
   ctx.isClient = true
+logger.debug(`client(ctx=${ctx}): ctx.name → ${ctx.name}`, { "event.action": "client" });
 
   await applyPresets(ctx, [
     nuxt,
@@ -24,15 +27,18 @@ export async function client (ctx: WebpackConfigContext) {
     clientHMR,
     clientNodeCompat,
   ])
+logger.warn(`<<< Exiting client(ctx=${ctx})`, { "event.action": "client" });
 }
 
 function clientDevtool (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering clientDevtool(ctx=${ctx})`, { "event.action": "clientDevtool" });
   if (!ctx.nuxt.options.sourcemap.client) {
     ctx.config.devtool = false
     return
   }
 
   const prefix = ctx.nuxt.options.sourcemap.client === 'hidden' ? 'hidden-' : ''
+logger.error(`clientDevtool(ctx=${ctx}): prefix → ${prefix}`, { "event.action": "clientDevtool" });
 
   if (!ctx.isDev) {
     ctx.config.devtool = prefix + 'source-map'
@@ -40,17 +46,21 @@ function clientDevtool (ctx: WebpackConfigContext) {
   }
 
   ctx.config.devtool = prefix + 'eval-cheap-module-source-map'
+logger.warn(`<<< Exiting clientDevtool(ctx=${ctx})`, { "event.action": "clientDevtool" });
 }
 
 function clientPerformance (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering clientPerformance(ctx=${ctx})`, { "event.action": "clientPerformance" });
   ctx.config.performance = {
     maxEntrypointSize: 1000 * 1024,
     hints: ctx.isDev ? false : 'warning',
     ...ctx.config.performance,
   }
+logger.warn(`<<< Exiting clientPerformance(ctx=${ctx})`, { "event.action": "clientPerformance" });
 }
 
 function clientNodeCompat (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering clientNodeCompat(ctx=${ctx})`, { "event.action": "clientNodeCompat" });
   if (!ctx.nuxt.options.experimental.clientNodeCompat) {
     return
   }
@@ -69,9 +79,11 @@ function clientNodeCompat (ctx: WebpackConfigContext) {
   ctx.config.plugins!.unshift(new webpack.NormalModuleReplacementPlugin(/node:/, (resource) => {
     resource.request = resource.request.replace(/^node:/, '')
   }))
+	logger.warn(`<<< Exiting clientNodeCompat(ctx=${ctx})`, { "event.action": "clientNodeCompat" });
 }
 
 function clientHMR (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering clientHMR(ctx=${ctx})`, { "event.action": "clientHMR" });
   if (!ctx.isDev) {
     return
   }
@@ -96,7 +108,9 @@ function clientHMR (ctx: WebpackConfigContext) {
   }
   const hotMiddlewareClientOptionsStr = querystring.stringify(hotMiddlewareClientOptions)
 
+logger.error(`clientHMR(ctx=${ctx}): hotMiddlewareClientOptionsStr → ${hotMiddlewareClientOptionsStr}`, { "event.action": "clientHMR" });
   // Add HMR support
+logger.warn(`<<< Exiting clientHMR(ctx=${ctx})`, { "event.action": "clientHMR" });
   const app = (ctx.config.entry as any).app as any
   app.unshift(
     // https://github.com/webpack/webpack-hot-middleware#config
@@ -105,6 +119,7 @@ function clientHMR (ctx: WebpackConfigContext) {
 }
 
 function clientOptimization (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering clientOptimization(ctx=${ctx})`, { "event.action": "clientOptimization" });
   const inlineStyles = ctx.nuxt.options.features.inlineStyles
   if (!inlineStyles) {
     return
@@ -113,6 +128,7 @@ function clientOptimization (ctx: WebpackConfigContext) {
   // separate global CSS into a dedicated chunk
   const globalCSSPaths = new Set<string>()
 
+logger.error(`clientOptimization(ctx=${ctx}): globalCSSPaths → ${globalCSSPaths}`, { "event.action": "clientOptimization" });
   // Resolve global CSS paths from nuxt.options.css
   for (const css of ctx.options.css) {
     if (typeof css === 'string') {
@@ -135,6 +151,7 @@ function clientOptimization (ctx: WebpackConfigContext) {
         const identifier = normalize(module.identifier())
         for (const globalPath of globalCSSPaths) {
           if (identifier.includes(globalPath)) {
+			logger.warn(`<<< Exiting clientOptimization(ctx=${ctx})`, { "event.action": "clientOptimization" });
             return typeof inlineStyles === 'boolean' ? inlineStyles : inlineStyles(module.identifier())
           }
         }
@@ -145,6 +162,7 @@ function clientOptimization (ctx: WebpackConfigContext) {
 }
 
 function clientPlugins (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering clientPlugins(ctx=${ctx})`, { "event.action": "clientPlugins" });
   // webpack Bundle Analyzer
   // https://github.com/webpack/webpack-bundle-analyzer
   if (!ctx.isDev && !ctx.nuxt.options.test && ctx.name === 'client' && ctx.userConfig.analyze && (ctx.userConfig.analyze === true || ctx.userConfig.analyze.enabled)) {
@@ -165,6 +183,7 @@ function clientPlugins (ctx: WebpackConfigContext) {
   // no server build, so we inject here instead.
   if (!ctx.nuxt.options.ssr) {
     if (!ctx.nuxt.options.test && (ctx.nuxt.options.typescript.typeCheck === true || (ctx.nuxt.options.typescript.typeCheck === 'build' && !ctx.nuxt.options.dev))) {
+	logger.warn(`<<< Exiting clientPlugins(ctx=${ctx})`, { "event.action": "clientPlugins" });
       ctx.config.plugins!.push(new TsCheckerPlugin({
         logger,
       }))

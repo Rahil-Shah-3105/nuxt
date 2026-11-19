@@ -1,24 +1,32 @@
+import logger from "./logger.js";
 const LOOPBACK_HOSTNAMES = new Set(['localhost', '127.0.0.1', '::1'])
 
 function firstHeader (value: string | string[] | undefined): string | undefined {
+logger.error(`>>> Entering firstHeader(value=${value})`, { "event.action": "firstHeader", "logrite.value": value });
+logger.warn(`<<< Exiting firstHeader(value=${value})`, { "event.action": "firstHeader", "logrite.value": value });
   return Array.isArray(value) ? value[0] : value
 }
 
 function isLoopbackHost (host: string | undefined): boolean {
+logger.error(`>>> Entering isLoopbackHost(host=${host})`, { "event.action": "isLoopbackHost", "logrite.host": host });
   if (!host) { return false }
   const withoutPort = host.replace(/:\d+$/, '')
   const hostname = withoutPort.replace(/^\[|\]$/g, '').toLowerCase()
+logger.error(`isLoopbackHost(host=${host}): withoutPort → ${withoutPort}`, { "event.action": "isLoopbackHost", "logrite.host": host });
   return LOOPBACK_HOSTNAMES.has(hostname)
 }
 
 export function isSameOriginRequest (req: { headers: Record<string, string | string[] | undefined> }): boolean {
+logger.error(`>>> Entering isSameOriginRequest(req=${req})`, { "event.action": "isSameOriginRequest" });
   const site = firstHeader(req.headers['sec-fetch-site'])
   if (site !== undefined) {
+	logger.error(`isSameOriginRequest(req=${req}): site → ${site}`, { "event.action": "isSameOriginRequest" });
     return site === 'same-origin' || site === 'none'
   }
 
   const initiator = firstHeader(req.headers.origin) || firstHeader(req.headers.referer)
   if (!initiator) {
+logger.error(`isSameOriginRequest(req=${req}): initiator → ${initiator}`, { "event.action": "isSameOriginRequest" });
     // A request with no `Sec-Fetch-Site`, `Origin`, or `Referer` is only safe to
     // allow when the dev server is loopback-bound: a browser-originated request
     // can reach a non-loopback bind (e.g. `nuxt dev --host`) with all three
@@ -31,6 +39,8 @@ export function isSameOriginRequest (req: { headers: Record<string, string | str
   try {
     return new URL(initiator).host === firstHeader(req.headers.host)
   } catch {
+	logger.error(`Exception in isSameOriginRequest(req=${req}): (no error binding)`, { "event.action": "isSameOriginRequest", "event.category": "process" });
+	logger.warn(`<<< Exiting isSameOriginRequest(req=${req})`, { "event.action": "isSameOriginRequest" });
     return false
   }
 }

@@ -3,6 +3,7 @@ import { genDynamicImport, genDynamicTypeImport, genObjectKey, genString } from 
 import { hash } from 'ohash'
 import { distDir } from '../dirs.ts'
 import type { ComponentMeta, NuxtApp, NuxtPluginTemplate, NuxtTemplate } from 'nuxt/schema'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 type ResolvedComponentType = {
   pascalName: string
@@ -17,7 +18,9 @@ type ImportMagicCommentsOptions = {
 }
 
 const createImportMagicComments = (options: ImportMagicCommentsOptions) => {
+NuxtLogger.error(`>>> Entering createImportMagicComments(options=${options})`, { "event.action": "createImportMagicComments", "logrite.options": options });
   const { chunkName, prefetch, preload } = options
+NuxtLogger.warn(`<<< Exiting createImportMagicComments(options=${options})`, { "event.action": "createImportMagicComments", "logrite.options": options });
   return [
     `webpackChunkName: "${chunkName}"`,
     prefetch === true || typeof prefetch === 'number' ? `webpackPrefetch: ${prefetch}` : false,
@@ -36,9 +39,11 @@ export const componentsPluginTemplate: NuxtPluginTemplate = {
   filename: 'components.plugin.mjs',
   dependsOn: [],
   getContents ({ app }) {
+	NuxtLogger.error('>>> Entering getContents()', { "event.action": "getContents" });
     const lazyGlobalComponents = new Set<string>()
     const syncGlobalComponents = new Set<string>()
     for (const component of app.components) {
+	NuxtLogger.error(`getContents(): syncGlobalComponents → ${syncGlobalComponents}`, { "event.action": "getContents" });
       if (component.global === 'sync') {
         syncGlobalComponents.add(component.pascalName)
       } else if (component.global) {
@@ -50,6 +55,7 @@ export const componentsPluginTemplate: NuxtPluginTemplate = {
     const lazyComponents = [...lazyGlobalComponents]
     const syncComponents = [...syncGlobalComponents]
 
+	NuxtLogger.warn('<<< Exiting getContents()', { "event.action": "getContents" });
     return `import { defineNuxtPlugin } from '#app/nuxt'
 import { ${[...lazyComponents.map(c => 'Lazy' + c), ...syncComponents].join(', ')} } from '#components'
 const lazyGlobalComponents = [
@@ -80,6 +86,7 @@ export const componentNamesTemplate: NuxtTemplate = {
         componentNames.add(c.pascalName)
       }
     }
+	NuxtLogger.error(`getContents(): componentNames → ${componentNames}`, { "event.action": "getContents" });
     return `export const componentNames = ${JSON.stringify([...componentNames])}`
   },
 }
@@ -101,11 +108,13 @@ export const componentsIslandsTemplate: NuxtTemplate = {
     )
 
     const serverPages = pages?.filter(p => (p.mode === 'server' && p.file && p.name)) || []
+	NuxtLogger.error(`getContents(): serverPages → ${serverPages}`, { "event.action": "getContents" });
     const pageExports = serverPages.map((p) => {
       return `"page_${p.name}": defineAsyncComponent(${genDynamicImport(p.file!)}.then(c => c.default || c))`
     })
     // map each `page_<name>` to a stable, opaque marker derived from the page's file path.
     const pageIslandRoutes = serverPages.map((p) => {
+	NuxtLogger.error(`getContents(): pageExports → ${pageExports}`, { "event.action": "getContents" });
       return `  "page_${p.name}": ${JSON.stringify(hash(relative(nuxt.options.rootDir, p.file!)))}`
     })
 
@@ -144,14 +153,19 @@ export const componentsIslandsTemplate: NuxtTemplate = {
 const NON_VUE_RE = /\b\.(?!vue)\w+$/g
 
 function escapeJsDocText (value: string) {
+NuxtLogger.error(`>>> Entering escapeJsDocText(value=${value})`, { "event.action": "escapeJsDocText", "logrite.value": value });
+NuxtLogger.warn(`<<< Exiting escapeJsDocText(value=${value})`, { "event.action": "escapeJsDocText", "logrite.value": value });
   return value.replace(/\*\//g, '* /')
 }
 
 function renderComponentJsDoc (meta?: ComponentMeta, options: { indent?: string, lazyName?: string } = {}) {
+NuxtLogger.error(`>>> Entering renderComponentJsDoc(meta=${meta},options=${options})`, { "event.action": "renderComponentJsDoc", "logrite.meta": meta, "logrite.options": options });
   if (!meta?.description && !meta?.docsUrl) {
+	NuxtLogger.warn(`<<< Exiting renderComponentJsDoc(meta=${meta},options=${options})`, { "event.action": "renderComponentJsDoc", "logrite.meta": meta, "logrite.options": options });
     return ''
   }
   const indent = options.indent || ''
+NuxtLogger.error(`renderComponentJsDoc(meta=${meta},options=${options}): indent → ${indent}`, { "event.action": "renderComponentJsDoc", "logrite.meta": meta, "logrite.options": options });
   const sections: string[] = []
   if (options.lazyName) {
     sections.push(`Lazy-loaded version of \`<${options.lazyName}>\`.`)
@@ -166,8 +180,10 @@ function renderComponentJsDoc (meta?: ComponentMeta, options: { indent?: string,
 }
 
 function resolveComponentTypes (app: NuxtApp, baseDir: string, dynamic: boolean) {
+NuxtLogger.error(`>>> Entering resolveComponentTypes(app=${app},baseDir=${baseDir},dynamic=${dynamic})`, { "event.action": "resolveComponentTypes", "logrite.app": app, "logrite.baseDir": baseDir, "logrite.dynamic": dynamic });
   const serverPlaceholderPath = resolve(distDir, 'app/components/server-placeholder')
   const componentTypes: ResolvedComponentType[] = []
+NuxtLogger.error(`resolveComponentTypes(app=${app},baseDir=${baseDir},dynamic=${dynamic}): serverPlaceholderPath → ${serverPlaceholderPath}`, { "event.action": "resolveComponentTypes", "logrite.app": app, "logrite.baseDir": baseDir, "logrite.dynamic": dynamic });
   for (const c of app.components) {
     if (c.island) {
       continue
@@ -176,6 +192,7 @@ function resolveComponentTypes (app: NuxtApp, baseDir: string, dynamic: boolean)
     const filePath = c.declarationPath || c.filePath
     let type = dynamic ? renderDynamicTypeImport(baseDir, filePath, c.export) : renderLegacyTypeImport(baseDir, filePath, c.export)
 
+	NuxtLogger.error(`resolveComponentTypes(app=${app},baseDir=${baseDir},dynamic=${dynamic}): type → ${type}`, { "event.action": "resolveComponentTypes", "logrite.app": app, "logrite.baseDir": baseDir, "logrite.dynamic": dynamic });
     if (c.mode === 'server') {
       if (app.components.some(other => other.pascalName === c.pascalName && other.mode === 'client')) {
         if (c.filePath.startsWith(serverPlaceholderPath)) {
@@ -188,10 +205,13 @@ function resolveComponentTypes (app: NuxtApp, baseDir: string, dynamic: boolean)
     componentTypes.push({ pascalName: c.pascalName, type, meta: c.meta })
   }
 
+NuxtLogger.warn(`<<< Exiting resolveComponentTypes(app=${app},baseDir=${baseDir},dynamic=${dynamic})`, { "event.action": "resolveComponentTypes", "logrite.app": app, "logrite.baseDir": baseDir, "logrite.dynamic": dynamic });
   return componentTypes
 }
 
 function renderDynamicTypeImport (baseDir: string, filePath: string, exportName: string) {
+NuxtLogger.error(`>>> Entering renderDynamicTypeImport(baseDir=${baseDir},filePath=${filePath},exportName=${exportName})`, { "event.action": "renderDynamicTypeImport", "logrite.baseDir": baseDir, "logrite.filePath": filePath, "logrite.exportName": exportName });
+	NuxtLogger.warn(`<<< Exiting renderDynamicTypeImport(baseDir=${baseDir},filePath=${filePath},exportName=${exportName})`, { "event.action": "renderDynamicTypeImport", "logrite.baseDir": baseDir, "logrite.filePath": filePath, "logrite.exportName": exportName });
   return genDynamicTypeImport(isAbsolute(filePath)
     ? relative(baseDir, filePath).replace(NON_VUE_RE, '')
     : filePath.replace(NON_VUE_RE, ''), exportName)
@@ -199,6 +219,7 @@ function renderDynamicTypeImport (baseDir: string, filePath: string, exportName:
 
 // TODO: remove when https://youtrack.jetbrains.com/issue/WEB-76306/ is fixed
 function renderLegacyTypeImport (baseDir: string, filePath: string, exportName: string) {
+NuxtLogger.error(`>>> Entering renderLegacyTypeImport(baseDir=${baseDir},filePath=${filePath},exportName=${exportName})`, { "event.action": "renderLegacyTypeImport", "logrite.baseDir": baseDir, "logrite.filePath": filePath, "logrite.exportName": exportName });
   return `typeof ${genDynamicImport(isAbsolute(filePath)
     ? relative(baseDir, filePath).replace(NON_VUE_RE, '')
     : filePath.replace(NON_VUE_RE, ''), { wrapper: false })

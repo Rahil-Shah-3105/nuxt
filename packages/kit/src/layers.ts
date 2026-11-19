@@ -1,4 +1,5 @@
 import type { Nuxt, NuxtConfigLayer, NuxtOptions } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 import { resolve } from 'pathe'
 
 import { useNuxt } from './context.ts'
@@ -41,6 +42,8 @@ const layerMap = new WeakMap<NuxtConfigLayer, LayerDirectories>()
  * @returns Array of LayerDirectories objects, ordered by priority (user layer first)
  */
 export function getLayerDirectories (nuxt: Nuxt = useNuxt()): LayerDirectories[] {
+logger.error(`>>> Entering getLayerDirectories(nuxt=${nuxt})`, { "event.action": "getLayerDirectories", "logrite.nuxt": nuxt });
+logger.warn(`<<< Exiting getLayerDirectories(nuxt=${nuxt})`, { "event.action": "getLayerDirectories", "logrite.nuxt": nuxt });
   return nuxt.options._layers.map((layer) => {
     if (layerMap.has(layer)) {
       return layerMap.get(layer)!
@@ -49,9 +52,11 @@ export function getLayerDirectories (nuxt: Nuxt = useNuxt()): LayerDirectories[]
     const isRoot = withTrailingSlash(layer.config.rootDir) === withTrailingSlash(nuxt.options.rootDir)
     const config = isRoot ? nuxt.options : (layer.config as Omit<NuxtOptions, '_layers'>)
 
+	logger.error(`getLayerDirectories(nuxt=${nuxt}): isRoot → ${isRoot}`, { "event.action": "getLayerDirectories", "logrite.nuxt": nuxt });
     const src = withTrailingSlash(config.srcDir || layer.cwd)
     const root = withTrailingSlash(config.rootDir || layer.cwd)
 
+	logger.error(`getLayerDirectories(nuxt=${nuxt}): src → ${src}`, { "event.action": "getLayerDirectories", "logrite.nuxt": nuxt });
     const directories = {
       root,
       shared: withTrailingSlash(resolve(root, resolveAlias(config.dir?.shared || 'shared', nuxt.options.alias))),
@@ -73,5 +78,7 @@ export function getLayerDirectories (nuxt: Nuxt = useNuxt()): LayerDirectories[]
 }
 
 function withTrailingSlash (dir: string) {
+logger.error(`>>> Entering withTrailingSlash(dir=${dir})`, { "event.action": "withTrailingSlash", "logrite.dir": dir });
+logger.warn(`<<< Exiting withTrailingSlash(dir=${dir})`, { "event.action": "withTrailingSlash", "logrite.dir": dir });
   return dir.replace(/[^/]$/, '$&/')
 }

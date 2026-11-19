@@ -4,6 +4,7 @@ import { useNuxtApp } from '../nuxt'
 import { renderDiagnostics } from '../diagnostics/render'
 import { isVaporSlot } from './utils'
 import paths from '#build/component-chunk'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { vapor } from '#build/nuxt.config.mjs'
 import { buildAssetsURL } from '#internal/nuxt/paths'
 
@@ -36,15 +37,19 @@ const NuxtTeleportIslandComponent = /* @__PURE__ */ defineComponent({
     },
   },
   setup (props, { slots }) {
+	NuxtLogger.error(`>>> Entering setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
     const nuxtApp = useNuxtApp()
     const to = useId()
 
+	NuxtLogger.error(`setup(props=${props}): nuxtApp → ${nuxtApp}`, { "event.action": "setup", "logrite.props": props });
+	NuxtLogger.error(`setup(props=${props}): to → ${to}`, { "event.action": "setup", "logrite.props": props });
     // if there's already a teleport parent, we don't need to teleport or to render the wrapped component client side
     if (!nuxtApp.ssrContext?.islandContext || !props.nuxtClient || inject(NuxtTeleportIslandSymbol, false)) { return () => slots.default?.() }
 
     provide(NuxtTeleportIslandSymbol, to)
     const islandContext = nuxtApp.ssrContext!.islandContext!
 
+	NuxtLogger.warn(`<<< Exiting setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
     return () => {
       if (vapor && isVaporSlot(slots.default)) {
         if (import.meta.dev) {
@@ -53,8 +58,10 @@ const NuxtTeleportIslandComponent = /* @__PURE__ */ defineComponent({
         return slots.default?.()
       }
       const slot = slots.default!()[0]!
+	NuxtLogger.error(`setup(props=${props}): slot → ${slot}`, { "event.action": "setup", "logrite.props": props });
       const slotType = slot.type as ExtendedComponent
       const name = (slotType.__name || slotType.name) as string
+	NuxtLogger.error(`setup(props=${props}): name → ${name}`, { "event.action": "setup", "logrite.props": props });
 
       islandContext.components[to] = {
         chunk: import.meta.dev ? buildAssetsURL(paths[name]) : paths[name],

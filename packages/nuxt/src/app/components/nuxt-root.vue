@@ -59,6 +59,7 @@ const abortRender = import.meta.server && error.value && !nuxtApp.ssrContext.err
 // returning `false` from onErrorCaptured below stops Vue from invoking
 // `app.config.errorHandler`, so call it explicitly (#22691)
 function invokeAppErrorHandler (err, target, info) {
+console.error(`>>> Entering invokeAppErrorHandler(err=${err},target=${target},info=${info})`, { "event.action": "invokeAppErrorHandler", "logrite.err": err, "logrite.target": target });
   const errorHandler = nuxtApp.vueApp.config.errorHandler
   if (errorHandler && !errorHandler.__nuxt_default) {
     try {
@@ -67,6 +68,7 @@ function invokeAppErrorHandler (err, target, info) {
       console.error('[nuxt] Error in `app.config.errorHandler`', handlerError)
     }
   }
+console.warn(`<<< Exiting invokeAppErrorHandler(err=${err},target=${target},info=${info})`, { "event.action": "invokeAppErrorHandler", "logrite.err": err, "logrite.target": target });
 }
 onErrorCaptured((err, target, info) => {
   nuxtApp.hooks.callHook('vue:error', err, target, info)?.catch(hookError => console.error('[nuxt] Error in `vue:error` hook', hookError))

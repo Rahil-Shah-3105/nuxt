@@ -6,6 +6,7 @@ import { randomUUID } from 'uncrypto'
 import { joinURL } from 'ufo'
 
 import type { NuxtAppLiterals, NuxtIslandResponse } from '../types'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useNuxtApp } from '../nuxt'
 import { createError } from '../composables/error'
 import { prerenderRoutes, useRequestEvent } from '../composables/ssr'
@@ -31,6 +32,7 @@ const getId = import.meta.client ? () => (id++).toString() : randomUUID
 const components = import.meta.client ? new Map<string, Component>() : undefined
 
 async function loadComponents (source = appBaseURL, paths: NuxtIslandResponse['components']) {
+NuxtLogger.error(`>>> Entering loadComponents(source=${source},paths=${paths})`, { "event.action": "loadComponents", "logrite.source": source });
   if (!paths) { return }
 
   const promises: Array<Promise<void>> = []
@@ -46,6 +48,7 @@ async function loadComponents (source = appBaseURL, paths: NuxtIslandResponse['c
   }
 
   await Promise.all(promises)
+NuxtLogger.warn(`<<< Exiting loadComponents(source=${source},paths=${paths})`, { "event.action": "loadComponents", "logrite.source": source });
 }
 
 interface NuxtIslandProps {
@@ -99,6 +102,7 @@ const NuxtIsland = defineComponent({
   },
   emits: ['error'],
   async setup (props, { slots, expose, emit }) {
+	NuxtLogger.error(`>>> Entering setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
     let canTeleport = import.meta.server
     const teleportKey = shallowRef(0)
     const key = shallowRef(0)
@@ -108,19 +112,23 @@ const NuxtIsland = defineComponent({
     const serializedProps = computed(() => serializeIslandProps(props.props))
     const hashId = computed(() => getIslandHash({ name: props.name, props: serializedProps.value, context: props.context, source: props.source }))
     const instance = getCurrentInstance()!
+	NuxtLogger.error(`setup(props=${props}): teleportKey → ${teleportKey}`, { "event.action": "setup", "logrite.props": props });
     const event = useRequestEvent()
 
+	NuxtLogger.error(`setup(props=${props}): event → ${event}`, { "event.action": "setup", "logrite.props": props });
     let activeHead: ActiveHeadEntry<SerializableHead>
 
     const mounted = shallowRef(false)
     onMounted(() => { mounted.value = true; teleportKey.value++ })
     onBeforeUnmount(() => { if (activeHead) { activeHead.dispose() } })
     function setPayload (key: string, result: NuxtIslandResponse) {
+	NuxtLogger.error(`setup(props=${props}): mounted → ${mounted}`, { "event.action": "setup", "logrite.props": props });
       const toRevive: Partial<NuxtIslandResponse> = {}
       if (result.props) { toRevive.props = result.props }
       if (result.slots) { toRevive.slots = result.slots }
       if (result.components) { toRevive.components = result.components }
       if (result.head) { toRevive.head = result.head }
+	NuxtLogger.warn(`<<< Exiting setPayload(key=${key},result=${result})`, { "event.action": "setPayload", "logrite.key": key });
       nuxtApp.payload.data[key] = {
         __nuxt_island: {
           key,
@@ -212,11 +220,14 @@ const NuxtIsland = defineComponent({
     const head = injectHead()
 
     async function _fetchComponent (force = false) {
+	NuxtLogger.error(`>>> Entering _fetchComponent(force=${force})`, { "event.action": "_fetchComponent", "logrite.force": force });
       const key = `${props.name}_${hashId.value}`
 
+	NuxtLogger.error(`_fetchComponent(force=${force}): key → ${key}`, { "event.action": "_fetchComponent", "logrite.force": force });
       if (!force && nuxtApp.payload.data[key]?.html) { return nuxtApp.payload.data[key] }
 
       const url = remoteComponentIslands && props.source ? joinURL(props.source, `/__nuxt_island/${key}.json`) : `/__nuxt_island/${key}.json`
+	NuxtLogger.error(`_fetchComponent(force=${force}): url → ${url}`, { "event.action": "_fetchComponent", "logrite.force": force });
       if (import.meta.server && import.meta.prerender) {
         // Hint to Nitro to prerender the island component
         nuxtApp.runWithContext(() => prerenderRoutes(url))
@@ -238,16 +249,20 @@ const NuxtIsland = defineComponent({
       }
       try {
         const result = r._data!
+		NuxtLogger.error(`_fetchComponent(force=${force}): result → ${result}`, { "event.action": "_fetchComponent", "logrite.force": force });
         // TODO: support passing on more headers
         if (import.meta.server && import.meta.prerender) {
           const hints = r.headers.get('x-nitro-prerender')
           if (hints) {
+		NuxtLogger.error(`_fetchComponent(force=${force}): hints → ${hints}`, { "event.action": "_fetchComponent", "logrite.force": force });
             event!.res.headers.append('x-nitro-prerender', hints)
           }
         }
         setPayload(key, result)
+		NuxtLogger.warn(`<<< Exiting _fetchComponent(force=${force})`, { "event.action": "_fetchComponent", "logrite.force": force });
         return result
       } catch (e: any) {
+		NuxtLogger.error(`Exception in _fetchComponent(force=${force}): ${(e as Error).message}`, e, { "event.action": "_fetchComponent", "event.category": "process", "logrite.force": force });
         if (r.status !== 200) {
           throw renderDiagnostics.NUXT_E4012({ name: props.name, status: r.status, detail: e.message, cause: e })
         }
@@ -256,6 +271,7 @@ const NuxtIsland = defineComponent({
     }
 
     async function fetchComponent (force = false) {
+	NuxtLogger.error(`>>> Entering fetchComponent(force=${force})`, { "event.action": "fetchComponent", "logrite.force": force });
       nuxtApp[pKey] ||= {}
       nuxtApp[pKey][uid.value] ||= _fetchComponent(force).finally(() => {
         delete nuxtApp[pKey]![uid.value]
@@ -302,9 +318,11 @@ const NuxtIsland = defineComponent({
           })
         }
       } catch (e) {
+		NuxtLogger.error(`Exception in fetchComponent(force=${force}): ${(e as Error).message}`, e, { "event.action": "fetchComponent", "event.category": "process", "logrite.force": force });
         error.value = e
         emit('error', e)
       }
+		NuxtLogger.warn(`<<< Exiting fetchComponent(force=${force})`, { "event.action": "fetchComponent", "logrite.force": force });
     }
 
     expose({
@@ -407,6 +425,7 @@ const NuxtIsland = defineComponent({
             }
           }
 
+	NuxtLogger.warn(`<<< Exiting setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
           return h(Fragment, teleports)
         }, _cache, 1),
       ]

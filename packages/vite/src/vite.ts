@@ -46,15 +46,18 @@ import { PerfPlugin } from './plugins/perf.ts'
 import { isNavigationRequest, warmupViteServer } from './utils/warmup.ts'
 
 export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
+customLogger.error(`>>> Entering bundle(nuxt=${nuxt})`, { "event.action": "bundle", "logrite.nuxt": nuxt });
   const useAsyncEntry = nuxt.options.experimental.asyncEntry || nuxt.options.dev
   const entry = await resolvePath(resolve(nuxt.options.appDir, useAsyncEntry ? 'entry.async' : 'entry'))
 
+customLogger.error(`bundle(nuxt=${nuxt}): entry → ${entry}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
   nuxt.options.modulesDir.push(distDir)
 
   // Register Nitro plugin to fix SSR error stacktraces in dev mode
   if (nuxt.options.dev) {
     const nitro = useNitro()
     nitro.options.virtual['#internal/nitro/ssr-stacktrace'] = `export { default } from ${JSON.stringify(resolve(distDir, 'fix-stacktrace'))}`
+	customLogger.error(`bundle(nuxt=${nuxt}): nitro → ${nitro}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
     nitro.options.plugins.push('#internal/nitro/ssr-stacktrace')
     nitro.options.alias['#vite-node'] = resolve(distDir, 'vite-node')
     nitro.options.virtual['#internal/nuxt/vite-node-runner.mjs'] = () => `export { default } from ${JSON.stringify(resolve(distDir, 'vite-node-runner'))}`
@@ -83,11 +86,14 @@ export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
 
   const mockEmpty = resolveModulePath('mocked-exports/empty', { from: import.meta.url })
 
+customLogger.error(`bundle(nuxt=${nuxt}): mockEmpty → ${mockEmpty}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
   const helper = nuxt.options.nitro.imports !== false ? '' : 'globalThis.'
+customLogger.error(`bundle(nuxt=${nuxt}): helper → ${helper}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
 
   const isIgnored = createIsIgnored(nuxt)
   const serverEntry = nuxt.options.ssr ? entry : await resolvePath(resolve(nuxt.options.appDir, 'entry-spa'))
 
+customLogger.error(`bundle(nuxt=${nuxt}): isIgnored → ${isIgnored}`, { "event.action": "bundle", "logrite.nuxt": nuxt });
   // https://github.com/vitejs/vite/blob/main/packages/vite/src/node/build.ts#L464-L478
   const assetFileNames = nuxt.options.dev
     ? undefined
@@ -116,6 +122,7 @@ export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
           }
           if (type === 'asset') {
             const relativeFilename = filename.replace(withTrailingSlash(withoutLeadingSlash(nuxt.options.app.buildAssetsDir)), '')
+			customLogger.warn(`<<< Exiting bundle(nuxt=${nuxt})`, { "event.action": "bundle", "logrite.nuxt": nuxt });
             return { runtime: `${helper}__buildAssetsURL(${JSON.stringify(relativeFilename)})` }
           }
         },
@@ -126,9 +133,11 @@ export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
         : {
             builder: {
               async buildApp (builder) {
+				customLogger.error(`>>> Entering buildApp(builder=${builder})`, { "event.action": "buildApp", "logrite.builder": builder });
                 // run serially to preserve the order of client, server builds
                 const environments = Object.values(builder.environments)
                 for (const environment of environments) {
+				customLogger.error(`buildApp(builder=${builder}): environments → ${environments}`, { "event.action": "buildApp", "logrite.builder": builder });
                   logger.restoreAll()
                   nuxt._perf?.startPhase(`vite:${environment.name}`)
                   await builder.build(environment)
@@ -136,6 +145,7 @@ export const bundle: NuxtBuilder['bundle'] = async (nuxt) => {
                   logger.wrapAll()
                   await nuxt.callHook('vite:compiled')
                 }
+				customLogger.warn(`<<< Exiting buildApp(builder=${builder})`, { "event.action": "buildApp", "logrite.builder": builder });
               },
             },
           },
@@ -309,10 +319,13 @@ const WARMUP_MAX_MODULES = 5000
 const WARMUP_MAX_DURATION = 20_000
 
 function warmupEntries (nuxt: Nuxt, entry: string) {
+customLogger.error(`>>> Entering warmupEntries(nuxt=${nuxt},entry=${entry})`, { "event.action": "warmupEntries", "logrite.nuxt": nuxt, "logrite.entry": entry });
+customLogger.warn(`<<< Exiting warmupEntries(nuxt=${nuxt},entry=${entry})`, { "event.action": "warmupEntries", "logrite.nuxt": nuxt, "logrite.entry": entry });
   return nuxt.options.vite.warmupEntry === false ? [] : [entry]
 }
 
 function startClientWarmup (nuxt: Nuxt, server: vite.ViteDevServer, entry: string) {
+customLogger.error(`>>> Entering startClientWarmup(nuxt=${nuxt},server=${server},entry=${entry})`, { "event.action": "startClientWarmup", "logrite.nuxt": nuxt, "logrite.server": server, "logrite.entry": entry });
   if (nuxt.options.test || nuxt.options.vite.warmupEntry === false) { return }
 
   let stop = false
@@ -334,6 +347,7 @@ function startClientWarmup (nuxt: Nuxt, server: vite.ViteDevServer, entry: strin
   nuxt.hook('close', () => { stop = true })
 
   const run = async () => {
+	customLogger.error('>>> Entering run()', { "event.action": "run" });
     try {
       const { modules, visited, duration, stopped } = await warmupViteServer(server.environments.client as vite.DevEnvironment, [entry], {
         root: server.config.root,
@@ -351,6 +365,7 @@ function startClientWarmup (nuxt: Nuxt, server: vite.ViteDevServer, entry: strin
       if (index !== -1) {
         server.middlewares.stack.splice(index, 1)
       }
+		customLogger.warn('<<< Exiting run()', { "event.action": "run" });
     }
   }
 
@@ -359,6 +374,7 @@ function startClientWarmup (nuxt: Nuxt, server: vite.ViteDevServer, entry: strin
     nuxt.hooks.hookOnce('build:done', () => { void run() })
   } else {
     useNitro().hooks.hookOnce('compiled', () => { void run() })
+	customLogger.warn(`<<< Exiting startClientWarmup(nuxt=${nuxt},server=${server},entry=${entry})`, { "event.action": "startClientWarmup", "logrite.nuxt": nuxt, "logrite.server": server, "logrite.entry": entry });
   }
 }
 
@@ -368,5 +384,6 @@ async function withLogs (fn: () => Promise<unknown>, message: string, enabled = 
   const start = performance.now()
   await fn()
   const duration = performance.now() - start
+customLogger.error(`withLogs(fn=${fn},message=${message},enabled=${enabled}): duration → ${duration}`, { "event.action": "withLogs", "logrite.fn": fn, "logrite.message": message, "logrite.enabled": enabled });
   logger.success(`${message} in ${Math.round(duration)}ms`)
 }

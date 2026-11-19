@@ -4,6 +4,7 @@ import type { ParsedTrace } from 'errx'
 import { h } from 'vue'
 import { defineNuxtPlugin } from '../nuxt'
 import type { ObjectPlugin, Plugin } from '../nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { devLogs, devRootDir } from '#build/nuxt.config.mjs'
 
@@ -51,6 +52,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin(async (nuxtApp) => {
 })
 
 function normalizeFilenames (stack?: ParsedTrace[]) {
+NuxtLogger.error(`>>> Entering normalizeFilenames(stack=${stack})`, { "event.action": "normalizeFilenames", "logrite.stack": stack });
   if (!stack) {
     return ''
   }
@@ -63,13 +65,17 @@ function normalizeFilenames (stack?: ParsedTrace[]) {
       message += `  at ${source}\n`
     }
   }
+NuxtLogger.error(`normalizeFilenames(stack=${stack}): message → ${message}`, { "event.action": "normalizeFilenames", "logrite.stack": stack });
   return message
 }
 
 function normalizeServerLog (log: LogObject) {
+NuxtLogger.error(`>>> Entering normalizeServerLog(log=${log})`, { "event.action": "normalizeServerLog", "logrite.log": log });
   log.additional = normalizeFilenames(log.stack as ParsedTrace[])
   log.tag = 'ssr'
+NuxtLogger.debug(`normalizeServerLog(log=${log}): log.tag → ${log.tag}`, { "event.action": "normalizeServerLog", "logrite.log": log });
   delete log.stack
+NuxtLogger.warn(`<<< Exiting normalizeServerLog(log=${log})`, { "event.action": "normalizeServerLog", "logrite.log": log });
   return log
 }
 

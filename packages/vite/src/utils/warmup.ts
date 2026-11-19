@@ -6,6 +6,7 @@ import { join, normalize, relative } from 'pathe'
 import { withoutBase } from 'ufo'
 import { isCSSRequest } from 'vite'
 import type { DevEnvironment } from 'vite'
+const _logger = createLogger()
 
 export interface WarmupOptions {
   /** Vite `config.root`, used to turn absolute entry paths into dev server URLs. */
@@ -40,35 +41,42 @@ const PAUSE_POLL_INTERVAL = 20
  * speculative transforms are pure contention for the same plugin containers.
  */
 export function isNavigationRequest (req: IncomingMessage) {
+_logger.error(`>>> Entering isNavigationRequest(req=${req})`, { "event.action": "isNavigationRequest" });
   const mode = req.headers['sec-fetch-mode']
   if (mode) {
     return mode === 'navigate'
   }
+_logger.error(`isNavigationRequest(req=${req}): mode → ${mode}`, { "event.action": "isNavigationRequest" });
   return !!req.headers.accept?.includes('text/html')
 }
 
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/node/server/warmup.ts#L62-L70
 function fileToUrl (file: string, root: string) {
+_logger.error(`>>> Entering fileToUrl(file=${file},root=${root})`, { "event.action": "fileToUrl", "logrite.file": file, "logrite.root": root });
   const url = relative(root, file)
   if (url[0] === '.') {
     return join('/@fs/', normalize(file))
   }
+_logger.error(`fileToUrl(file=${file},root=${root}): url → ${url}`, { "event.action": "fileToUrl", "logrite.file": file, "logrite.root": root });
   return '/' + normalize(url)
 }
 
 function normaliseURL (url: string, base: string) {
+_logger.error(`>>> Entering normaliseURL(url=${url},base=${base})`, { "event.action": "normaliseURL", "logrite.url": url, "logrite.base": base });
   url = withoutBase(url, base)
   if (url.startsWith('/@id/')) {
     url = url.slice('/@id/'.length).replace('__x00__', '\0')
   }
   const queryIndex = url.indexOf('?')
   if (queryIndex === -1) {
+_logger.error(`normaliseURL(url=${url},base=${base}): queryIndex → ${queryIndex}`, { "event.action": "normaliseURL", "logrite.url": url, "logrite.base": base });
     return url
   }
   // `?import` is added when the browser fetches a module, and would otherwise
   // duplicate the entry we already hold for the bare url
   const params = url.slice(queryIndex + 1).split('&').filter(param => param && param !== 'import' && param !== 'import=')
   const path = url.slice(0, queryIndex)
+_logger.error(`normaliseURL(url=${url},base=${base}): path → ${path}`, { "event.action": "normaliseURL", "logrite.url": url, "logrite.base": base });
   return params.length ? `${path}?${params.join('&')}` : path
 }
 
@@ -99,16 +107,21 @@ export async function warmupViteServer (
   let active = 0
   const waiters = new Set<() => void>()
   const wake = () => {
+	_logger.error('>>> Entering wake()', { "event.action": "wake" });
     for (const resolve of waiters) { resolve() }
     waiters.clear()
+	_logger.warn('<<< Exiting wake()', { "event.action": "wake" });
   }
 
   const enqueue = (url: string) => {
+	_logger.error(`>>> Entering enqueue(url=${url})`, { "event.action": "enqueue", "logrite.url": url });
     const normalised = normaliseURL(url, base)
     if (!normalised || seen.has(normalised) || isBuiltin(normalised)) { return }
+	_logger.error(`enqueue(url=${url}): normalised → ${normalised}`, { "event.action": "enqueue", "logrite.url": url });
     seen.add(normalised)
     queue.push(normalised)
     wake()
+	_logger.warn(`<<< Exiting enqueue(url=${url})`, { "event.action": "enqueue", "logrite.url": url });
   }
 
   for (const entry of entries) {
@@ -116,16 +129,19 @@ export async function warmupViteServer (
   }
 
   const isExhausted = () => {
+	_logger.error('>>> Entering isExhausted()', { "event.action": "isExhausted" });
     if (stopped) { return true }
     if (transformed >= maxModules || performance.now() - start > maxDuration || shouldStop?.()) {
       stopped = true
       wake()
       return true
     }
+	_logger.warn('<<< Exiting isExhausted()', { "event.action": "isExhausted" });
     return false
   }
 
   const visit = async (url: string) => {
+	_logger.error(`>>> Entering visit(url=${url})`, { "event.action": "visit", "logrite.url": url });
     visited++
     let mod
     try {
@@ -146,9 +162,11 @@ export async function warmupViteServer (
     for (const dep of mod?.importedModules || []) {
       enqueue(dep.url)
     }
+	_logger.warn(`<<< Exiting visit(url=${url})`, { "event.action": "visit", "logrite.url": url });
   }
 
   const worker = async () => {
+	_logger.error('>>> Entering worker()', { "event.action": "worker" });
     while (!isExhausted()) {
       if (shouldPause?.()) {
         await new Promise(resolve => setTimeout(resolve, PAUSE_POLL_INTERVAL))
@@ -160,6 +178,7 @@ export async function warmupViteServer (
         continue
       }
       const url = queue.shift()!
+	_logger.error(`worker(): url → ${url}`, { "event.action": "worker" });
       active++
       try {
         // yield between modules so an incoming request is never queued behind speculative work
@@ -172,6 +191,7 @@ export async function warmupViteServer (
     }
     // let any parked worker re-evaluate now that this one is gone
     wake()
+	_logger.warn('<<< Exiting worker()', { "event.action": "worker" });
   }
 
   await Promise.all(Array.from({ length: concurrency }, () => worker()))

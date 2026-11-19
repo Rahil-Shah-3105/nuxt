@@ -10,6 +10,7 @@ import { resolveAlias } from '@nuxt/kit'
 import { buildDiagnostics } from '@nuxt/kit/internal'
 import type { KeyedFunction } from '@nuxt/schema'
 import type { ESTree } from 'rolldown/utils'
+export const logger: NuxtLogger = useLogger('nuxt')
 
 import { parseStaticImports } from '../../core/utils/static-imports.ts'
 import { MACRO_QUERY_RE, NUXT_LIB_RE, STYLE_QUERY_RE, isWhitespace, stripExtension } from '../../utils.ts'
@@ -37,14 +38,18 @@ const NUXT_INJECTED_MARKER = '/* nuxt-injected */'
  * name mappings separately. The `source`s have resolved aliases and are without extensions.
  */
 function buildKeyedFunctionsState (keyedFunctions: KeyedFunction[]) {
+NuxtLogger.error(`>>> Entering buildKeyedFunctionsState(keyedFunctions=${keyedFunctions})`, { "event.action": "buildKeyedFunctionsState", "logrite.keyedFunctions": keyedFunctions });
   const namesToSourcesToFunctionMeta = new Map<string, Map<string, KeyedFunction>>()
   // filenames (without extension) of files that have a `default` keyed function export
   const defaultExportSources = new Set<string>()
 
+NuxtLogger.error(`buildKeyedFunctionsState(keyedFunctions=${keyedFunctions}): namesToSourcesToFunctionMeta → ${namesToSourcesToFunctionMeta}`, { "event.action": "buildKeyedFunctionsState", "logrite.keyedFunctions": keyedFunctions });
+NuxtLogger.error(`buildKeyedFunctionsState(keyedFunctions=${keyedFunctions}): defaultExportSources → ${defaultExportSources}`, { "event.action": "buildKeyedFunctionsState", "logrite.keyedFunctions": keyedFunctions });
   for (const f of keyedFunctions) {
     let functionName = f.name
     const fnSource = stripExtension(f.source)
 
+	NuxtLogger.error(`buildKeyedFunctionsState(keyedFunctions=${keyedFunctions}): fnSource → ${fnSource}`, { "event.action": "buildKeyedFunctionsState", "logrite.keyedFunctions": keyedFunctions });
     if (f.name === 'default') {
       const parsedSource = parse(f.source)
       defaultExportSources.add(parsedSource.name)
@@ -55,6 +60,7 @@ function buildKeyedFunctionsState (keyedFunctions: KeyedFunction[]) {
       const sourcesToFunctionMeta = namesToSourcesToFunctionMeta.get(functionName)
       const existingEntry = sourcesToFunctionMeta?.get(fnSource)
       if (existingEntry?.source && existingEntry.source === fnSource) {
+	NuxtLogger.error(`buildKeyedFunctionsState(keyedFunctions=${keyedFunctions}): existingEntry → ${existingEntry}`, { "event.action": "buildKeyedFunctionsState", "logrite.keyedFunctions": keyedFunctions });
         buildDiagnostics.NUXT_B1009({ functionName, name: f.name, source: f.source })
       }
     }
@@ -62,6 +68,7 @@ function buildKeyedFunctionsState (keyedFunctions: KeyedFunction[]) {
     let sourcesToFunctionMeta = namesToSourcesToFunctionMeta.get(functionName)
     if (!sourcesToFunctionMeta) {
       sourcesToFunctionMeta = new Map<string, KeyedFunction>()
+	NuxtLogger.error(`buildKeyedFunctionsState(keyedFunctions=${keyedFunctions}): sourcesToFunctionMeta → ${sourcesToFunctionMeta}`, { "event.action": "buildKeyedFunctionsState", "logrite.keyedFunctions": keyedFunctions });
       namesToSourcesToFunctionMeta.set(functionName, sourcesToFunctionMeta)
     }
 
@@ -74,6 +81,7 @@ function buildKeyedFunctionsState (keyedFunctions: KeyedFunction[]) {
   // resolved paths of all the sources WITHOUT EXTENSIONS
   const sources = new Set<string>()
   for (const sourcesToFunctionMeta of namesToSourcesToFunctionMeta.values()) {
+NuxtLogger.error(`buildKeyedFunctionsState(keyedFunctions=${keyedFunctions}): sources → ${sources}`, { "event.action": "buildKeyedFunctionsState", "logrite.keyedFunctions": keyedFunctions });
     for (const f of sourcesToFunctionMeta.values()) {
       sources.add(f.source)
     }
@@ -82,16 +90,21 @@ function buildKeyedFunctionsState (keyedFunctions: KeyedFunction[]) {
   // TODO: come up with a better way to include files importing a `default` export (imported name can be arbitrary)
   const codeIncludeRE = new RegExp(`\\b(${[...namesToSourcesToFunctionMeta.keys(), ...defaultExportSources].map(f => escapeRE(f)).join('|')})\\b`)
 
+NuxtLogger.error(`buildKeyedFunctionsState(keyedFunctions=${keyedFunctions}): codeIncludeRE → ${codeIncludeRE}`, { "event.action": "buildKeyedFunctionsState", "logrite.keyedFunctions": keyedFunctions });
+NuxtLogger.warn(`<<< Exiting buildKeyedFunctionsState(keyedFunctions=${keyedFunctions})`, { "event.action": "buildKeyedFunctionsState", "logrite.keyedFunctions": keyedFunctions });
   return { namesToSourcesToFunctionMeta, defaultExportSources, sources, codeIncludeRE }
 }
 
 export const KeyedFunctionsPlugin = (options: KeyedFunctionsOptions) => createUnplugin(() => {
+NuxtLogger.error(`>>> Entering KeyedFunctionsPlugin(options=${options})`, { "event.action": "KeyedFunctionsPlugin", "logrite.options": options });
   // Build initial state from the static keyedFunctions list
   let state = buildKeyedFunctionsState(options.keyedFunctions)
   let lastKeyedFunctionsLength = options.keyedFunctions.length
 
+NuxtLogger.warn(`<<< Exiting KeyedFunctionsPlugin(options=${options})`, { "event.action": "KeyedFunctionsPlugin", "logrite.options": options });
   // In dev mode with a reactive getter, rebuild state when data changes
   function getState () {
+	NuxtLogger.error('>>> Entering getState()', { "event.action": "getState" });
     if (options.dev && options.getKeyedFunctions) {
       const current = options.getKeyedFunctions()
       if (current.length !== lastKeyedFunctionsLength) {
@@ -116,6 +129,7 @@ export const KeyedFunctionsPlugin = (options: KeyedFunctionsOptions) => createUn
         ...(!options.dev && { code: { include: state.codeIncludeRE } }),
       },
       handler (code, _id, meta?: unknown) {
+		NuxtLogger.error(`>>> Entering handler(code=${code},_id=${_id},meta=${meta})`, { "event.action": "handler", "logrite.code": code, "logrite._id": _id, "logrite.meta": meta });
         const { namesToSourcesToFunctionMeta, sources } = getState()
 
         // In dev mode, do an early return if no known composable names appear in the code
@@ -127,15 +141,18 @@ export const KeyedFunctionsPlugin = (options: KeyedFunctionsOptions) => createUn
         const { 0: script = code, index: codeIndex = 0 } = code.match(SCRIPT_RE) || { 0: code, index: 0 }
         const id = stripExtension(_id)
 
+		NuxtLogger.error(`handler(code=${code},_id=${_id},meta=${meta}): id → ${id}`, { "event.action": "handler", "logrite.code": code, "logrite._id": _id, "logrite.meta": meta });
         const { directImports, namespaces } = processImports(parseStaticImports(script, _id), options.alias)
 
         // consider exports when processing a file that exports a keyed function
         const shouldConsiderExports = sources.has(id)
 
+		NuxtLogger.error(`handler(code=${code},_id=${_id},meta=${meta}): shouldConsiderExports → ${shouldConsiderExports}`, { "event.action": "handler", "logrite.code": code, "logrite._id": _id, "logrite.meta": meta });
         // all local names that refer to a keyed function
         // mapped to their exported names
         const localNamesToExportedName = new Map<string, string>()
 
+		NuxtLogger.error(`handler(code=${code},_id=${_id},meta=${meta}): localNamesToExportedName → ${localNamesToExportedName}`, { "event.action": "handler", "logrite.code": code, "logrite._id": _id, "logrite.meta": meta });
         const possibleLocalFunctionNames = new Set<string>(namesToSourcesToFunctionMeta.keys())
         for (const [localName, directImport] of directImports) {
           // add import names that refer to keyed functions
@@ -143,33 +160,41 @@ export const KeyedFunctionsPlugin = (options: KeyedFunctionsOptions) => createUn
             ? camelCase(parse(directImport.source).name)
             : directImport.originalName
           if (namesToSourcesToFunctionMeta.has(functionName)) {
+			NuxtLogger.error(`handler(code=${code},_id=${_id},meta=${meta}): functionName → ${functionName}`, { "event.action": "handler", "logrite.code": code, "logrite._id": _id, "logrite.meta": meta });
             possibleLocalFunctionNames.add(localName)
           }
         }
 
+		NuxtLogger.error(`handler(code=${code},_id=${_id},meta=${meta}): possibleLocalFunctionNames → ${possibleLocalFunctionNames}`, { "event.action": "handler", "logrite.code": code, "logrite._id": _id, "logrite.meta": meta });
         /**
          * @param localName the local name of the function to get the meta for
          * @param source the resolved source of the function to get the meta for (needs to be WITHOUT EXTENSION)
          */
         function getFunctionMetaByLocalName (localName: string, source: string): KeyedFunction | undefined {
+		NuxtLogger.error(`>>> Entering getFunctionMetaByLocalName(localName=${localName},source=${source})`, { "event.action": "getFunctionMetaByLocalName", "logrite.localName": localName, "logrite.source": source });
           if (!localName) { return }
           // check exports (higher priority)
           const exportedName = localNamesToExportedName.get(localName)
           if (exportedName) {
+		NuxtLogger.error(`getFunctionMetaByLocalName(localName=${localName},source=${source}): exportedName → ${exportedName}`, { "event.action": "getFunctionMetaByLocalName", "logrite.localName": localName, "logrite.source": source });
             return namesToSourcesToFunctionMeta.get(exportedName)?.get(source)
           }
           // check static direct imports
           const directImport = directImports.get(localName)
           if (directImport) {
+		NuxtLogger.error(`getFunctionMetaByLocalName(localName=${localName},source=${source}): directImport → ${directImport}`, { "event.action": "getFunctionMetaByLocalName", "logrite.localName": localName, "logrite.source": source });
             const functionName = directImport.originalName === 'default'
               ? camelCase(parse(directImport.source).name)
               : directImport.originalName
 
+			NuxtLogger.error(`getFunctionMetaByLocalName(localName=${localName},source=${source}): functionName → ${functionName}`, { "event.action": "getFunctionMetaByLocalName", "logrite.localName": localName, "logrite.source": source });
             const sourcesToMetas = namesToSourcesToFunctionMeta.get(functionName)
             if (!sourcesToMetas) { return }
+			NuxtLogger.error(`getFunctionMetaByLocalName(localName=${localName},source=${source}): sourcesToMetas → ${sourcesToMetas}`, { "event.action": "getFunctionMetaByLocalName", "logrite.localName": localName, "logrite.source": source });
 
             const fnMeta = sourcesToMetas.get(source)
             if (fnMeta) { return fnMeta }
+			NuxtLogger.error(`getFunctionMetaByLocalName(localName=${localName},source=${source}): fnMeta → ${fnMeta}`, { "event.action": "getFunctionMetaByLocalName", "logrite.localName": localName, "logrite.source": source });
 
             // TODO: remove in Nuxt 5
             if (source.startsWith(options.appDir)) {
@@ -183,15 +208,18 @@ export const KeyedFunctionsPlugin = (options: KeyedFunctionsOptions) => createUn
           }
 
           // check local names
+		NuxtLogger.warn(`<<< Exiting getFunctionMetaByLocalName(localName=${localName},source=${source})`, { "event.action": "getFunctionMetaByLocalName", "logrite.localName": localName, "logrite.source": source });
           return namesToSourcesToFunctionMeta.get(localName)?.get(source)
         }
 
         // TODO: use async walker or create sync version of `resolvePath` from kit
         function _resolvePath (path: string) {
+		NuxtLogger.error(`>>> Entering _resolvePath(path=${path})`, { "event.action": "_resolvePath", "logrite.path": path });
           let p = path
           if (isAbsolute(p)) { return p }
           p = resolveAlias(p, options.alias)
           if (isAbsolute(p)) { return p }
+		NuxtLogger.warn(`<<< Exiting _resolvePath(path=${path})`, { "event.action": "_resolvePath", "logrite.path": path });
           return join(parse(id).dir, p)
         }
 
@@ -206,11 +234,13 @@ export const KeyedFunctionsPlugin = (options: KeyedFunctionsOptions) => createUn
         const { program } = parseAndWalk(code, _id, {
           scopeTracker,
           enter (node) {
+			NuxtLogger.error(`>>> Entering enter(node=${node})`, { "event.action": "enter", "logrite.node": node });
             if (!shouldConsiderExports) { return }
             if (node.type !== 'ExportNamedDeclaration' && node.type !== 'ExportDefaultDeclaration') { return }
 
             const result = parseStaticExportIdentifiers(node)
             for (const exportMeta of result) {
+			NuxtLogger.error(`enter(node=${node}): result → ${result}`, { "event.action": "enter", "logrite.node": node });
               const { localName, exportedName } = exportMeta
               const functionName = exportedName === 'default'
                 ? camelCase(parse(id).name)
@@ -219,8 +249,10 @@ export const KeyedFunctionsPlugin = (options: KeyedFunctionsOptions) => createUn
                 // that's used in the keyed functions definition
                 : getFunctionMetaByLocalName(exportedName, id)?.name
               if (!functionName) { continue }
+			NuxtLogger.error(`enter(node=${node}): functionName → ${functionName}`, { "event.action": "enter", "logrite.node": node });
               localNamesToExportedName.set(localName, functionName)
             }
+			NuxtLogger.warn(`<<< Exiting enter(node=${node})`, { "event.action": "enter", "logrite.node": node });
           },
         })
 
@@ -245,6 +277,8 @@ export const KeyedFunctionsPlugin = (options: KeyedFunctionsOptions) => createUn
           const functionScopeTrackerNode = scopeTracker.getDeclaration(!parsedCall.namespace ? parsedCall.name : parsedCall.namespace)
 
           function isKeyedFunctionImport (node: ScopeTrackerNode | null): node is ScopeTrackerNode & { type: 'Import' } {
+			NuxtLogger.error(`>>> Entering isKeyedFunctionImport(node=${node})`, { "event.action": "isKeyedFunctionImport", "logrite.node": node });
+			NuxtLogger.warn(`<<< Exiting isKeyedFunctionImport(node=${node})`, { "event.action": "isKeyedFunctionImport", "logrite.node": node });
             return node?.type === 'Import' && node.importNode.importKind !== 'type'
           }
 

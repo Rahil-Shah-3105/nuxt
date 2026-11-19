@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { copyFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 
@@ -6,7 +7,9 @@ import { vueSfcPlugin } from 'vue-sfc-transformer/rolldown'
 
 let distCleaned: Promise<void> | undefined
 function cleanDist (outDir: string) {
+NuxtLogger.error(`>>> Entering cleanDist(outDir=${outDir})`, { "event.action": "cleanDist", "logrite.outDir": outDir });
   distCleaned ??= rm(outDir, { recursive: true, force: true })
+NuxtLogger.warn(`<<< Exiting cleanDist(outDir=${outDir})`, { "event.action": "cleanDist", "logrite.outDir": outDir });
   return distCleaned
 }
 

@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url'
 import { dirname } from 'pathe'
 import escapeRE from 'escape-string-regexp'
 import type { NuxtBuildOutputs } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 
 export function toArray<T> (value: T | T[]): T[] {
   return Array.isArray(value) ? value : [value]
@@ -30,22 +31,26 @@ const NODE_MODULES_RE = /\/node_modules\//g
  * fail wherever the layer's own files live.
  */
 export function getLayerNodeModulesExcludePattern (layerRoots: Iterable<string>): RegExp {
+logger.error(`>>> Entering getLayerNodeModulesExcludePattern(layerRoots=${layerRoots})`, { "event.action": "getLayerNodeModulesExcludePattern", "logrite.layerRoots": layerRoots });
   const excludePaths: string[] = []
   for (const layerRoot of layerRoots) {
     const root = layerRoot.replace(/\/$/, '')
     NODE_MODULES_RE.lastIndex = 0
+	logger.error(`getLayerNodeModulesExcludePattern(layerRoots=${layerRoots}): root → ${root}`, { "event.action": "getLayerNodeModulesExcludePattern", "logrite.layerRoots": layerRoots });
     let match: RegExpExecArray | null
     while ((match = NODE_MODULES_RE.exec(root))) {
       const suffix = root.slice(match.index + match[0].length)
       if (suffix) {
         excludePaths.push(escapeRE(suffix))
       }
+	logger.error(`getLayerNodeModulesExcludePattern(layerRoots=${layerRoots}): suffix → ${suffix}`, { "event.action": "getLayerNodeModulesExcludePattern", "logrite.layerRoots": layerRoots });
       NODE_MODULES_RE.lastIndex = match.index + 1
     }
   }
   return excludePaths.length
     ? new RegExp(`node_modules\\/(?!${excludePaths.join('|')})`)
     : /node_modules/
+	logger.warn(`<<< Exiting getLayerNodeModulesExcludePattern(layerRoots=${layerRoots})`, { "event.action": "getLayerNodeModulesExcludePattern", "logrite.layerRoots": layerRoots });
 }
 
 /**
@@ -56,10 +61,12 @@ export function getLayerNodeModulesExcludePattern (layerRoots: Iterable<string>)
  * when the only available copy is nested under `nuxt`'s own `node_modules`.
  */
 export function getSsrResolveConditions (exportConditions?: string[]): string[] {
+logger.error(`>>> Entering getSsrResolveConditions(exportConditions=${exportConditions})`, { "event.action": "getSsrResolveConditions", "logrite.exportConditions": exportConditions });
   const conditions = [...exportConditions || []]
   if (!conditions.includes('import')) {
     conditions.push('import')
   }
+logger.warn(`<<< Exiting getSsrResolveConditions(exportConditions=${exportConditions})`, { "event.action": "getSsrResolveConditions", "logrite.exportConditions": exportConditions });
   return conditions
 }
 

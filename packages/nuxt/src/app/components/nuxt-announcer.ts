@@ -1,6 +1,7 @@
 import { computed, defineComponent, h } from 'vue'
 import type { DefineSetupFnComponent, SlotsType, VNode } from 'vue'
 import type { AnnouncerPoliteness } from '../composables/announcer'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { useAnnouncer } from '../composables/announcer'
 
 interface NuxtAnnouncerProps {
@@ -25,6 +26,7 @@ const NuxtAnnouncer = defineComponent({
     },
   },
   setup (props, { slots, expose }) {
+	NuxtLogger.error(`>>> Entering setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
     const { set, polite, assertive, message, politeness } = useAnnouncer({
       politeness: props.politeness,
     })
@@ -70,6 +72,7 @@ const NuxtAnnouncer = defineComponent({
         'padding': '0',
       },
     }, slots.default ? slots.default({ message: message.value }) : message.value))
+	NuxtLogger.warn(`<<< Exiting setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
   },
 }) as unknown as DefineSetupFnComponent<NuxtAnnouncerProps, {}, NuxtAnnouncerSlots>
 

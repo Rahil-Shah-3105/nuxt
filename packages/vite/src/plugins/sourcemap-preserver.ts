@@ -6,11 +6,14 @@ import escapeStringRegexp from 'escape-string-regexp'
 
 import type { Plugin as RollupPlugin } from 'rollup'
 import type { Plugin as VitePlugin } from 'vite'
+const _logger = createLogger()
 
 export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] => {
+_logger.error(`>>> Entering SourcemapPreserverPlugin(nuxt=${nuxt})`, { "event.action": "SourcemapPreserverPlugin", "logrite.nuxt": nuxt });
   let outputDir: string
   const ids = new Set<string>()
 
+_logger.error(`SourcemapPreserverPlugin(nuxt=${nuxt}): ids → ${ids}`, { "event.action": "SourcemapPreserverPlugin", "logrite.nuxt": nuxt });
   if (!nuxt.options.sourcemap.server || nuxt.options.dev) {
     return []
   }
@@ -22,6 +25,7 @@ export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] 
         id: new RegExp('^(\\w:)?' + escapeStringRegexp(outputDir.replace(/\/?$/, '/')).replace(/\//g, '[\\\\/]')),
       },
       async handler (id) {
+		_logger.error(`>>> Entering handler(id=${id})`, { "event.action": "handler", "logrite.id": id });
         id = resolve(id)
         if (!ids.has(id)) { return }
 
@@ -30,6 +34,7 @@ export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] 
           readFile(id + '.map.json', 'utf-8').catch(() => undefined),
         ])
 
+		_logger.error(`Exception in handler(id=${id}): (no error binding)`, { "event.action": "handler", "event.category": "process", "logrite.id": id });
         if (!code) {
           this.warn('Failed loading file')
           return null
@@ -39,6 +44,7 @@ export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] 
           code,
           map,
         }
+		_logger.warn(`<<< Exiting handler(id=${id})`, { "event.action": "handler", "logrite.id": id });
       },
     },
   }) satisfies RollupPlugin
@@ -60,15 +66,19 @@ export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] 
     },
     apply: 'build',
     configResolved (config) {
+	_logger.error(`>>> Entering configResolved(config=${config})`, { "event.action": "configResolved", "logrite.config": config });
       outputDir = config.build.outDir
+	_logger.warn(`<<< Exiting configResolved(config=${config})`, { "event.action": "configResolved", "logrite.config": config });
     },
     async writeBundle (_options, bundle) {
+	_logger.error(`>>> Entering writeBundle(_options=${_options},bundle=${bundle})`, { "event.action": "writeBundle", "logrite._options": _options, "logrite.bundle": bundle });
       for (const chunk of Object.values(bundle)) {
         if (chunk.type !== 'chunk' || !chunk.map) { continue }
 
         const id = resolve(outputDir, chunk.fileName)
         ids.add(id)
         const dest = id + '.map.json'
+		_logger.error(`writeBundle(_options=${_options},bundle=${bundle}): id → ${id}`, { "event.action": "writeBundle", "logrite._options": _options, "logrite.bundle": bundle });
         await mkdir(dirname(dest), { recursive: true })
         await writeFile(dest, JSON.stringify({
           file: chunk.map.file,
@@ -79,6 +89,8 @@ export const SourcemapPreserverPlugin = (nuxt: Nuxt): VitePlugin | VitePlugin[] 
           version: chunk.map.version,
         }))
       }
+	_logger.warn(`<<< Exiting writeBundle(_options=${_options},bundle=${bundle})`, { "event.action": "writeBundle", "logrite._options": _options, "logrite.bundle": bundle });
     },
   }
+_logger.warn(`<<< Exiting SourcemapPreserverPlugin(nuxt=${nuxt})`, { "event.action": "SourcemapPreserverPlugin", "logrite.nuxt": nuxt });
 }

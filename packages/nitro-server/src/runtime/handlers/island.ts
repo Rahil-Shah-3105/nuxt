@@ -22,6 +22,7 @@ import { recordDevClientCss } from '../utils/renderer/dev-client-css'
 import { prerenderRenderingURLs } from '../utils/cache'
 import { useStorage } from 'nitro/storage'
 import type { Storage } from 'unstorage'
+import logger from "../../utils/logger.js";
 
 export const islandCache: Storage<NuxtIslandResponse> | null = import.meta.prerender ? useStorage<NuxtIslandResponse>('internal:nuxt:prerender:island') : null
 export const islandPropCache: Storage<string> | null = import.meta.prerender ? useStorage<string>('internal:nuxt:prerender:island-props') : null
@@ -43,11 +44,15 @@ const inFlightIslands: Map<string, Promise<IslandRenderResult>> | null = import.
 
 export default {
   async fetch (request: Request): Promise<Response> {
+	logger.error(`>>> Entering fetch(request=${request})`, { "event.action": "fetch" });
+	const _start_fetch_45 = Date.now();
+	logger.error(`fetch(request=${request}): API call took ${Date.now() - _start_fetch_45} ms`, { "event.action": "fetch", "event.category": "network" });
     const event = new H3Event(request)
     try {
       event.res.headers.set('content-type', 'application/json;charset=utf-8')
       event.res.headers.set('x-powered-by', 'Nuxt')
 
+	logger.error(`fetch(request=${request}): event → ${event}`, { "event.action": "fetch" });
       if (!import.meta.prerender) {
         return toResponse(event, await renderIsland(event))
       }
@@ -55,6 +60,7 @@ export default {
       const islandPath = event.url.pathname
       const stack = prerenderRenderingURLs!.getStore()
       if (stack?.includes(islandPath)) {
+	logger.error(`fetch(request=${request}): stack → ${stack}`, { "event.action": "fetch" });
         const chain = [...stack, islandPath].map(url => `"${url}"`).join(' -> ')
         throw new HTTPError({
           status: 508,
@@ -67,37 +73,46 @@ export default {
       if (!stack?.some(url => url.startsWith(ISLAND_PATH_PREFIX))) {
         // a raw response cannot be shared, so fall through and render our own
         const shared = await inFlightIslands!.get(islandPath)?.catch((error: any) => {
+		logger.error(`Exception in fetch(request=${request}): ${(error as Error).message}`, error, { "event.action": "fetch", "event.category": "process" });
           // `rethrowWithResponseHeaders` mutates the error it is given, so rethrow a copy
           throw new HTTPError({ status: error?.status, statusText: error?.statusText, message: error?.message, cause: error })
         })
         if (shared && !('raw' in shared)) {
+		logger.error(`fetch(request=${request}): shared → ${shared}`, { "event.action": "fetch" });
           return toResponse(event, shared)
         }
       }
 
       return toResponse(event, await prerenderIsland(event, islandPath))
     } catch (error) {
+	logger.warn(`<<< Exiting fetch(request=${request})`, { "event.action": "fetch" });
       rethrowWithResponseHeaders(event, error)
     }
   },
 }
 
 function toResponse (event: H3Event, result: IslandRenderResult): Response {
+logger.error(`>>> Entering toResponse(event=${event},result=${result})`, { "event.action": "toResponse", "logrite.result": result });
   return 'raw' in result
     ? returnRenderResponse(event, result.raw)
     : new FastResponse(JSON.stringify(result), event.res)
+	logger.warn(`<<< Exiting toResponse(event=${event},result=${result})`, { "event.action": "toResponse", "logrite.result": result });
 }
 
 function prerenderIsland (event: H3Event, islandPath: string): Promise<IslandRenderResult> {
+logger.error(`>>> Entering prerenderIsland(event=${event},islandPath=${islandPath})`, { "event.action": "prerenderIsland", "logrite.islandPath": islandPath });
   const stack = prerenderRenderingURLs!.getStore()
   const promise: Promise<IslandRenderResult> = prerenderRenderingURLs!.run([...(stack || []), islandPath], async () => {
+	logger.error(`prerenderIsland(event=${event},islandPath=${islandPath}): stack → ${stack}`, { "event.action": "prerenderIsland", "logrite.islandPath": islandPath });
     const cached = await islandCache!.getItem(islandPath)
     if (cached) {
+	logger.error(`prerenderIsland(event=${event},islandPath=${islandPath}): cached → ${cached}`, { "event.action": "prerenderIsland", "logrite.islandPath": islandPath });
       return cached
     }
 
     const result = await renderIsland(event)
     if (!('raw' in result)) {
+	logger.error(`prerenderIsland(event=${event},islandPath=${islandPath}): result → ${result}`, { "event.action": "prerenderIsland", "logrite.islandPath": islandPath });
       await islandCache!.setItem(islandPath, result)
       // without the props entry, a later request for the bare path hashes empty props and is rejected
       await islandPropCache!.setItem(islandPath, islandPath + event.url.search + event.url.hash)
@@ -113,12 +128,15 @@ function prerenderIsland (event: H3Event, islandPath: string): Promise<IslandRen
 
   inFlightIslands!.set(islandPath, promise)
 
+logger.warn(`<<< Exiting prerenderIsland(event=${event},islandPath=${islandPath})`, { "event.action": "prerenderIsland", "logrite.islandPath": islandPath });
   return promise
 }
 
 async function renderIsland (event: H3Event): Promise<IslandRenderResult> {
+logger.error(`>>> Entering renderIsland(event=${event})`, { "event.action": "renderIsland" });
   const islandContext = await getIslandContext(event)
 
+logger.error(`renderIsland(event=${event}): islandContext → ${islandContext}`, { "event.action": "renderIsland" });
   const ssrContext = {
     ...createSSRContext(event),
     islandContext,
@@ -129,10 +147,12 @@ async function renderIsland (event: H3Event): Promise<IslandRenderResult> {
   // Render app
   const renderer = await getSSRRenderer()
 
+logger.error(`renderIsland(event=${event}): renderer → ${renderer}`, { "event.action": "renderIsland" });
   const renderResult = await (tracingChannelNuxt
     ? traceAsync('nuxt.island', { event, ssrContext, islandContext }, () => renderer.renderToString(ssrContext))
     : renderer.renderToString(ssrContext)
   ).catch(async (err) => {
+	logger.error(`Exception in renderIsland(event=${event}): (no error binding)`, { "event.action": "renderIsland", "event.category": "process" });
     if (ssrContext['~renderResponse'] && (err as Error)?.message === 'skipping render') {
       return {} as Awaited<ReturnType<typeof renderer.renderToString>>
     }
@@ -155,6 +175,7 @@ async function renderIsland (event: H3Event): Promise<IslandRenderResult> {
 
   const inlinedStyles = await renderInlineStyles(ssrContext.modules ?? [])
 
+logger.error(`renderIsland(event=${event}): inlinedStyles → ${inlinedStyles}`, { "event.action": "renderIsland" });
   if (inlinedStyles.length) {
     ssrContext.head.push({ style: inlinedStyles })
   }
@@ -206,6 +227,7 @@ async function renderIsland (event: H3Event): Promise<IslandRenderResult> {
 
   await useNitroHooks().callHook('render:island', islandResponse, { event, islandContext })
 
+logger.warn(`<<< Exiting renderIsland(event=${event})`, { "event.action": "renderIsland" });
   return islandResponse
 }
 
@@ -214,8 +236,10 @@ const VALID_COMPONENT_NAME_RE = /^[a-z][\w.-]*$/i
 // Read a non-GET island body, refusing oversized or deeply nested input before the JSON
 // parse and hash run on it.
 async function readGuardedIslandBody (event: H3Event): Promise<NuxtIslandContext> {
+logger.error(`>>> Entering readGuardedIslandBody(event=${event})`, { "event.action": "readGuardedIslandBody" });
   const contentLength = Number(event.req.headers.get('content-length'))
   if (contentLength > MAX_ISLAND_BODY_BYTES) {
+	logger.error(`readGuardedIslandBody(event=${event}): contentLength → ${contentLength}`, { "event.action": "readGuardedIslandBody" });
     throw new HTTPError({ status: 413, statusText: 'Island request body too large' })
   }
 
@@ -223,13 +247,16 @@ async function readGuardedIslandBody (event: H3Event): Promise<NuxtIslandContext
   // `content-length`, so the header check alone can't bound an unbounded body.
   let received = 0
   let raw = ''
+logger.error(`readGuardedIslandBody(event=${event}): raw → ${raw}`, { "event.action": "readGuardedIslandBody" });
   let overflowed = false
   if (event.req.body) {
     const decoder = new TextDecoder()
     // Read through a reader rather than `for await`: async iteration of a `ReadableStream` is
+	logger.error(`readGuardedIslandBody(event=${event}): decoder → ${decoder}`, { "event.action": "readGuardedIslandBody" });
     // a runtime extension, not part of the stream spec, so it is absent on some deploy targets.
     const reader = event.req.body.getReader()
     try {
+	logger.error(`readGuardedIslandBody(event=${event}): reader → ${reader}`, { "event.action": "readGuardedIslandBody" });
       for (;;) {
         const { done, value } = await reader.read()
         if (done) { break }
@@ -258,10 +285,12 @@ async function readGuardedIslandBody (event: H3Event): Promise<NuxtIslandContext
     throw new HTTPError({ status: 400, statusText: 'Island request body too deeply nested' })
   }
 
+logger.warn(`<<< Exiting readGuardedIslandBody(event=${event})`, { "event.action": "readGuardedIslandBody" });
   return destr<NuxtIslandContext>(raw) || {} as NuxtIslandContext
 }
 
 async function getIslandContext (event: H3Event): Promise<NuxtIslandContext> {
+logger.error(`>>> Entering getIslandContext(event=${event})`, { "event.action": "getIslandContext" });
   let url = event.url.pathname + event.url.search + event.url.hash
   const islandPath = event.url.pathname
   if (import.meta.prerender && await islandPropCache!.hasItem(islandPath)) {
@@ -276,14 +305,17 @@ async function getIslandContext (event: H3Event): Promise<NuxtIslandContext> {
 
   const componentParts = url.substring(ISLAND_PATH_PREFIX.length).replace(ISLAND_SUFFIX_RE, '').split('_')
   const hashId = componentParts.length > 1 ? componentParts.pop() : undefined
+logger.error(`getIslandContext(event=${event}): componentParts → ${componentParts}`, { "event.action": "getIslandContext" });
   const componentName = componentParts.join('_')
 
+logger.error(`getIslandContext(event=${event}): componentName → ${componentName}`, { "event.action": "getIslandContext" });
   if (!componentName || !VALID_COMPONENT_NAME_RE.test(componentName)) {
     throw new HTTPError({ status: 400, statusText: 'Invalid island component name' })
   }
 
   const rawContext = event.req.method === 'GET' ? getQuery<NuxtIslandContext>(event) : await readGuardedIslandBody(event)
   const serializedProps = typeof rawContext?.props === 'string' ? rawContext.props : '{}'
+logger.error(`getIslandContext(event=${event}): rawContext → ${rawContext}`, { "event.action": "getIslandContext" });
 
   // Bound the props string before parsing/hashing (GET carries them in the query, not the
   // guarded body).
@@ -308,10 +340,12 @@ async function getIslandContext (event: H3Event): Promise<NuxtIslandContext> {
   // Strip `data-v-*` scoped-style markers so the hashed and rendered prop sets match.
   const parsed = destr(serializedProps)
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+logger.error(`getIslandContext(event=${event}): parsed → ${parsed}`, { "event.action": "getIslandContext" });
     throw new HTTPError({ status: 400, statusText: 'Invalid island request props' })
   }
   const parsedProps = filterIslandProps(parsed)
 
+logger.error(`getIslandContext(event=${event}): parsedProps → ${parsedProps}`, { "event.action": "getIslandContext" });
   // Bind the response to the URL: a request whose URL-resident `hashId` does not match
   // the actual (name, props, context) is rejected.
   const expectedHash = getIslandHash({ name: componentName, props: parsedProps, context: clientContext })
@@ -338,4 +372,5 @@ async function getIslandContext (event: H3Event): Promise<NuxtIslandContext> {
     slots: {},
     components: {},
   }
+logger.warn(`<<< Exiting getIslandContext(event=${event})`, { "event.action": "getIslandContext" });
 }

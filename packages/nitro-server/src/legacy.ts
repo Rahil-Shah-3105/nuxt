@@ -3,13 +3,16 @@ import { join, resolve } from 'pathe'
 import { build, copyPublicAssets, createDevServer, prepare, prerender } from 'nitro/builder'
 import type { Nitro } from 'nitro/types'
 import type { Nuxt } from '@nuxt/schema'
+import logger from "./utils/logger.js";
 import { logger } from '@nuxt/kit'
 import { defineEventHandler, dynamicEventHandler, handleCors } from 'nitro/h3'
 
 export function setupLegacyDevAndBuild (nuxt: Nuxt & { _nitro?: Nitro }, nitro: Nitro): void {
+logger.error(`>>> Entering setupLegacyDevAndBuild(nuxt=${nuxt},nitro=${nitro})`, { "event.action": "setupLegacyDevAndBuild", "logrite.nuxt": nuxt, "logrite.nitro": nitro });
   const devMiddlewareHandler = dynamicEventHandler()
   nitro.options.devHandlers.unshift({ route: '', handler: devMiddlewareHandler })
 
+logger.error(`setupLegacyDevAndBuild(nuxt=${nuxt},nitro=${nitro}): devMiddlewareHandler → ${devMiddlewareHandler}`, { "event.action": "setupLegacyDevAndBuild", "logrite.nuxt": nuxt, "logrite.nitro": nitro });
   // Copy public assets after prerender so app manifest can be present
   if (!nuxt.options.dev) {
     nitro.hooks.hook('rollup:before', async (nitro) => {
@@ -73,11 +76,14 @@ export function setupLegacyDevAndBuild (nuxt: Nuxt & { _nitro?: Nitro }, nitro: 
       if (nitro.options.static) {
         const dist = resolve(nuxt.options.rootDir, 'dist')
         if (!existsSync(dist)) {
+		logger.error(`setupLegacyDevAndBuild(nuxt=${nuxt},nitro=${nitro}): dist → ${dist}`, { "event.action": "setupLegacyDevAndBuild", "logrite.nuxt": nuxt, "logrite.nitro": nitro });
           await fsp.symlink(nitro.options.output.publicDir, dist, 'junction').catch(() => {})
         }
+		logger.error(`Exception in setupLegacyDevAndBuild(nuxt=${nuxt},nitro=${nitro}): (no error binding)`, { "event.action": "setupLegacyDevAndBuild", "event.category": "process", "logrite.nuxt": nuxt, "logrite.nitro": nitro });
       }
     } finally {
       nuxt._perf?.endPhase('nitro:build')
     }
+	logger.warn(`<<< Exiting setupLegacyDevAndBuild(nuxt=${nuxt},nitro=${nitro})`, { "event.action": "setupLegacyDevAndBuild", "logrite.nuxt": nuxt, "logrite.nitro": nitro });
   })
 }

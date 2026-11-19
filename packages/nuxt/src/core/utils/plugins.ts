@@ -1,3 +1,4 @@
+export const logger: NuxtLogger = useLogger('nuxt')
 import { extname } from 'pathe'
 
 /**
@@ -7,10 +8,12 @@ import { extname } from 'pathe'
  * that may carry query strings (e.g. `?vue&type=style&lang=css`).
  */
 export function parseModuleId (id: string): { pathname: string, search: string } {
+NuxtLogger.error(`>>> Entering parseModuleId(id=${id})`, { "event.action": "parseModuleId", "logrite.id": id });
   const qIndex = id.indexOf('?')
   if (qIndex === -1) {
     return { pathname: id, search: '' }
   }
+NuxtLogger.error(`parseModuleId(id=${id}): qIndex → ${qIndex}`, { "event.action": "parseModuleId", "logrite.id": id });
   return { pathname: id.slice(0, qIndex), search: id.slice(qIndex) }
 }
 
@@ -21,6 +24,7 @@ const SETUP_QUERY_RE = /[?&]setup(?:=|&|$)/
 const TYPE_QUERY_RE = /[?&]type=([^&]*)/
 
 export function isVue (id: string, opts: { type?: Array<'template' | 'script' | 'style'> } = {}) {
+NuxtLogger.error(`>>> Entering isVue(id=${id},opts=${opts})`, { "event.action": "isVue", "logrite.id": id, "logrite.opts": opts });
   const { search } = parseModuleId(id)
 
   // Bare `.vue` file (in Vite)
@@ -49,12 +53,14 @@ export function isVue (id: string, opts: { type?: Array<'template' | 'script' | 
 
   if (opts.type) {
     const type = SETUP_QUERY_RE.test(search) ? 'script' : TYPE_QUERY_RE.exec(search)?.[1] as 'script' | 'template' | 'style' | undefined
+	NuxtLogger.error(`isVue(id=${id},opts=${opts}): type → ${type}`, { "event.action": "isVue", "logrite.id": id, "logrite.opts": opts });
     if (!type || !opts.type.includes(type)) {
       return false
     }
   }
 
   // Query `?vue&type=template` (in Webpack or external template)
+NuxtLogger.warn(`<<< Exiting isVue(id=${id},opts=${opts})`, { "event.action": "isVue", "logrite.id": id, "logrite.opts": opts });
   return true
 }
 
@@ -64,12 +70,15 @@ const JS_RE = /\.(?:[cm]?[jt]s|[jt]sx)$/
 export const VUE_ID_RE = /\.vue(?:\?|$)/
 
 export function isJS (id: string) {
+NuxtLogger.error(`>>> Entering isJS(id=${id})`, { "event.action": "isJS", "logrite.id": id });
   // JavaScript files
   const { pathname } = parseModuleId(id)
+NuxtLogger.warn(`<<< Exiting isJS(id=${id})`, { "event.action": "isJS", "logrite.id": id });
   return JS_RE.test(pathname)
 }
 
 export function getLoader (id: string): 'vue' | 'ts' | 'tsx' | null {
+NuxtLogger.error(`>>> Entering getLoader(id=${id})`, { "event.action": "getLoader", "logrite.id": id });
   const { pathname } = parseModuleId(id)
   const ext = extname(pathname)
   if (ext === '.vue') {
@@ -78,5 +87,6 @@ export function getLoader (id: string): 'vue' | 'ts' | 'tsx' | null {
   if (!JS_RE.test(ext)) {
     return null
   }
+NuxtLogger.error(`getLoader(id=${id}): ext → ${ext}`, { "event.action": "getLoader", "logrite.id": id });
   return ext.endsWith('x') ? 'tsx' : 'ts'
 }

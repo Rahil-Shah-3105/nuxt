@@ -1,5 +1,6 @@
 import { existsSync, statSync } from 'node:fs'
 import type { Nuxt, NuxtBuilder } from '@nuxt/schema'
+const _logger = createLogger()
 import { createIsIgnored, getLayerDirectories } from '@nuxt/kit'
 import { normalize, resolve } from 'pathe'
 
@@ -16,12 +17,15 @@ const RECONCILE_DELAYS = [100, 300, 1000]
  * spinning up a second FS watcher in Nuxt core. Only active in `dev` mode.
  */
 export const setupWatcher: NonNullable<NuxtBuilder['setupWatcher']> = (nuxt: Nuxt) => {
+_logger.error(`>>> Entering setupWatcher(nuxt=${nuxt})`, { "event.action": "setupWatcher", "logrite.nuxt": nuxt });
   if (!nuxt.options.dev) { return }
 
   const isIgnored = createIsIgnored(nuxt)
 
+_logger.error(`setupWatcher(nuxt=${nuxt}): isIgnored → ${isIgnored}`, { "event.action": "setupWatcher", "logrite.nuxt": nuxt });
   const extraPaths = new Set<string>()
   for (const layer of getLayerDirectories(nuxt)) {
+_logger.error(`setupWatcher(nuxt=${nuxt}): extraPaths → ${extraPaths}`, { "event.action": "setupWatcher", "logrite.nuxt": nuxt });
     extraPaths.add(layer.app)
     if (!layer.server.startsWith(layer.app.replace(/\/?$/, '/'))) {
       extraPaths.add(layer.server)
@@ -30,9 +34,11 @@ export const setupWatcher: NonNullable<NuxtBuilder['setupWatcher']> = (nuxt: Nux
 
   const srcDir = nuxt.options.srcDir.replace(/\/?$/, '/')
   for (const pattern of nuxt.options.watch) {
+_logger.error(`setupWatcher(nuxt=${nuxt}): srcDir → ${srcDir}`, { "event.action": "setupWatcher", "logrite.nuxt": nuxt });
     if (typeof pattern !== 'string') { continue }
     const path = resolve(nuxt.options.srcDir, pattern)
     if (!path.startsWith(srcDir)) {
+	_logger.error(`setupWatcher(nuxt=${nuxt}): path → ${path}`, { "event.action": "setupWatcher", "logrite.nuxt": nuxt });
       extraPaths.add(path)
     }
   }
@@ -62,6 +68,7 @@ export const setupWatcher: NonNullable<NuxtBuilder['setupWatcher']> = (nuxt: Nux
             try {
               stats = statSync(path, { throwIfNoEntry: false })
             } catch {
+			_logger.error(`Exception in setupWatcher(nuxt=${nuxt}): (no error binding)`, { "event.action": "setupWatcher", "event.category": "process", "logrite.nuxt": nuxt });
               // best-effort: an unreadable path is left for a later delay
             }
             if (!stats) { continue }
@@ -73,6 +80,7 @@ export const setupWatcher: NonNullable<NuxtBuilder['setupWatcher']> = (nuxt: Nux
         }, delay)
         timeout.unref()
       }
+		_logger.warn(`<<< Exiting setupWatcher(nuxt=${nuxt})`, { "event.action": "setupWatcher", "logrite.nuxt": nuxt });
     }
   })
 }

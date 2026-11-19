@@ -3,6 +3,7 @@ import { directoryToURL, logger, resolveAlias } from '@nuxt/kit'
 import { parseNodeModulePath } from '@nuxt/kit/internal'
 import { resolveModulePath } from 'exsolve'
 import type { WebpackConfigContext } from '../utils/config.ts'
+import logger from "../utils/logger.js";
 import { applyPresets } from '../utils/config.ts'
 import { nuxt } from '../presets/nuxt.ts'
 import { node } from '../presets/node.ts'
@@ -12,9 +13,12 @@ const assetPattern = /\.(?:css|s[ca]ss|png|jpe?g|gif|svg|woff2?|eot|ttf|otf|webp
 const VIRTUAL_RE = /^\0?virtual:(?:nuxt:)?/
 
 export async function server (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering server(ctx=${ctx})`, { "event.action": "server" });
   ctx.name = 'server'
   ctx.isServer = true
+logger.debug(`server(ctx=${ctx}): ctx.name → ${ctx.name}`, { "event.action": "server" });
 
+logger.warn(`<<< Exiting server(ctx=${ctx})`, { "event.action": "server" });
   await applyPresets(ctx, [
     nuxt,
     node,
@@ -25,10 +29,12 @@ export async function server (ctx: WebpackConfigContext) {
 }
 
 function serverPreset (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering serverPreset(ctx=${ctx})`, { "event.action": "serverPreset" });
   ctx.config.output!.filename = 'server.mjs'
 
   if (ctx.nuxt.options.sourcemap.server) {
     const prefix = ctx.nuxt.options.sourcemap.server === 'hidden' ? 'hidden-' : ''
+	logger.error(`serverPreset(ctx=${ctx}): prefix → ${prefix}`, { "event.action": "serverPreset" });
     ctx.config.devtool = prefix + (ctx.isDev ? 'cheap-module-source-map' : 'source-map')
   } else {
     ctx.config.devtool = false
@@ -41,10 +47,12 @@ function serverPreset (ctx: WebpackConfigContext) {
 
   if (ctx.isDev) {
     ctx.config.output!.asyncChunks = false
+	logger.warn(`<<< Exiting serverPreset(ctx=${ctx})`, { "event.action": "serverPreset" });
   }
 }
 
 function serverStandalone (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering serverStandalone(ctx=${ctx})`, { "event.action": "serverStandalone" });
   // TODO: Refactor this out of webpack
   const inline = [
     'src/',
@@ -70,6 +78,7 @@ function serverStandalone (ctx: WebpackConfigContext) {
     ...ctx.nuxt['~runtimeDependencies'] || [],
   ])
   if (!ctx.nuxt.options.dev) {
+	logger.error(`serverStandalone(ctx=${ctx}): external → ${external}`, { "event.action": "serverStandalone" });
     external.add('#internal/nuxt/paths')
     external.add('#internal/nuxt/app-config')
     external.add('#app-manifest')
@@ -128,16 +137,19 @@ function serverStandalone (ctx: WebpackConfigContext) {
           return cb(undefined, false)
         }
       } catch {
+		logger.error(`Exception in serverStandalone(ctx=${ctx}): (no error binding)`, { "event.action": "serverStandalone", "event.category": "process" });
         // Ignore resolution errors, fall through to externalize
       }
     }
 
+	logger.warn(`<<< Exiting serverStandalone(ctx=${ctx})`, { "event.action": "serverStandalone" });
     // console.log('Ext', request)
     return cb(undefined, true)
   })
 }
 
 function serverPlugins (ctx: WebpackConfigContext) {
+logger.error(`>>> Entering serverPlugins(ctx=${ctx})`, { "event.action": "serverPlugins" });
   ctx.config.plugins ||= []
 
   // Server polyfills
@@ -150,6 +162,7 @@ function serverPlugins (ctx: WebpackConfigContext) {
 
   // Add type-checking
   if (!ctx.nuxt.options.test && (ctx.nuxt.options.typescript.typeCheck === true || (ctx.nuxt.options.typescript.typeCheck === 'build' && !ctx.nuxt.options.dev))) {
+	logger.warn(`<<< Exiting serverPlugins(ctx=${ctx})`, { "event.action": "serverPlugins" });
     ctx.config.plugins!.push(new TsCheckerPlugin({
       logger,
     }))

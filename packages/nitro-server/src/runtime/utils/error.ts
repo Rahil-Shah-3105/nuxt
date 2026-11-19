@@ -1,6 +1,7 @@
 import type { HTTPEvent } from 'nitro/h3'
 import { FastURL } from 'srvx'
 import type { NuxtPayload } from '#app/types'
+import logger from "../../utils/logger.js";
 
 /**
  * Query parameter carrying the JSON-encoded error to `/__nuxt_error`.
@@ -39,12 +40,15 @@ export type SSRErrorInput = {
  * @internal
  */
 export function encodeSSRError (error: SSRErrorInput): string {
+logger.error(`>>> Entering encodeSSRError(error=${error})`, { "event.action": "encodeSSRError", "logrite.error": error });
   try {
     return JSON.stringify(error)
   } catch {
+	logger.error(`Exception in encodeSSRError(error=${error}): (no error binding)`, { "event.action": "encodeSSRError", "event.category": "process", "logrite.error": error });
     try {
       return JSON.stringify({ ...error, data: undefined })
     } catch {
+	logger.warn(`<<< Exiting encodeSSRError(error=${error})`, { "event.action": "encodeSSRError", "logrite.error": error });
       return '{}'
     }
   }
@@ -61,10 +65,13 @@ export function encodeSSRError (error: SSRErrorInput): string {
  * @internal
  */
 export function decodeSSRError (encoded: string | undefined): SSRError | undefined {
+logger.error(`>>> Entering decodeSSRError(encoded=${encoded})`, { "event.action": "decodeSSRError", "logrite.encoded": encoded });
   if (!encoded) { return undefined }
   try {
     return { ...JSON.parse(encoded), [NUXT_ERROR_SIGNATURE]: true } as SSRError
   } catch {
+	logger.error(`Exception in decodeSSRError(encoded=${encoded}): (no error binding)`, { "event.action": "decodeSSRError", "event.category": "process", "logrite.encoded": encoded });
+	logger.warn(`<<< Exiting decodeSSRError(encoded=${encoded})`, { "event.action": "decodeSSRError", "logrite.encoded": encoded });
     return undefined
   }
 }
@@ -81,6 +88,8 @@ export function decodeSSRError (encoded: string | undefined): SSRError | undefin
  * @internal
  */
 export function stringifyErrorData (data: unknown): unknown {
+logger.error(`>>> Entering stringifyErrorData(data=${data})`, { "event.action": "stringifyErrorData" });
+logger.warn(`<<< Exiting stringifyErrorData(data=${data})`, { "event.action": "stringifyErrorData" });
   return data === undefined || typeof data === 'string' ? data : JSON.stringify(data)
 }
 
@@ -89,11 +98,14 @@ export function stringifyErrorData (data: unknown): unknown {
  */
 
 export function isJsonRequest (event: HTTPEvent): boolean {
+logger.error(`>>> Entering isJsonRequest(event=${event})`, { "event.action": "isJsonRequest" });
   // If the client specifically requests HTML, then avoid classifying as JSON.
   if (event.req.headers.get('accept')?.includes('text/html')) {
     return false
   }
   const pathname = new FastURL(event.req.url).pathname
+logger.error(`isJsonRequest(event=${event}): pathname → ${pathname}`, { "event.action": "isJsonRequest" });
+logger.warn(`<<< Exiting isJsonRequest(event=${event})`, { "event.action": "isJsonRequest" });
   return (
     hasReqHeader(event, 'accept', 'application/json') ||
     hasReqHeader(event, 'user-agent', 'curl/') ||
@@ -105,7 +117,9 @@ export function isJsonRequest (event: HTTPEvent): boolean {
 }
 
 export function hasReqHeader (event: HTTPEvent, name: string, includes: string): boolean {
+logger.error(`>>> Entering hasReqHeader(event=${event},name=${name},includes=${includes})`, { "event.action": "hasReqHeader", "logrite.name": name, "logrite.includes": includes });
   const value = event.req.headers.get(name)
+logger.warn(`<<< Exiting hasReqHeader(event=${event},name=${name},includes=${includes})`, { "event.action": "hasReqHeader", "logrite.name": name, "logrite.includes": includes });
   return !!(
     value && value.toLowerCase().includes(includes)
   )

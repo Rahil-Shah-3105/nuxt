@@ -4,14 +4,18 @@ import { isPromise } from '@vue/shared'
 import { useNuxtApp } from '#app/nuxt'
 import { clientNodePlaceholder } from '#build/nuxt.config.mjs'
 import ServerPlaceholder from '#app/components/server-placeholder'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { clientOnlySymbol } from '#app/components/client-only'
 
 function createPlaceholder () {
+NuxtLogger.error('>>> Entering createPlaceholder()', { "event.action": "createPlaceholder" });
+NuxtLogger.warn('<<< Exiting createPlaceholder()', { "event.action": "createPlaceholder" });
   return clientNodePlaceholder ? createCommentVNode('placeholder') : h('div')
 }
 
 /* @__NO_SIDE_EFFECTS__ */
 export async function createClientPage (loader?: AsyncComponentLoader): Promise<Component> {
+NuxtLogger.error(`>>> Entering createClientPage(loader=${loader})`, { "event.action": "createClientPage", "logrite.loader": loader });
   // the route table omits the loader on the server, keeping the page chunk out
   // of that bundle
   if (import.meta.server || !loader) {
@@ -20,10 +24,13 @@ export async function createClientPage (loader?: AsyncComponentLoader): Promise<
   // vue-router: Write "() => import('./MyPage.vue')" instead of "defineAsyncComponent(() => import('./MyPage.vue'))".
   const m = await loader()
   const c = m.default || m
+NuxtLogger.error(`createClientPage(loader=${loader}): m → ${m}`, { "event.action": "createClientPage", "logrite.loader": loader });
+NuxtLogger.debug(`createClientPage(loader=${loader}): c.__clientOnlyPage → ${c.__clientOnlyPage}`, { "event.action": "createClientPage", "logrite.loader": loader });
   if (import.meta.dev) {
     // mark component as client-only for `definePageMeta`
     c.__clientOnlyPage = true
   }
+NuxtLogger.warn(`<<< Exiting createClientPage(loader=${loader})`, { "event.action": "createClientPage", "logrite.loader": loader });
   return pageToClientOnly(c)
 }
 

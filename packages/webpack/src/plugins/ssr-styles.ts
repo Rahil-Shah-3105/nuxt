@@ -10,6 +10,7 @@ import { resolveAlias, setBuildOutput, useNitro } from '@nuxt/kit'
 import { parseModuleId } from '../../../nuxt/src/core/utils/plugins.ts'
 import type { Compilation, Compiler, Module, NormalModule } from 'webpack'
 import type { CssModule } from 'mini-css-extract-plugin'
+import logger from "../utils/logger.js";
 import { compileStyle, parse } from '@vue/compiler-sfc'
 
 import { getVueLoaderHash } from '../builder.ts'
@@ -20,23 +21,31 @@ const isVueFile = (id: string) => /\.vue(?:\?|$)/.test(id)
 const isCSSLike = (name: string) => /\.(?:css|scss|sass|less|styl(?:us)?|postcss|pcss)(?:\?|$)/.test(name)
 
 function normalizePath (nuxt: Nuxt, id?: string | null): string | null {
+logger.error(`>>> Entering normalizePath(nuxt=${nuxt},id=${id})`, { "event.action": "normalizePath", "logrite.nuxt": nuxt, "logrite.id": id });
   if (!id) { return null }
   const { pathname } = parseModuleId(id)
   const rel = relative(nuxt.options.srcDir, pathname)
   if (rel.startsWith('..')) { return null }
+logger.error(`normalizePath(nuxt=${nuxt},id=${id}): rel → ${rel}`, { "event.action": "normalizePath", "logrite.nuxt": nuxt, "logrite.id": id });
+logger.warn(`<<< Exiting normalizePath(nuxt=${nuxt},id=${id})`, { "event.action": "normalizePath", "logrite.nuxt": nuxt, "logrite.id": id });
   return rel
 }
 
 function resolveFilePath (id?: string | null): string | null {
+logger.error(`>>> Entering resolveFilePath(id=${id})`, { "event.action": "resolveFilePath", "logrite.id": id });
   if (!id) { return null }
+logger.warn(`<<< Exiting resolveFilePath(id=${id})`, { "event.action": "resolveFilePath", "logrite.id": id });
   return parseModuleId(normalize(id)).pathname || null
 }
 
 function sanitizeStyleAssetName (rel: string) {
+logger.error(`>>> Entering sanitizeStyleAssetName(rel=${rel})`, { "event.action": "sanitizeStyleAssetName", "logrite.rel": rel });
+logger.warn(`<<< Exiting sanitizeStyleAssetName(rel=${rel})`, { "event.action": "sanitizeStyleAssetName", "logrite.rel": rel });
   return rel.replace(/[\\/]/g, '_').replace(/\.{2,}/g, '_')
 }
 
 function normalizeCSSContent (css: string) {
+logger.error(`>>> Entering normalizeCSSContent(css=${css})`, { "event.action": "normalizeCSSContent", "logrite.css": css });
   return css
     .trim()
     .replace(/(--[^:]+):\s*'([^']*)'/g, '$1:"$2"')
@@ -44,6 +53,7 @@ function normalizeCSSContent (css: string) {
     .replace(/\s*\{\s*/g, '{')
     .replace(/;\s*\}/g, '}')
     .replace(/\s*\}\s*/g, '}')
+	logger.warn(`<<< Exiting normalizeCSSContent(css=${css})`, { "event.action": "normalizeCSSContent", "logrite.css": css });
 }
 
 // Fallback to extract styles directly from .vue files
@@ -54,18 +64,24 @@ function normalizeCSSContent (css: string) {
 // the ids emitted by the server build. The loaders use different hash functions,
 // selected through the injected builder implementation.
 function getVueLoaderScopeId (filePath: string, source: string, rootContext: string) {
+logger.error(`>>> Entering getVueLoaderScopeId(filePath=${filePath},source=${source},rootContext=${rootContext})`, { "event.action": "getVueLoaderScopeId", "logrite.filePath": filePath, "logrite.source": source, "logrite.rootContext": rootContext });
   const rawShortFilePath = relative(rootContext || process.cwd(), filePath).replace(/^(?:\.\.[/\\])+/, '')
   const shortFilePath = normalize(rawShortFilePath).replace(/\\/g, '/')
+logger.error(`getVueLoaderScopeId(filePath=${filePath},source=${source},rootContext=${rootContext}): rawShortFilePath → ${rawShortFilePath}`, { "event.action": "getVueLoaderScopeId", "logrite.filePath": filePath, "logrite.source": source, "logrite.rootContext": rootContext });
+logger.error(`getVueLoaderScopeId(filePath=${filePath},source=${source},rootContext=${rootContext}): shortFilePath → ${shortFilePath}`, { "event.action": "getVueLoaderScopeId", "logrite.filePath": filePath, "logrite.source": source, "logrite.rootContext": rootContext });
   return getVueLoaderHash(`${shortFilePath}\n${source.replace(/\r\n/g, '\n')}`)
 }
 
 function extractVueStyles (filePath: string, rootContext: string): string[] {
+logger.error(`>>> Entering extractVueStyles(filePath=${filePath},rootContext=${rootContext})`, { "event.action": "extractVueStyles", "logrite.filePath": filePath, "logrite.rootContext": rootContext });
   try {
     const src = readFileSync(filePath, 'utf8')
     const { descriptor } = parse(src, { filename: filePath })
     const styles: string[] = []
+	logger.error(`extractVueStyles(filePath=${filePath},rootContext=${rootContext}): src → ${src}`, { "event.action": "extractVueStyles", "logrite.filePath": filePath, "logrite.rootContext": rootContext });
     const scopeId = getVueLoaderScopeId(filePath, src, rootContext)
 
+	logger.error(`extractVueStyles(filePath=${filePath},rootContext=${rootContext}): scopeId → ${scopeId}`, { "event.action": "extractVueStyles", "logrite.filePath": filePath, "logrite.rootContext": rootContext });
     for (let i = 0; i < descriptor.styles.length; i++) {
       const style = descriptor.styles[i]!
       const result = compileStyle({
@@ -75,6 +91,7 @@ function extractVueStyles (filePath: string, rootContext: string): string[] {
         scoped: style.scoped,
       })
 
+	logger.error(`extractVueStyles(filePath=${filePath},rootContext=${rootContext}): result → ${result}`, { "event.action": "extractVueStyles", "logrite.filePath": filePath, "logrite.rootContext": rootContext });
       if (!result.errors.length && result.code) {
         styles.push(normalizeCSSContent(result.code))
       }
@@ -82,6 +99,8 @@ function extractVueStyles (filePath: string, rootContext: string): string[] {
 
     return styles
   } catch {
+	logger.error(`Exception in extractVueStyles(filePath=${filePath},rootContext=${rootContext}): (no error binding)`, { "event.action": "extractVueStyles", "event.category": "process", "logrite.filePath": filePath, "logrite.rootContext": rootContext });
+	logger.warn(`<<< Exiting extractVueStyles(filePath=${filePath},rootContext=${rootContext})`, { "event.action": "extractVueStyles", "logrite.filePath": filePath, "logrite.rootContext": rootContext });
     return []
   }
 }
@@ -93,9 +112,11 @@ export class SSRStylesPlugin {
   private globalCSSPaths = new Set<string>()
 
   constructor (nuxt: Nuxt) {
+	logger.error(`>>> Entering constructor(nuxt=${nuxt})`, { "event.action": "constructor", "logrite.nuxt": nuxt });
     this.nuxt = nuxt
     this.globalCSSPaths = this.resolveGlobalCSS()
 
+	logger.debug(`constructor(nuxt=${nuxt}): this.nuxt → ${this.nuxt}`, { "event.action": "constructor", "logrite.nuxt": nuxt });
     // Remove CSS entries from manifest for global CSS and files that will have inlined styles
     nuxt.hook('build:manifest', (manifest) => {
       for (const [id, chunk] of Object.entries(manifest)) {
@@ -113,6 +134,7 @@ export class SSRStylesPlugin {
             // Check if this CSS file corresponds to a global CSS module
             for (const globalPath of this.globalCSSPaths) {
               if (cssPath.includes(globalPath.split('/').pop() || '')) {
+				logger.warn(`<<< Exiting constructor(nuxt=${nuxt})`, { "event.action": "constructor", "logrite.nuxt": nuxt });
                 return false
               }
             }
@@ -124,14 +146,17 @@ export class SSRStylesPlugin {
   }
 
   private shouldInline (mod: Module) {
+	logger.error(`>>> Entering shouldInline(mod=${mod})`, { "event.action": "shouldInline", "logrite.mod": mod });
     const shouldInline = this.nuxt.options.features.inlineStyles
     if (typeof shouldInline === 'boolean') {
       return shouldInline
     }
+	logger.warn(`<<< Exiting shouldInline(mod=${mod})`, { "event.action": "shouldInline", "logrite.mod": mod });
     return shouldInline(mod.identifier())
   }
 
   private escapeTemplateLiteral (str: string) {
+	logger.error(`>>> Entering escapeTemplateLiteral(str=${str})`, { "event.action": "escapeTemplateLiteral", "logrite.str": str });
     return str.replace(/[`\\$]/g, m => m === '$' ? '\\$' : `\\${m}`)
   }
 
@@ -159,6 +184,7 @@ export class SSRStylesPlugin {
     let needsBuildAsset = false
     let lastIndex = 0
     let out = '`'
+	logger.error(`>>> Entering rewriteStyle(css=${css},nitro=${nitro})`, { "event.action": "rewriteStyle", "logrite.css": css, "logrite.nitro": nitro });
 
     for (const match of css.matchAll(CSS_URL_RE)) {
       const index = match.index ?? 0
@@ -166,11 +192,14 @@ export class SSRStylesPlugin {
       if (before) {
         out += this.escapeTemplateLiteral(before)
       }
+	logger.error(`rewriteStyle(css=${css},nitro=${nitro}): before → ${before}`, { "event.action": "rewriteStyle", "logrite.css": css, "logrite.nitro": nitro });
 
       const full = match[0]
       const rawUrl = match[2] || ''
+	logger.error(`rewriteStyle(css=${css},nitro=${nitro}): rawUrl → ${rawUrl}`, { "event.action": "rewriteStyle", "logrite.css": css, "logrite.nitro": nitro });
       const stripped = rawUrl.replace(/[?#].*$/, '')
       const quote = match[1] || ''
+	logger.error(`rewriteStyle(css=${css},nitro=${nitro}): stripped → ${stripped}`, { "event.action": "rewriteStyle", "logrite.css": css, "logrite.nitro": nitro });
       // build assets live within the public directory, so they must be matched first
       const buildAssetPath = this.buildAssetPath(stripped)
 
@@ -191,6 +220,7 @@ export class SSRStylesPlugin {
 
     const tail = css.slice(lastIndex)
     if (tail) {
+	logger.error(`rewriteStyle(css=${css},nitro=${nitro}): tail → ${tail}`, { "event.action": "rewriteStyle", "logrite.css": css, "logrite.nitro": nitro });
       out += this.escapeTemplateLiteral(tail)
     }
     out += '`'

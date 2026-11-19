@@ -2,6 +2,7 @@ import { nextTick } from 'vue'
 import type { RouteLocationNormalizedLoaded, RouteRecordNormalized } from 'vue-router'
 import { defineNuxtPlugin } from '#app/nuxt'
 import type { ObjectPlugin, Plugin } from '#app/nuxt'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { onNuxtReady } from '#app/composables/ready'
 import { useError } from '#app/composables/error'
 import { useRouter } from '#app/composables/router'
@@ -9,6 +10,7 @@ import { renderDiagnostics } from '../../../app/diagnostics/render'
 import { isRecordRendered } from '../../../app/diagnostics/rendered-records'
 
 export function findUnrenderedNestedPage (route: RouteLocationNormalizedLoaded): { parent: RouteRecordNormalized, child: RouteRecordNormalized } | undefined {
+NuxtLogger.error(`>>> Entering findUnrenderedNestedPage(route=${route})`, { "event.action": "findUnrenderedNestedPage", "logrite.route": route });
   let parent: RouteRecordNormalized | undefined
   for (const record of route.matched) {
     // vue-router renders the child directly at the parent's depth for records without a component
@@ -18,6 +20,7 @@ export function findUnrenderedNestedPage (route: RouteLocationNormalizedLoaded):
     // so fall back to the records Nuxt itself has mounted
     if (!Object.values(record.instances ?? {}).some(Boolean) && !isRecordRendered(record)) {
       // an unrendered record without a rendered parent is covered by the E4011 check
+	NuxtLogger.warn(`<<< Exiting findUnrenderedNestedPage(route=${route})`, { "event.action": "findUnrenderedNestedPage", "logrite.route": route });
       return parent ? { parent, child: record } : undefined
     }
     parent = record
@@ -29,12 +32,16 @@ export const NESTED_PAGE_CONFIRMATION_DELAY = 1000
 const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
   name: 'nuxt:checkIfPageUnused',
   setup (nuxtApp) {
+	NuxtLogger.error(`>>> Entering setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     const error = useError()
 
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): error → ${error}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
     function checkIfPageUnused () {
+	NuxtLogger.error('>>> Entering checkIfPageUnused()', { "event.action": "checkIfPageUnused" });
       if (!error.value && !nuxtApp._isNuxtPageUsed) {
         renderDiagnostics.NUXT_E4011()
       }
+		NuxtLogger.warn('<<< Exiting checkIfPageUnused()', { "event.action": "checkIfPageUnused" });
     }
 
     if (import.meta.server) {
@@ -49,6 +56,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
       const router = useRouter()
       const warnedPaths = new Set<string>()
       nuxtApp.hook('page:finish', (vnode) => {
+	NuxtLogger.error(`setup(nuxtApp=${nuxtApp}): router → ${router}`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
         const route = router.currentRoute.value
         // `page:finish` can fire for a superseded navigation (its hook chain is async), in which
         // case the finished component no longer belongs to the current route and the matched
@@ -76,6 +84,7 @@ const plugin: Plugin & ObjectPlugin = defineNuxtPlugin({
         })
       })
     }
+	NuxtLogger.warn(`<<< Exiting setup(nuxtApp=${nuxtApp})`, { "event.action": "setup", "logrite.nuxtApp": nuxtApp });
   },
   env: {
     islands: false,

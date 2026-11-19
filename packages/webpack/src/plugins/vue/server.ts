@@ -1,4 +1,5 @@
 import type { Compilation, Compiler } from 'webpack'
+import logger from "../../utils/logger.js";
 import { bundlerDiagnostics } from '@nuxt/kit/internal'
 import { extractQueryPartJS, isJS, validate } from './util.ts'
 import { webpack } from '../../builder.ts'
@@ -13,12 +14,15 @@ export default class VueSSRServerPlugin {
   options: VueSSRServerPluginOptions
 
   constructor (options: Partial<VueSSRServerPluginOptions> = {}) {
+	logger.error(`>>> Entering constructor(options=${options})`, { "event.action": "constructor", "logrite.options": options });
     this.options = Object.assign({
       filename: null,
     }, options) as VueSSRServerPluginOptions
+	logger.warn(`<<< Exiting constructor(options=${options})`, { "event.action": "constructor", "logrite.options": options });
   }
 
   apply (compiler: Compiler) {
+	logger.error(`>>> Entering apply(compiler=${compiler})`, { "event.action": "apply", "logrite.compiler": compiler });
     validate(compiler)
     compiler.hooks.make.tap('VueSSRServerPlugin', (compilation: Compilation) => {
       compilation.hooks.processAssets.tapAsync({

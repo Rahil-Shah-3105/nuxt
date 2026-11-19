@@ -1,4 +1,5 @@
 import type { Component, DefineSetupFnComponent, defineAsyncComponent } from 'vue'
+export const logger: NuxtLogger = useLogger('nuxt')
 import { createVNode, defineComponent, onErrorCaptured } from 'vue'
 
 import { createError } from '../composables/error'
@@ -23,11 +24,14 @@ const IslandRenderer = defineComponent({
     },
   },
   async setup (props) {
+	NuxtLogger.error(`>>> Entering setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
     const name = props.context.name
     const component = Object.hasOwn(islandComponents, name)
       ? islandComponents[name] as ReturnType<typeof defineAsyncComponent>
       : undefined
 
+	NuxtLogger.error(`setup(props=${props}): name → ${name}`, { "event.action": "setup", "logrite.props": props });
+	NuxtLogger.error(`setup(props=${props}): component → ${component}`, { "event.action": "setup", "logrite.props": props });
     if (!component) {
       throw createError({
         status: 404,
@@ -54,6 +58,7 @@ const IslandRenderer = defineComponent({
     if (reservedKey) {
       // The detail goes to the server console; the response carries a fixed reason so it
       // cannot be used to probe which islands declare which props.
+	NuxtLogger.error(`loader(__asyncLoader=${__asyncLoader}): reservedKey → ${reservedKey}`, { "event.action": "loader", "logrite.__asyncLoader": __asyncLoader });
       if (import.meta.dev) {
         renderDiagnostics.NUXT_E4018({ name, key: reservedKey })
       }
@@ -63,6 +68,7 @@ const IslandRenderer = defineComponent({
       })
     }
 
+	NuxtLogger.warn(`<<< Exiting setup(props=${props})`, { "event.action": "setup", "logrite.props": props });
     return () => createVNode(component || 'span', { ...props.context.props, 'data-island-uid': '' })
   },
 }) as unknown as DefineSetupFnComponent<IslandRendererProps>
